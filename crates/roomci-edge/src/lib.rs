@@ -1,14 +1,24 @@
+//! Edge (home-control) server emulator.
+//!
+//! Models a redundant edge pair (primary + optional secondary) and routes MQTT
+//! commands through whichever edge is currently active. When the primary
+//! loses power the secondary is promoted, provided failover is enabled.
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// Errors produced by the edge model.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum EdgeError {
+    /// Neither the primary nor the secondary edge is currently active.
     #[error("no active edge server is available")]
     NoActiveEdge,
 }
 
+/// Outcome of a successful route: which edge handled the command and which
+/// device/client/protocol were involved.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct RoutedCommand {
     pub edge_id: String,
@@ -18,18 +28,21 @@ pub struct RoutedCommand {
     pub action: String,
 }
 
+/// Result of a primary → secondary failover.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct FailoverOutcome {
     pub from: String,
     pub to: String,
 }
 
+/// One edge server in the redundant pair.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct EdgeServer {
     pub id: String,
     pub status: EdgeStatus,
 }
 
+/// Operational state for an [`EdgeServer`].
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EdgeStatus {
@@ -38,6 +51,8 @@ pub enum EdgeStatus {
     Failed,
 }
 
+/// Two-edge model with an optional secondary and a flag controlling automatic
+/// failover.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct EdgeModel {
     primary: EdgeServer,
@@ -62,6 +77,11 @@ impl Default for EdgeModel {
 }
 
 impl EdgeModel {
+    /// Build an [`EdgeModel`] from the scenario's `edge:` configuration map.
+    ///
+    /// Missing values fall back to a sensible default: a primary named
+    /// `edge_primary` in [`EdgeStatus::Active`] and a secondary named
+    /// `edge_secondary` in [`EdgeStatus::Standby`], with failover enabled.
     pub fn from_config(config: &BTreeMap<String, serde_yaml::Value>) -> Self {
         let primary =
             edge_server_from_config(config.get("primary"), "edge_primary", EdgeStatus::Active);
@@ -82,6 +102,8 @@ impl EdgeModel {
         }
     }
 
+    /// Returns the id of the currently active edge, or `None` if both are
+    /// failed or standing by.
     pub fn active_id(&self) -> Option<&str> {
         if self.primary.status == EdgeStatus::Active {
             return Some(&self.primary.id);
@@ -92,10 +114,14 @@ impl EdgeModel {
             .map(|edge| edge.id.as_str())
     }
 
+    /// Borrow the secondary's status, if a secondary is configured.
     pub fn secondary_status(&self) -> Option<EdgeStatus> {
         self.secondary.as_ref().map(|edge| edge.status)
     }
 
+    /// Route an MQTT command through the active edge to a target device.
+    ///
+    /// Returns [`EdgeError::NoActiveEdge`] when neither edge is active.
     pub fn route_mqtt_command(
         &self,
         source_client: &str,
@@ -112,6 +138,12 @@ impl EdgeModel {
         })
     }
 
+    /// Simulate power loss to the primary edge.
+    ///
+    /// When failover is enabled and a standby secondary exists, the secondary
+    /// is promoted to [`EdgeStatus::Active`] and a [`FailoverOutcome`] is
+    /// returned. Returns `None` if the primary was already failed, failover is
+    /// disabled, or no secondary is configured.
     pub fn apply_power_lost_to_primary(&mut self) -> Option<FailoverOutcome> {
         if self.primary.status == EdgeStatus::Failed {
             return None;

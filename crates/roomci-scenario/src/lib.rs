@@ -1,3 +1,10 @@
+//! Scenario file format and validator for roomci.
+//!
+//! This crate owns the wire format declared in `examples/*.yaml`: it parses a
+//! [`ScenarioFile`], validates that every step, fault, and assertion refers
+//! to a known device/scene/contact, and provides time helpers used by
+//! `roomci-core` to evaluate scenarios on a virtual clock.
+
 use std::{collections::BTreeMap, fs, path::Path};
 
 use chrono::Duration;
@@ -6,6 +13,7 @@ use roomci_ops::{OpsError, OpsModel};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// Errors produced while loading or validating a scenario.
 #[derive(Debug, Error)]
 pub enum ScenarioError {
     #[error("failed to read scenario {path}: {source}")]
@@ -34,6 +42,11 @@ pub enum ScenarioError {
     Ops(#[from] OpsError),
 }
 
+/// Top-level scenario document.
+///
+/// Every section other than `version` and `scenario` is optional; missing
+/// sections fall back to empty maps/lists so a minimal scenario only needs
+/// to declare what it actually exercises.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ScenarioFile {
     pub version: String,
@@ -231,6 +244,10 @@ pub struct ModbusAssertion {
     pub readable_value: Option<f64>,
 }
 
+/// Read a scenario YAML file from disk and deserialize it.
+///
+/// Wraps I/O and YAML parsing errors with the file path so the caller gets
+/// actionable error messages.
 pub fn load_scenario(path: impl AsRef<Path>) -> Result<ScenarioFile, ScenarioError> {
     let path_ref = path.as_ref();
     let path_display = path_ref.display().to_string();
@@ -244,6 +261,11 @@ pub fn load_scenario(path: impl AsRef<Path>) -> Result<ScenarioFile, ScenarioErr
     })
 }
 
+/// Validate that every step, fault, and assertion in `scenario` references
+/// known devices, scenes, contacts, and alerts.
+///
+/// Called by `roomci-core::run_scenario` before execution; callers can also
+/// invoke it directly for a `--dry-run`-style validation pass.
 pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
     let modbus = ModbusModel::from_config(&scenario.modbus);
     let scene_targets = scenario
@@ -351,6 +373,8 @@ fn validate_fault_reference(
     Ok(())
 }
 
+/// Resolve a symbolic time offset like `T`, `T+15s`, or `T-1m` into a
+/// [`Duration`] relative to scenario start.
 pub fn resolve_time_offset(expression: &str) -> Result<Duration, ScenarioError> {
     if expression == "T" {
         return Ok(Duration::zero());
@@ -370,6 +394,7 @@ pub fn resolve_time_offset(expression: &str) -> Result<Duration, ScenarioError> 
     }
 }
 
+/// Parse a duration token like `15s`, `2m`, or `1h` into a [`Duration`].
 pub fn parse_duration(value: &str) -> Result<Duration, ScenarioError> {
     let split_at = value
         .find(|char: char| !char.is_ascii_digit())
@@ -386,6 +411,8 @@ pub fn parse_duration(value: &str) -> Result<Duration, ScenarioError> {
     }
 }
 
+/// Convert a YAML key/value map into a JSON-shaped one, replacing
+/// non-convertible values with [`serde_json::Value::Null`].
 pub fn yaml_map_to_json(
     map: &BTreeMap<String, serde_yaml::Value>,
 ) -> BTreeMap<String, serde_json::Value> {

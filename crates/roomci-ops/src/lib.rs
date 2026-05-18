@@ -1,7 +1,16 @@
+//! Operations (BMS/alert) mock used by roomci scenarios.
+//!
+//! Captures the QA-visible shape of an external monitoring/alert system:
+//! tickets, Slack notifications, phone escalations, and runbook URLs. The
+//! scenario runner drives this mock when contact inputs flip to `on` and
+//! evaluates it with [`OpsModel::evaluate_assertion`] against the scenario
+//! `assertions.ops.*` fields.
+
 use std::collections::BTreeMap;
 
 use thiserror::Error;
 
+/// Errors emitted while configuring or evaluating the ops mock.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum OpsError {
     #[error("unknown alert source {0}")]
@@ -12,6 +21,8 @@ pub enum OpsError {
     UnsupportedAssertion(String),
 }
 
+/// Discrete ops-side side effects emitted to the scenario timeline when an
+/// alert fires or is acknowledged.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OpsEvent {
     SlackNotificationSent {
@@ -35,12 +46,16 @@ pub enum OpsEvent {
     },
 }
 
+/// Aggregate outcome of evaluating an `assertions.ops.*` block, with the
+/// list of individual check failures when `passed` is false.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OpsAssertionOutcome {
     pub passed: bool,
     pub failures: Vec<String>,
 }
 
+/// In-memory ops mock: declared alerts plus the ticket/notification state
+/// each alert has produced so far.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct OpsModel {
     alerts: Vec<OpsAlert>,

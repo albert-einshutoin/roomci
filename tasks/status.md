@@ -11,6 +11,7 @@
 | Phase 4 | `done` | BMS/ops alert mock | None | `phase4/phase_status.md` |
 | Phase 5 | `done` | Docker and CI packaging | None | `phase5/phase_status.md` |
 | Phase 6 | `done` | Reliability depth and future integrations | None | `phase6/phase_status.md` |
+| Phase 7 | `in_progress` | Production readiness (docs, coverage, CLI, CI) | None | `phase7/phase_status.md` |
 
 ## Update Rules
 
@@ -21,4 +22,4 @@
 
 ## Current Recommendation
 
-Phase 0-6 are complete. Next step is a release-readiness review covering docs freshness, security/resource limits, and public demo packaging.
+Execute Phase 7 to close documentation, coverage, CLI ergonomics, and CI quality-gate gaps so the project reads as production-grade rather than MVP.

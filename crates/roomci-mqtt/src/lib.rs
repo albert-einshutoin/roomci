@@ -1,18 +1,32 @@
+//! Local and cloud MQTT broker model used by roomci scenarios.
+//!
+//! The model is deliberately simplified: it tracks online state per broker,
+//! retained payloads per state topic, and a per-client inbox so reconnect
+//! semantics can be exercised. It is not an MQTT protocol implementation;
+//! it captures the QA-visible behavior that local-first scenarios depend on.
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// JSON-shaped payload used for both device commands and retained state.
 pub type Payload = BTreeMap<String, serde_json::Value>;
 
+/// Errors produced when publishing through the broker model.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum MqttError {
+    /// The target broker is offline at publish time.
     #[error("broker {0} is offline")]
     BrokerOffline(String),
+    /// The topic does not match the expected `house/.../device/<id>/command` shape.
     #[error("topic is not a device command topic: {0}")]
     InvalidCommandTopic(String),
 }
 
+/// Result of a successful publish: which broker accepted it, the derived state
+/// topic, the device id (when the topic matched the device-command shape), and
+/// the number of QoS1-style deliveries that were applied.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PublishOutcome {
     pub broker: String,
@@ -23,6 +37,10 @@ pub struct PublishOutcome {
     pub deliveries: u32,
 }
 
+/// In-memory broker model for the local and cloud MQTT brokers.
+///
+/// Use [`BrokerModel::new`] to construct one with explicit online states, then
+/// drive it with [`BrokerModel::publish_device_command`] from scenario steps.
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct BrokerModel {
     online: BTreeMap<String, bool>,
@@ -31,6 +49,8 @@ pub struct BrokerModel {
 }
 
 impl BrokerModel {
+    /// Build a broker model with explicit online states for the local and
+    /// cloud brokers.
     pub fn new(local_online: bool, cloud_online: bool) -> Self {
         let mut online = BTreeMap::new();
         online.insert("mqtt.local".to_string(), local_online);
@@ -42,18 +62,28 @@ impl BrokerModel {
         }
     }
 
+    /// Returns whether the named broker is currently online.
     pub fn is_online(&self, broker: &str) -> bool {
         self.online.get(broker).copied().unwrap_or(false)
     }
 
+    /// Toggle the online state for a named broker (used when a fault activates
+    /// or recovers).
     pub fn set_online(&mut self, broker: impl Into<String>, online: bool) {
         self.online.insert(broker.into(), online);
     }
 
+    /// Borrow the retained-state map, keyed by state topic.
     pub fn retained(&self) -> &BTreeMap<String, Payload> {
         &self.retained
     }
 
+    /// Publish a device command. The command topic must match
+    /// `.../device/<id>/command`; the matching state topic is derived from it.
+    ///
+    /// QoS1 may deliver the same payload multiple times — for retained state
+    /// this is idempotent, so `deliveries` only affects the recorded
+    /// [`PublishOutcome::deliveries`] count.
     pub fn publish_device_command(
         &mut self,
         broker: &str,
@@ -91,6 +121,8 @@ impl BrokerModel {
         })
     }
 
+    /// Simulate a client reconnect: the client receives every retained state
+    /// topic in one go and the inbox is replaced.
     pub fn reconnect_client(&mut self, client: &str) -> BTreeMap<String, Payload> {
         let retained = self.retained.clone();
         self.client_inboxes
@@ -99,6 +131,8 @@ impl BrokerModel {
     }
 }
 
+/// Extract the device id from a `.../device/<id>/command` topic, or return
+/// `None` if the topic does not match.
 pub fn device_id_from_command_topic(topic: &str) -> Option<String> {
     let parts = topic.split('/').collect::<Vec<_>>();
     if parts.last().copied() != Some("command") {
@@ -110,6 +144,8 @@ pub fn device_id_from_command_topic(topic: &str) -> Option<String> {
         .map(|value| (*value).to_string())
 }
 
+/// Derive the state topic that mirrors a `.../command` topic, or return
+/// `None` when the suffix does not match.
 pub fn state_topic_for_command_topic(topic: &str) -> Option<String> {
     topic
         .strip_suffix("/command")

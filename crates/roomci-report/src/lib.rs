@@ -1,9 +1,21 @@
+//! Report renderers for roomci run results.
+//!
+//! Each renderer consumes a [`RunReport`] from `roomci-core` and produces a
+//! single string: JSON for machine consumption, Markdown for humans, and
+//! JUnit XML for CI systems such as GitHub Actions test reporting.
+
 use roomci_core::{AssertionResult, RunReport, RunResult};
 
+/// Render a run report as pretty-printed JSON.
 pub fn to_json(report: &RunReport) -> Result<String, serde_json::Error> {
     serde_json::to_string_pretty(report)
 }
 
+/// Render a run report as a Markdown summary suitable for PR comments or
+/// `report.md` artifacts.
+///
+/// The output includes failed assertions, the full timeline, and suggested
+/// recovery actions for known guest-impact assertion categories.
 pub fn to_markdown(report: &RunReport) -> String {
     let mut output = String::new();
     output.push_str(&format!("# roomci Report — {}\n\n", report.scenario_name));
@@ -78,6 +90,12 @@ pub fn to_markdown(report: &RunReport) -> String {
     output
 }
 
+/// Render a run report as JUnit XML for CI systems that consume test results
+/// (GitHub Actions test reporters, Jenkins, GitLab, etc.).
+///
+/// Each assertion becomes a `<testcase>`, and failed assertions emit a
+/// `<failure>` element whose body carries the guest-impact message when
+/// available.
 pub fn to_junit(report: &RunReport) -> String {
     let failures = report
         .assertions

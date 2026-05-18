@@ -1,8 +1,26 @@
+//! Device-level mocks used by roomci scenarios.
+//!
+//! This crate provides three protocol-agnostic models that the scenario
+//! runner drives:
+//!
+//! - [`ModbusModel`] for Modbus holding/input register devices (floor
+//!   heating, HVAC, etc.).
+//! - [`LightingModel`] for DALI-like lighting fixtures with per-fixture
+//!   levels, scene targets, and command-drop fault injection.
+//! - [`ContactModel`] for binary contact inputs (emergency buttons, door
+//!   sensors).
+//!
+//! Each model validates its config and surfaces structured
+//! [`DeviceModelError`] variants so scenario authors get actionable error
+//! messages.
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// Per-device state map. Mirrors `roomci_core::StateMap` and is used by
+/// [`apply_command_state`] to mutate state in place.
 pub type StateMap = BTreeMap<String, serde_json::Value>;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -99,6 +117,8 @@ pub fn apply_command_state(
     }
 }
 
+/// Errors emitted by the Modbus, lighting, and contact models when a
+/// scenario references an unknown device or writes a read-only register.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum DeviceModelError {
     #[error("unknown Modbus device {0}")]
@@ -128,6 +148,8 @@ pub struct ModbusRegister {
     pub access: ModbusRegisterAccess,
 }
 
+/// Modbus device model: stores per-device register maps and enforces
+/// read-only access for `input_registers` / `discrete_inputs`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ModbusModel {
     devices: BTreeMap<String, BTreeMap<u32, ModbusRegister>>,
@@ -275,6 +297,8 @@ pub enum LightingEvent {
     CommandDropped { fixture: String },
 }
 
+/// DALI-like lighting model: per-fixture levels, named scene targets, and a
+/// drop-list used to simulate ballast command failures.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LightingModel {
     levels: BTreeMap<String, i64>,
@@ -381,6 +405,8 @@ impl LightingModel {
     }
 }
 
+/// Contact-input model: tracks declared contacts and their on/off state.
+/// Used together with `roomci_ops` to trigger alerts on state changes.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ContactModel {
     states: BTreeMap<String, String>,

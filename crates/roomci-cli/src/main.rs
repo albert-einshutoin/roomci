@@ -1,3 +1,12 @@
+//! `roomci` command-line entry point.
+//!
+//! Two subcommands:
+//!
+//! - `roomci run <scenario>` — load, validate, execute a scenario, optionally
+//!   emit JSON/Markdown/JUnit reports, and exit non-zero on assertion failure.
+//! - `roomci validate <scenarios...>` — load and validate one or more scenarios
+//!   without executing them.
+
 use std::{fs, path::PathBuf, process::ExitCode};
 
 use clap::{Parser, Subcommand};
