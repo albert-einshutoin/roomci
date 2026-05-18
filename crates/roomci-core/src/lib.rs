@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use chrono::Duration;
+use roomci_mqtt::{BrokerModel, MqttError};
 use roomci_scenario::{
     resolve_time_offset, validate_scenario, yaml_map_to_json, MqttPublishStep, ScenarioError,
     ScenarioFile,
@@ -14,6 +15,8 @@ pub type StateMap = BTreeMap<String, serde_json::Value>;
 pub enum CoreError {
     #[error(transparent)]
     Scenario(#[from] ScenarioError),
+    #[error(transparent)]
+    Mqtt(#[from] MqttError),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -54,8 +57,8 @@ pub struct AssertionResult {
 #[derive(Debug)]
 struct RuntimeState {
     states: BTreeMap<String, StateMap>,
-    retained_messages: BTreeMap<String, StateMap>,
-    broker_online: BTreeMap<String, bool>,
+    broker: BrokerModel,
+    duplicate_delivery_by_topic: BTreeMap<String, u32>,
     timeline: Vec<TimelineEvent>,
 }
 
@@ -102,7 +105,7 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
         timeline: runtime.timeline,
         assertions,
         final_state: runtime.states,
-        retained_messages: runtime.retained_messages,
+        retained_messages: runtime.broker.retained().clone(),
     })
 }
 
@@ -128,14 +131,10 @@ impl RuntimeState {
             .map(|device| (device.id.clone(), yaml_map_to_json(&device.state)))
             .collect::<BTreeMap<_, _>>();
 
-        let mut broker_online = BTreeMap::new();
-        broker_online.insert("mqtt.local".to_string(), true);
-        broker_online.insert("mqtt.cloud".to_string(), scenario.mqtt.cloud.enabled);
-
         Self {
             states,
-            retained_messages: BTreeMap::new(),
-            broker_online,
+            broker: BrokerModel::new(true, scenario.mqtt.cloud.enabled),
+            duplicate_delivery_by_topic: BTreeMap::new(),
             timeline: Vec::new(),
         }
     }
@@ -143,14 +142,26 @@ impl RuntimeState {
     fn apply_event(&mut self, event: ScheduledEvent) -> Result<(), CoreError> {
         match event {
             ScheduledEvent::GlobalFault(at, fault) => {
-                self.apply_fault(at, &fault.target, &fault.fault_type);
+                self.apply_fault(
+                    at,
+                    &fault.target,
+                    &fault.fault_type,
+                    fault.topic.as_deref(),
+                    fault.count,
+                );
             }
             ScheduledEvent::Step(at, step) => {
                 if let Some(event) = step.event {
                     self.push(at, "event", None, event);
                 }
                 if let Some(fault) = step.fault {
-                    self.apply_fault(at, &fault.target, &fault.fault_type);
+                    self.apply_fault(
+                        at,
+                        &fault.target,
+                        &fault.fault_type,
+                        fault.topic.as_deref(),
+                        fault.count,
+                    );
                 }
                 if let Some(command) = step.command {
                     self.push(
@@ -182,9 +193,22 @@ impl RuntimeState {
         Ok(())
     }
 
-    fn apply_fault(&mut self, at: Duration, target: &str, fault_type: &str) {
-        if target == "mqtt.cloud" && fault_type == "offline" {
-            self.broker_online.insert(target.to_string(), false);
+    fn apply_fault(
+        &mut self,
+        at: Duration,
+        target: &str,
+        fault_type: &str,
+        topic: Option<&str>,
+        count: Option<u32>,
+    ) {
+        if matches!(target, "mqtt.cloud" | "mqtt.local") && fault_type == "offline" {
+            self.broker.set_online(target, false);
+        }
+        if target == "mqtt.local" && fault_type == "duplicate_delivery" {
+            if let Some(topic) = topic {
+                self.duplicate_delivery_by_topic
+                    .insert(topic.to_string(), count.unwrap_or(2).max(2));
+            }
         }
         self.push(
             at,
@@ -202,32 +226,47 @@ impl RuntimeState {
             format!("published {}", publish.topic),
         );
 
-        if !self
-            .broker_online
-            .get("mqtt.local")
+        let deliveries = self
+            .duplicate_delivery_by_topic
+            .get(&publish.topic)
             .copied()
-            .unwrap_or(true)
-        {
-            self.push(
-                at,
-                "mqtt_publish_failed",
-                Some("mqtt.local".to_string()),
-                "local broker unavailable",
-            );
-            return;
-        }
-
-        if publish.topic.ends_with("/command") {
-            if let Some(device_id) = device_id_from_topic(&publish.topic) {
-                let payload = yaml_map_to_json(&publish.payload);
-                self.states.insert(device_id.clone(), payload.clone());
-                let state_topic = publish.topic.trim_end_matches("/command").to_string() + "/state";
-                self.retained_messages.insert(state_topic.clone(), payload);
+            .unwrap_or(1);
+        let payload = yaml_map_to_json(&publish.payload);
+        match self.broker.publish_device_command(
+            "mqtt.local",
+            &publish.client,
+            &publish.topic,
+            payload,
+            deliveries,
+        ) {
+            Ok(outcome) => {
+                if let (Some(device_id), Some(retained_payload)) =
+                    (outcome.device_id.clone(), outcome.retained_payload)
+                {
+                    self.states.insert(device_id.clone(), retained_payload);
+                    let state_topic = outcome.state_topic.unwrap_or_default();
+                    let delivery_word = if outcome.deliveries == 1 {
+                        "delivery"
+                    } else {
+                        "deliveries"
+                    };
+                    self.push(
+                        at,
+                        "mqtt_retained_state_updated",
+                        Some(device_id),
+                        format!(
+                            "retained state updated at {} after {} {}",
+                            state_topic, outcome.deliveries, delivery_word
+                        ),
+                    );
+                }
+            }
+            Err(error) => {
                 self.push(
                     at,
-                    "mqtt_retained_state_updated",
-                    Some(device_id),
-                    format!("retained state updated at {}", state_topic),
+                    "mqtt_publish_failed",
+                    Some("mqtt.local".to_string()),
+                    error.to_string(),
                 );
             }
         }
@@ -239,7 +278,7 @@ impl RuntimeState {
     ) -> AssertionResult {
         if let Some(mqtt) = &assertion.mqtt {
             let expected = yaml_map_to_json(&mqtt.retained);
-            let actual = self.retained_messages.get(&mqtt.topic);
+            let actual = self.broker.retained().get(&mqtt.topic);
             let passed = actual == Some(&expected);
             return AssertionResult {
                 name: format!("mqtt_retained:{}", mqtt.topic),
@@ -267,11 +306,7 @@ impl RuntimeState {
         }
 
         if let Some(expected) = &assertion.guest_experience {
-            let local_ok = self
-                .broker_online
-                .get("mqtt.local")
-                .copied()
-                .unwrap_or(true);
+            let local_ok = self.broker.is_online("mqtt.local");
             let passed = expected == "unaffected" && local_ok;
             return AssertionResult {
                 name: "guest_experience".to_string(),
@@ -321,14 +356,6 @@ impl RuntimeState {
     }
 }
 
-fn device_id_from_topic(topic: &str) -> Option<String> {
-    let parts = topic.split('/').collect::<Vec<_>>();
-    let device_index = parts.iter().position(|part| *part == "device")?;
-    parts
-        .get(device_index + 1)
-        .map(|value| (*value).to_string())
-}
-
 fn format_duration(duration: Duration) -> String {
     if duration == Duration::zero() {
         return "T".to_string();
@@ -373,5 +400,55 @@ mod tests {
             .timeline
             .iter()
             .any(|event| event.event_type == "mqtt_retained_state_updated"));
+    }
+
+    #[test]
+    fn duplicate_delivery_keeps_single_retained_state() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: duplicate_delivery
+  tags: [mqtt]
+mqtt:
+  local:
+    retained: true
+devices:
+  - id: living_light
+    type: light
+    protocol: dali
+    state:
+      power: false
+faults:
+  - at: T
+    target: mqtt.local
+    type: duplicate_delivery
+    topic: house/minakami/room/living/device/living_light/command
+    count: 3
+steps:
+  - at: T+1s
+    mqtt_publish:
+      client: ipad_controller
+      topic: house/minakami/room/living/device/living_light/command
+      payload:
+        power: true
+assertions:
+  - at: T+2s
+    mqtt:
+      topic: house/minakami/room/living/device/living_light/state
+      retained:
+        power: true
+"#,
+        )
+        .unwrap();
+
+        let report = run_scenario(&scenario).unwrap();
+
+        assert_eq!(report.result, RunResult::Passed);
+        assert_eq!(report.retained_messages.len(), 1);
+        assert!(report
+            .timeline
+            .iter()
+            .any(|event| event.message.contains("3 deliveries")));
     }
 }

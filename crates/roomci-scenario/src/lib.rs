@@ -156,6 +156,10 @@ pub struct FaultStep {
     pub duration: Option<String>,
     #[serde(default)]
     pub severity: Option<String>,
+    #[serde(default)]
+    pub topic: Option<String>,
+    #[serde(default)]
+    pub count: Option<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]

@@ -9,6 +9,7 @@ repository.workspace = true
 chrono.workspace = true
 roomci-device-model = { path = "../roomci-device-model" }
 roomci-fault = { path = "../roomci-fault" }
+roomci-mqtt = { path = "../roomci-mqtt" }
 roomci-scenario = { path = "../roomci-scenario" }
 serde.workspace = true
 serde_json.workspace = true
