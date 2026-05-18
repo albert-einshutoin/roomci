@@ -6,8 +6,8 @@
 |---|---|---|---|---|
 | Phase 0 | `done` | Latest scenario contract, CLI, reports | None | `phase0/phase_status.md` |
 | Phase 1 | `done` | Local MQTT retained-state model | None | `phase1/phase_status.md` |
-| Phase 2 | `todo` | Edge server emulator | None | `phase2/phase_status.md` |
-| Phase 3 | `todo` | Modbus, DALI-like, contact I/O mocks | Phase 0/1 not complete | `phase3/phase_status.md` |
+| Phase 2 | `done` | Edge server emulator | None | `phase2/phase_status.md` |
+| Phase 3 | `todo` | Modbus, DALI-like, contact I/O mocks | None | `phase3/phase_status.md` |
 | Phase 4 | `todo` | BMS/ops alert mock | Contact I/O mock not complete | `phase4/phase_status.md` |
 | Phase 5 | `todo` | Docker and CI packaging | Runtime behavior not complete | `phase5/phase_status.md` |
 | Phase 6 | `todo` | Reliability depth and future integrations | MVP demos not complete | `phase6/phase_status.md` |
@@ -21,4 +21,4 @@
 
 ## Current Recommendation
 
-Start Phase 2 by adding an explicit edge server emulator on top of the local MQTT model.
+Start Phase 3 by adding Modbus register-map, DALI-like scene, and contact I/O mocks for the device demos.

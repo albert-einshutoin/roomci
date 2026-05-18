@@ -11,6 +11,7 @@ fn validate_accepts_example_scenarios() {
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
         .arg("validate")
         .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg(fixture("examples/edge_server_failover.yaml"))
         .output()
         .unwrap();
 

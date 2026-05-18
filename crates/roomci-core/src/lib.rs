@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use chrono::Duration;
+use roomci_edge::{EdgeError, EdgeModel, EdgeStatus};
 use roomci_mqtt::{BrokerModel, MqttError};
 use roomci_scenario::{
     resolve_time_offset, validate_scenario, yaml_map_to_json, MqttPublishStep, ScenarioError,
@@ -17,6 +18,8 @@ pub enum CoreError {
     Scenario(#[from] ScenarioError),
     #[error(transparent)]
     Mqtt(#[from] MqttError),
+    #[error(transparent)]
+    Edge(#[from] EdgeError),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -57,7 +60,9 @@ pub struct AssertionResult {
 #[derive(Debug)]
 struct RuntimeState {
     states: BTreeMap<String, StateMap>,
+    protocols: BTreeMap<String, Option<String>>,
     broker: BrokerModel,
+    edge: EdgeModel,
     duplicate_delivery_by_topic: BTreeMap<String, u32>,
     timeline: Vec<TimelineEvent>,
 }
@@ -130,10 +135,17 @@ impl RuntimeState {
             .iter()
             .map(|device| (device.id.clone(), yaml_map_to_json(&device.state)))
             .collect::<BTreeMap<_, _>>();
+        let protocols = scenario
+            .devices
+            .iter()
+            .map(|device| (device.id.clone(), device.protocol.clone()))
+            .collect::<BTreeMap<_, _>>();
 
         Self {
             states,
+            protocols,
             broker: BrokerModel::new(true, scenario.mqtt.cloud.enabled),
+            edge: EdgeModel::from_config(&scenario.edge),
             duplicate_delivery_by_topic: BTreeMap::new(),
             timeline: Vec::new(),
         }
@@ -204,6 +216,16 @@ impl RuntimeState {
         if matches!(target, "mqtt.cloud" | "mqtt.local") && fault_type == "offline" {
             self.broker.set_online(target, false);
         }
+        if target == "edge.primary" && fault_type == "power_lost" {
+            if let Some(outcome) = self.edge.apply_power_lost_to_primary() {
+                self.push(
+                    at,
+                    "edge_failover",
+                    Some(outcome.to),
+                    format!("edge failover completed from {}", outcome.from),
+                );
+            }
+        }
         if target == "mqtt.local" && fault_type == "duplicate_delivery" {
             if let Some(topic) = topic {
                 self.duplicate_delivery_by_topic
@@ -243,6 +265,27 @@ impl RuntimeState {
                 if let (Some(device_id), Some(retained_payload)) =
                     (outcome.device_id.clone(), outcome.retained_payload)
                 {
+                    match self.edge.route_mqtt_command(
+                        &publish.client,
+                        &device_id,
+                        self.protocols.get(&device_id).cloned().flatten(),
+                    ) {
+                        Ok(routed) => self.push(
+                            at,
+                            "edge_command_routed",
+                            Some(routed.edge_id),
+                            format!(
+                                "{} routed command from {} to {}",
+                                routed.action, routed.source_client, routed.target_device
+                            ),
+                        ),
+                        Err(error) => self.push(
+                            at,
+                            "edge_command_failed",
+                            Some(device_id.clone()),
+                            error.to_string(),
+                        ),
+                    }
                     self.states.insert(device_id.clone(), retained_payload);
                     let state_topic = outcome.state_topic.unwrap_or_default();
                     let delivery_word = if outcome.deliveries == 1 {
@@ -330,6 +373,86 @@ impl RuntimeState {
             };
         }
 
+        if let (Some(target), Some(condition)) = (&assertion.target, &assertion.condition) {
+            let condition_text = condition.as_str().unwrap_or_default();
+            if target == "edge.secondary" {
+                let passed = condition_text == "active"
+                    && self.edge.secondary_status() == Some(EdgeStatus::Active);
+                return AssertionResult {
+                    name: "edge.secondary".to_string(),
+                    assertion_type: "edge_state".to_string(),
+                    passed,
+                    message: if passed {
+                        "secondary edge server is active".to_string()
+                    } else {
+                        "secondary edge server is not active".to_string()
+                    },
+                    impact_level: if passed {
+                        None
+                    } else {
+                        Some("high".to_string())
+                    },
+                    impact_message: if passed {
+                        None
+                    } else {
+                        Some("Edge failover did not preserve local control.".to_string())
+                    },
+                };
+            }
+            if target == "mqtt.local" {
+                let passed = condition_text == "available" && self.broker.is_online("mqtt.local");
+                return AssertionResult {
+                    name: "mqtt.local".to_string(),
+                    assertion_type: "broker_state".to_string(),
+                    passed,
+                    message: if passed {
+                        "local MQTT broker is available".to_string()
+                    } else {
+                        "local MQTT broker is unavailable".to_string()
+                    },
+                    impact_level: if passed {
+                        None
+                    } else {
+                        Some("high".to_string())
+                    },
+                    impact_message: if passed {
+                        None
+                    } else {
+                        Some("Local MQTT broker is unavailable during failover.".to_string())
+                    },
+                };
+            }
+            if target == "guest_experience" {
+                let passed = condition_text == "unaffected"
+                    && self.broker.is_online("mqtt.local")
+                    && self.edge.active_id().is_some();
+                return AssertionResult {
+                    name: "guest_experience".to_string(),
+                    assertion_type: "guest_experience".to_string(),
+                    passed,
+                    message: if passed {
+                        "guest experience remained unaffected by local edge availability"
+                            .to_string()
+                    } else {
+                        "guest experience was affected".to_string()
+                    },
+                    impact_level: if passed {
+                        None
+                    } else {
+                        Some("high".to_string())
+                    },
+                    impact_message: if passed {
+                        None
+                    } else {
+                        Some(
+                            "Local edge or MQTT availability did not preserve guest experience."
+                                .to_string(),
+                        )
+                    },
+                };
+            }
+        }
+
         AssertionResult {
             name: "unsupported_assertion".to_string(),
             assertion_type: "unsupported".to_string(),
@@ -400,6 +523,10 @@ mod tests {
             .timeline
             .iter()
             .any(|event| event.event_type == "mqtt_retained_state_updated"));
+        assert!(report
+            .timeline
+            .iter()
+            .any(|event| event.event_type == "edge_command_routed"));
     }
 
     #[test]
@@ -450,5 +577,18 @@ assertions:
             .timeline
             .iter()
             .any(|event| event.message.contains("3 deliveries")));
+    }
+
+    #[test]
+    fn edge_server_failover_passes() {
+        let scenario = load_scenario(fixture("examples/edge_server_failover.yaml")).unwrap();
+
+        let report = run_scenario(&scenario).unwrap();
+
+        assert_eq!(report.result, RunResult::Passed);
+        assert!(report
+            .timeline
+            .iter()
+            .any(|event| event.event_type == "edge_failover"));
     }
 }
