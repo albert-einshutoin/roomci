@@ -1,0 +1,21 @@
+[package]
+name = "roomci-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "roomci"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+roomci-core = { path = "../roomci-core" }
+roomci-report = { path = "../roomci-report" }
+roomci-scenario = { path = "../roomci-scenario" }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
