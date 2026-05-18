@@ -1,0 +1,11 @@
+target
+.git
+.github
+reports
+roomci-docs-latest
+tasks
+docs
+schemas
+*.md
+*.log
+.DS_Store

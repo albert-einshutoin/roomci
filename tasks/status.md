@@ -9,8 +9,8 @@
 | Phase 2 | `done` | Edge server emulator | None | `phase2/phase_status.md` |
 | Phase 3 | `done` | Modbus, DALI-like, contact I/O mocks | None | `phase3/phase_status.md` |
 | Phase 4 | `done` | BMS/ops alert mock | None | `phase4/phase_status.md` |
-| Phase 5 | `todo` | Docker and CI packaging | None | `phase5/phase_status.md` |
-| Phase 6 | `todo` | Reliability depth and future integrations | MVP demos not complete | `phase6/phase_status.md` |
+| Phase 5 | `done` | Docker and CI packaging | None | `phase5/phase_status.md` |
+| Phase 6 | `todo` | Reliability depth and future integrations | None | `phase6/phase_status.md` |
 
 ## Update Rules
 
@@ -21,4 +21,4 @@
 
 ## Current Recommendation
 
-Start Phase 5 by packaging the CLI/runtime into Docker and Compose-based CI smoke tests.
+Start Phase 6 by adding reliability-depth scenarios for network/WAN failover, comfort automation, and future integrations.

@@ -13,16 +13,42 @@ jobs:
       - name: Create reports directory
         run: mkdir -p reports
 
+      - name: Build roomci image
+        run: docker build -t roomci:ci .
+
+      - name: Validate public scenarios
+        run: |
+          docker run --rm \
+            -v $PWD/examples:/scenarios:ro \
+            roomci:ci \
+            validate \
+            /scenarios/local_first_cloud_outage.yaml \
+            /scenarios/edge_server_failover.yaml \
+            /scenarios/modbus_floor_heating.yaml \
+            /scenarios/dali_scene_partial_failure.yaml \
+            /scenarios/bms_sauna_emergency_alert.yaml
+
       - name: Run local-first cloud outage scenario
         run: |
           docker run --rm \
-            -v $PWD/examples:/scenarios \
+            -v $PWD/examples:/scenarios:ro \
             -v $PWD/reports:/reports \
-            ghcr.io/albert-einshutoin/roomci:latest \
+            roomci:ci \
             run /scenarios/local_first_cloud_outage.yaml \
             --junit /reports/local_first_cloud_outage.xml \
             --report-md /reports/local_first_cloud_outage.md \
             --report-json /reports/local_first_cloud_outage.json
+
+      - name: Run BMS emergency alert scenario
+        run: |
+          docker run --rm \
+            -v $PWD/examples:/scenarios:ro \
+            -v $PWD/reports:/reports \
+            roomci:ci \
+            run /scenarios/bms_sauna_emergency_alert.yaml \
+            --junit /reports/bms_sauna_emergency_alert.xml \
+            --report-md /reports/bms_sauna_emergency_alert.md \
+            --report-json /reports/bms_sauna_emergency_alert.json
 
       - name: Upload roomci reports
         uses: actions/upload-artifact@v4
