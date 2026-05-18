@@ -1,13 +1,108 @@
 # roomci
 
+[![smart-home-ci](https://github.com/albert-einshutoin/roomci/actions/workflows/smart-home-ci.yml/badge.svg)](https://github.com/albert-einshutoin/roomci/actions/workflows/smart-home-ci.yml)
+[![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
+[![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)](#quality-gates)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Local-first Smart Home QA & Operations Emulator for CI**
 
-`roomci` is a Docker-based emulator for reproducing smart-home commissioning, local-first control, field QA, BMS alerting, and operations scenarios without real devices or an on-site environment.
+`roomci` is a Docker-friendly emulator for reproducing smart-home commissioning, local-first control, field QA, BMS alerting, and operations scenarios without real devices or an on-site environment.
 
-It is designed as a **Floci / LocalStack-like emulator**, but for smart-home and building-automation systems:
+It is designed as a **LocalStack-like emulator**, but for smart-home and building-automation systems:
 
-- Floci / LocalStack: emulate cloud services for local and CI testing.
+- LocalStack: emulate cloud services for local and CI testing.
 - roomci: emulate a smart-home control stack for local and CI testing.
+
+## Tagline
+
+> Reproduce smart-home field failures before guests experience them.
+
+## Quick start
+
+```bash
+# Build the workspace
+cargo build --workspace --release
+
+# Validate a scenario
+cargo run --release -- validate examples/local_first_cloud_outage.yaml
+
+# Run a single scenario and emit reports
+cargo run --release -- run examples/local_first_cloud_outage.yaml \
+  --report-json reports/local_first.json \
+  --report-md   reports/local_first.md \
+  --junit       reports/local_first.xml
+
+# Run multiple scenarios and aggregate exit codes
+cargo run --release -- run \
+  examples/local_first_cloud_outage.yaml \
+  examples/modbus_floor_heating.yaml \
+  examples/bms_sauna_emergency_alert.yaml
+
+# Dry-run (validate only, do not execute)
+cargo run --release -- run --dry-run examples/comfort_auto_mode.yaml
+
+# Verbose timeline output
+cargo run --release -- run --verbose examples/edge_server_failover.yaml
+
+# Or use the Docker image
+docker build -t roomci:latest .
+docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
+  run /scenarios/starlink_failover.yaml
+```
+
+## Demo scenarios
+
+| Scenario | What it shows |
+|---|---|
+| `examples/local_first_cloud_outage.yaml` | iPad → local MQTT → edge → device works while the cloud broker is offline; retained state survives the outage. |
+| `examples/edge_server_failover.yaml` | Primary edge loses power; standby is promoted and routes the next command. |
+| `examples/modbus_floor_heating.yaml` | Floor-heating setpoint reaches the Modbus register with 0.1 °C precision. |
+| `examples/dali_scene_partial_failure.yaml` | DALI scene activation with one fixture missing — partial-success handling. |
+| `examples/bms_sauna_emergency_alert.yaml` | Sauna over-temperature contact opens; BMS escalates to Slack, phone, and ticket runbook. |
+| `examples/starlink_failover.yaml` | WAN failover to Starlink within the configured budget. |
+| `examples/comfort_auto_mode.yaml` | Discomfort index drives HVAC auto-mode; user override is respected. |
+| `examples/access_permission_drift.yaml` | Detect access-permission drift across rooms and trigger reconciliation. |
+| `examples/commissioning_checklist.yaml` | Field commissioning checklist replayed as a CI scenario. |
+
+## Reports
+
+`roomci run` emits three report formats from the same execution:
+
+- `--report-json <path>` — full machine-readable run report (timeline, assertions, final state, retained MQTT messages).
+- `--report-md <path>` — human-readable Markdown summary with guest-impact framing.
+- `--junit <path>` — JUnit XML for CI dashboards (GitHub Actions, GitLab CI, Jenkins).
+
+CI artifacts from `.github/workflows/smart-home-ci.yml` upload all three for every demo scenario.
+
+## CLI reference
+
+```text
+roomci run <scenarios...>
+  --report-json <path>   write JSON report for the last scenario
+  --report-md   <path>   write Markdown report for the last scenario
+  --junit       <path>   write JUnit XML report for the last scenario
+  --verbose              print every timeline event
+  --quiet                suppress per-scenario detail
+  --dry-run              validate only; do not execute
+
+roomci validate <scenarios...>
+  load and validate one or more scenario files without executing them
+```
+
+Exit codes: `0` (all scenarios passed), `1` (one or more assertions failed), `2` (load, validate, or runtime error).
+
+## Quality gates
+
+`.github/workflows/smart-home-ci.yml` enforces:
+
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo test --workspace --all-targets`
+- `cargo doc --workspace --no-deps` (`RUSTDOCFLAGS=-D warnings`)
+- `cargo tarpaulin --workspace --fail-under 80`
+
+Current measurements: **61 tests** pass, **85.46%** line coverage.
 
 ## Core concept
 
@@ -22,40 +117,22 @@ Modern hospitality smart homes are not just IoT devices. They combine:
 - network segmentation, WAN failover, Starlink-style backup paths
 - commissioning, field QA, maintenance, and continuous operation
 
-`roomci` makes these dependencies reproducible in Docker so that teams can test failure scenarios before guests experience them.
-
-## Tagline
-
-> Reproduce smart-home field failures before guests experience them.
+`roomci` makes these dependencies reproducible in CI so teams can test failure scenarios before guests experience them.
 
 ## Primary use cases
 
-1. **Local-first control QA**  
-   Verify that local iPad → local MQTT broker → edge server → device control still works when the cloud is unavailable.
-
-2. **Commissioning QA**  
-   Turn field commissioning checks into reusable YAML scenarios.
-
-3. **Building automation protocol simulation**  
-   Test DALI-like lighting, Modbus device register maps, contact I/O alerts, HVAC devices, and KNX-like legacy bus behavior.
-
-4. **BMS / operations alert simulation**  
-   Verify Slack / phone-call / ticket / runbook flows for emergency alerts and recoveries.
-
-5. **Network failure simulation**  
-   Reproduce ISP outage, Starlink-style failover, VLAN isolation issues, packet loss, and local-only operation.
-
-6. **Comfort automation simulation**  
-   Test temperature/humidity sensors, discomfort index targets, HVAC auto mode, user override, and room-specific tuning.
+1. **Local-first control QA** — verify that local iPad → local MQTT → edge → device control still works when the cloud is unavailable.
+2. **Commissioning QA** — turn field commissioning checks into reusable YAML scenarios.
+3. **Building-automation protocol simulation** — DALI-like lighting, Modbus registers, contact I/O alerts, HVAC, KNX-like legacy bus behavior.
+4. **BMS / operations alert simulation** — verify Slack / phone-call / ticket / runbook flows for emergency alerts and recoveries.
+5. **Network failure simulation** — ISP outage, Starlink-style failover, VLAN isolation issues, local-only operation.
+6. **Comfort automation simulation** — discomfort-index targets, HVAC auto mode, user override, room-specific tuning.
 
 ## What this is not
 
 `roomci` is not intended to be:
 
-- a full KNX implementation
-- a full DALI implementation
-- a full BACnet implementation
-- a full Matter / CSA Aliro implementation
+- a full KNX, DALI, BACnet, or Matter implementation
 - a replacement for production smart-home controllers
 - a real BMS product
 - a production-grade SIP / PBX implementation
@@ -65,63 +142,25 @@ The goal is to model enough behavior to make smart-home QA, field failures, comm
 ## Directory structure
 
 ```txt
-roomci-docs-latest/
-  README.md
-  docs/
-    00_executive_summary.md
-    01_notahotel_research_synthesis.md
-    02_product_requirements.md
-    03_architecture.md
-    04_local_first_mqtt_architecture.md
-    05_edge_server_emulator.md
-    06_device_model.md
-    07_building_automation_protocol_strategy.md
-    08_modbus_strategy.md
-    09_dali_lighting_strategy.md
-    10_bms_operations_emulation.md
-    11_network_and_failover.md
-    12_control_panel_fault_model.md
-    13_comfort_automation.md
-    14_intercom_and_access_control.md
-    15_scenario_spec.md
-    16_fault_injection.md
-    17_docker_ci_design.md
-    18_mvp_roadmap.md
-    19_interview_positioning.md
-    20_appendix_future_integrations.md
-  examples/
-    local_first_cloud_outage.yaml
-    modbus_floor_heating.yaml
-    dali_scene_partial_failure.yaml
-    bms_sauna_emergency_alert.yaml
-    edge_server_failover.yaml
-    comfort_auto_mode.yaml
-    starlink_failover.yaml
-  compose/
-    docker-compose.yml
-  github/
-    smart-home-ci.yml
-  schemas/
-    scenario.schema.json
-  diagrams/
-    architecture.mmd
+roomci/
+  crates/                    Rust workspace
+    roomci-cli/              CLI entry point (binary)
+    roomci-core/             scenario runner (virtual time, assertions)
+    roomci-mqtt/             local + cloud MQTT broker model
+    roomci-edge/             redundant edge-server emulator
+    roomci-device-model/     Modbus, DALI lighting, contact I/O
+    roomci-fault/            fault scheduling primitives
+    roomci-ops/              BMS / Slack / phone / runbook escalation
+    roomci-report/           JSON / Markdown / JUnit renderers
+    roomci-scenario/         YAML scenario loader + validator
+  examples/                  9 demo scenarios
+  schemas/scenario.schema.json   JSON Schema for scenario files
+  docs/                      architecture, protocols, scenario spec
+  tasks/                     phase-by-phase build log
+  .github/workflows/         CI pipeline
+  Dockerfile                 multi-stage image (binary only)
 ```
 
-## Recommended MVP
+## Positioning
 
-The first public version should focus on:
-
-- Docker Compose stack
-- local MQTT broker
-- edge server emulator
-- iPad controller simulator
-- Modbus TCP device mock
-- DALI-like lighting mock
-- contact I/O mock
-- BMS alert mock
-- network/cloud outage scenario
-- Markdown / JSON / JUnit reports
-
-## Suggested positioning
-
-> I analyzed NOT A HOTEL's smart-home hiring pages, videos, and engineering articles. Their smart-home system is not just IoT device control; it is a local-first, MQTT-driven, edge-server-based, building-automation and operations platform. I designed `roomci` as a Docker-based emulator to turn field QA, commissioning knowledge, and operational failure modes into repeatable CI scenarios.
+> I analyzed NOT A HOTEL's smart-home hiring pages, videos, and engineering articles. Their smart-home system is not just IoT device control; it is a local-first, MQTT-driven, edge-server-based, building-automation and operations platform. I designed `roomci` as a Docker-friendly emulator to turn field QA, commissioning knowledge, and operational failure modes into repeatable CI scenarios.

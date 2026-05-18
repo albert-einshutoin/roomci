@@ -11,7 +11,7 @@
 | Phase 4 | `done` | BMS/ops alert mock | None | `phase4/phase_status.md` |
 | Phase 5 | `done` | Docker and CI packaging | None | `phase5/phase_status.md` |
 | Phase 6 | `done` | Reliability depth and future integrations | None | `phase6/phase_status.md` |
-| Phase 7 | `in_progress` | Production readiness (docs, coverage, CLI, CI) | None | `phase7/phase_status.md` |
+| Phase 7 | `done` | Production readiness (docs, coverage, CLI, CI) | None | `phase7/phase_status.md` |
 
 ## Update Rules
 
@@ -22,4 +22,4 @@
 
 ## Current Recommendation
 
-Execute Phase 7 to close documentation, coverage, CLI ergonomics, and CI quality-gate gaps so the project reads as production-grade rather than MVP.
+Phase 7 is complete: 66 tests pass, 85.46% line coverage, `cargo fmt`/`clippy`/`doc` clean, CI workflow runs full quality gates on PRs and main pushes, CLI supports multi-scenario aggregation with `--verbose`/`--quiet`/`--dry-run`, README carries badges + Quick Start + Demo Scenarios, and `schemas/scenario.schema.json` validates every example. Project is interview-ready.

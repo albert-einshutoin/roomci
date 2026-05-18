@@ -1,36 +1,118 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/albert-einshutoin/roomci/schemas/scenario.schema.json",
   "title": "roomci scenario schema",
+  "description": "Schema for roomci YAML scenarios consumed by `roomci run` and `roomci validate`.",
   "type": "object",
-  "required": ["version", "scenario"],
+  "required": ["version", "scenario", "assertions"],
   "properties": {
-    "version": { "type": "string" },
+    "version": {
+      "description": "Scenario schema version; must match `^v?\\d+(\\.\\d+){0,2}$` (e.g. \"1\", \"v1.0\", \"1.2.3\").",
+      "type": "string",
+      "pattern": "^v?[0-9]+(\\.[0-9]+){0,2}$"
+    },
     "scenario": {
       "type": "object",
       "required": ["name"],
+      "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^[a-z0-9][a-z0-9_]*$",
+          "description": "Stable snake_case identifier for the scenario."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
         "tags": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "uniqueItems": true
         }
       }
     },
-    "mqtt": { "type": "object" },
+    "mqtt": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "local": { "$ref": "#/$defs/mqttBroker" },
+        "cloud": { "$ref": "#/$defs/mqttBroker" }
+      }
+    },
     "network": { "type": "object" },
-    "wan": { "type": "object" },
-    "edge": { "type": "object" },
+    "wan": {
+      "type": "object",
+      "properties": {
+        "primary": { "type": "object" },
+        "backup": { "type": "object" },
+        "failover": { "type": "object" },
+        "expected_failover_within": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "properties": {
+        "primary": { "$ref": "#/$defs/edgeServer" },
+        "secondary": { "$ref": "#/$defs/edgeServer" },
+        "failover": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "expected_failover_within": { "$ref": "#/$defs/duration" }
+      }
+    },
     "devices": {
       "type": "array",
-      "items": { "type": "object" }
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_]*$"
+          },
+          "kind": { "type": "string" },
+          "protocol": { "type": "string" },
+          "topic": { "type": "string" },
+          "state": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
     },
     "modbus": { "type": "object" },
     "lighting": { "type": "object" },
     "contacts": { "type": "object" },
+    "scenes": { "type": "object" },
+    "sensors": { "type": "object" },
+    "comfort": { "type": "object" },
     "alerts": {
       "type": "array",
-      "items": { "type": "object" }
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "source": { "type": "string" },
+          "severity": {
+            "type": "string",
+            "enum": ["info", "warning", "critical"]
+          },
+          "channels": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "runbook": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
     },
     "faults": {
       "type": "array",
@@ -38,24 +120,100 @@
         "type": "object",
         "required": ["target", "type"],
         "properties": {
-          "at": { "type": "string" },
+          "at": { "$ref": "#/$defs/timeOffset" },
           "target": { "type": "string" },
           "type": { "type": "string" },
-          "duration": { "type": "string" },
-          "severity": { "type": "string" }
+          "duration": { "$ref": "#/$defs/duration" },
+          "severity": {
+            "type": "string",
+            "enum": ["info", "warning", "critical"]
+          },
+          "topic": { "type": "string" },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
         },
         "additionalProperties": true
       }
     },
     "steps": {
       "type": "array",
-      "items": { "type": "object" }
+      "items": {
+        "type": "object",
+        "required": ["at"],
+        "properties": {
+          "at": { "$ref": "#/$defs/timeOffset" },
+          "event": { "type": "object" },
+          "fault": { "type": "object" },
+          "modbus_write": { "type": "object" },
+          "lighting": { "type": "object" },
+          "mqtt_publish": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
     },
     "assertions": {
       "type": "array",
-      "items": { "type": "object" }
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["at"],
+        "properties": {
+          "at": { "$ref": "#/$defs/timeOffset" },
+          "name": { "type": "string" },
+          "impact_level": {
+            "type": "string",
+            "enum": ["none", "low", "moderate", "high", "critical"]
+          },
+          "impact_message": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
     },
     "report": { "type": "object" }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "$defs": {
+    "duration": {
+      "type": "string",
+      "description": "Human-friendly duration: an integer followed by a unit suffix.",
+      "pattern": "^[0-9]+(ms|s|m|h)$"
+    },
+    "timeOffset": {
+      "type": "string",
+      "description": "Virtual-time offset anchored at T (e.g. \"T\", \"T+10s\", \"T+5m\", \"T+1h30m\").",
+      "pattern": "^T(\\+[0-9]+(ms|s|m|h))*$"
+    },
+    "mqttBroker": {
+      "type": "object",
+      "properties": {
+        "host": { "type": "string" },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "enabled": { "type": "boolean" },
+        "qos": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "retained": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "edgeServer": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["active", "standby", "failed"]
+        }
+      },
+      "additionalProperties": true
+    }
+  }
 }
