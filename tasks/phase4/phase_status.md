@@ -6,4 +6,4 @@
 
 ## Blockers
 
-- Contact I/O mock is not complete.
+- None. Phase 3 device mocks and semantic validation are ready for Ops/BMS wiring.

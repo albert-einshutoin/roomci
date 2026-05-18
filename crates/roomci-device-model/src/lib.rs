@@ -1,6 +1,7 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 pub type StateMap = BTreeMap<String, serde_json::Value>;
 
@@ -98,6 +99,341 @@ pub fn apply_command_state(
     }
 }
 
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum DeviceModelError {
+    #[error("unknown Modbus device {0}")]
+    UnknownModbusDevice(String),
+    #[error("unknown Modbus register {device}:{register}")]
+    UnknownModbusRegister { device: String, register: u32 },
+    #[error("Modbus register {device}:{register} is read-only")]
+    ReadOnlyModbusRegister { device: String, register: u32 },
+    #[error("unknown DALI scene {0}")]
+    UnknownScene(String),
+    #[error("unknown DALI fixture {0}")]
+    UnknownFixture(String),
+    #[error("unknown contact input {0}")]
+    UnknownContact(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModbusRegisterAccess {
+    ReadOnly,
+    ReadWrite,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ModbusRegister {
+    pub value: serde_json::Value,
+    pub value_type: Option<String>,
+    pub access: ModbusRegisterAccess,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ModbusModel {
+    devices: BTreeMap<String, BTreeMap<u32, ModbusRegister>>,
+}
+
+impl ModbusModel {
+    pub fn from_config(modbus: &BTreeMap<String, serde_yaml::Value>) -> Self {
+        let mut devices = BTreeMap::new();
+        let Some(device_values) = modbus.get("devices").and_then(|value| value.as_sequence())
+        else {
+            return Self { devices };
+        };
+        for device_value in device_values {
+            let Some(device_map) = device_value.as_mapping() else {
+                continue;
+            };
+            let Some(device_id) =
+                yaml_mapping_get(device_map, "id").and_then(|value| value.as_str())
+            else {
+                continue;
+            };
+            let registers = devices
+                .entry(device_id.to_string())
+                .or_insert_with(BTreeMap::new);
+            for (section, access) in [
+                ("holding_registers", ModbusRegisterAccess::ReadWrite),
+                ("coils", ModbusRegisterAccess::ReadWrite),
+                ("input_registers", ModbusRegisterAccess::ReadOnly),
+                ("discrete_inputs", ModbusRegisterAccess::ReadOnly),
+            ] {
+                let Some(section_map) =
+                    yaml_mapping_get(device_map, section).and_then(|value| value.as_mapping())
+                else {
+                    continue;
+                };
+                for (address, definition) in section_map {
+                    let Some(address) = yaml_key_u32(address) else {
+                        continue;
+                    };
+                    let Some(definition_map) = definition.as_mapping() else {
+                        continue;
+                    };
+                    let Some(value) = yaml_mapping_get(definition_map, "value") else {
+                        continue;
+                    };
+                    let value_type = yaml_mapping_get(definition_map, "type")
+                        .and_then(|value| value.as_str())
+                        .map(str::to_string);
+                    registers.insert(
+                        address,
+                        ModbusRegister {
+                            value: serde_json::to_value(value).unwrap_or(serde_json::Value::Null),
+                            value_type,
+                            access: access.clone(),
+                        },
+                    );
+                }
+            }
+        }
+        Self { devices }
+    }
+
+    pub fn assert_writable(&self, device: &str, register: u32) -> Result<(), DeviceModelError> {
+        let register_model = self.register(device, register)?;
+        if register_model.access == ModbusRegisterAccess::ReadOnly {
+            return Err(DeviceModelError::ReadOnlyModbusRegister {
+                device: device.to_string(),
+                register,
+            });
+        }
+        Ok(())
+    }
+
+    pub fn has_register(&self, device: &str, register: u32) -> bool {
+        self.devices
+            .get(device)
+            .and_then(|registers| registers.get(&register))
+            .is_some()
+    }
+
+    pub fn write(
+        &mut self,
+        device: &str,
+        register: u32,
+        value: serde_yaml::Value,
+    ) -> Result<serde_json::Value, DeviceModelError> {
+        self.assert_writable(device, register)?;
+        let json_value = serde_json::to_value(value).unwrap_or(serde_json::Value::Null);
+        let register_model = self.register_mut(device, register)?;
+        register_model.value = json_value.clone();
+        Ok(json_value)
+    }
+
+    pub fn value(&self, device: &str, register: u32) -> Option<&serde_json::Value> {
+        self.devices
+            .get(device)
+            .and_then(|registers| registers.get(&register))
+            .map(|register| &register.value)
+    }
+
+    pub fn readable_value(&self, device: &str, register: u32) -> Option<f64> {
+        let register = self.devices.get(device)?.get(&register)?;
+        let raw = register
+            .value
+            .as_f64()
+            .or_else(|| register.value.as_i64().map(|value| value as f64))?;
+        match register.value_type.as_deref() {
+            Some("decimal_0_1") => Some(raw / 10.0),
+            _ => Some(raw),
+        }
+    }
+
+    fn register(&self, device: &str, register: u32) -> Result<&ModbusRegister, DeviceModelError> {
+        let Some(registers) = self.devices.get(device) else {
+            return Err(DeviceModelError::UnknownModbusDevice(device.to_string()));
+        };
+        registers
+            .get(&register)
+            .ok_or_else(|| DeviceModelError::UnknownModbusRegister {
+                device: device.to_string(),
+                register,
+            })
+    }
+
+    fn register_mut(
+        &mut self,
+        device: &str,
+        register: u32,
+    ) -> Result<&mut ModbusRegister, DeviceModelError> {
+        let Some(registers) = self.devices.get_mut(device) else {
+            return Err(DeviceModelError::UnknownModbusDevice(device.to_string()));
+        };
+        registers
+            .get_mut(&register)
+            .ok_or_else(|| DeviceModelError::UnknownModbusRegister {
+                device: device.to_string(),
+                register,
+            })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LightingEvent {
+    LevelChanged { fixture: String, level: i64 },
+    CommandDropped { fixture: String },
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct LightingModel {
+    levels: BTreeMap<String, i64>,
+    scene_targets: BTreeMap<String, BTreeMap<String, i64>>,
+    command_drops: BTreeSet<String>,
+}
+
+impl LightingModel {
+    pub fn from_config(
+        lighting: &BTreeMap<String, serde_yaml::Value>,
+        scenes: &BTreeMap<String, BTreeMap<String, i64>>,
+    ) -> Self {
+        let mut levels = BTreeMap::new();
+        let Some(fixtures) = lighting
+            .get("fixtures")
+            .and_then(|value| value.as_sequence())
+        else {
+            return Self {
+                levels,
+                scene_targets: scenes.clone(),
+                command_drops: BTreeSet::new(),
+            };
+        };
+        for fixture in fixtures {
+            let Some(mapping) = fixture.as_mapping() else {
+                continue;
+            };
+            let Some(id) = yaml_mapping_get(mapping, "id").and_then(|value| value.as_str()) else {
+                continue;
+            };
+            let level = yaml_mapping_get(mapping, "level")
+                .and_then(|value| value.as_i64())
+                .unwrap_or(0);
+            levels.insert(id.to_string(), level);
+        }
+        Self {
+            levels,
+            scene_targets: scenes.clone(),
+            command_drops: BTreeSet::new(),
+        }
+    }
+
+    pub fn assert_fixture_exists(&self, fixture: &str) -> Result<(), DeviceModelError> {
+        if self.levels.contains_key(fixture) {
+            Ok(())
+        } else {
+            Err(DeviceModelError::UnknownFixture(fixture.to_string()))
+        }
+    }
+
+    pub fn assert_scene_exists(&self, scene: &str) -> Result<(), DeviceModelError> {
+        if self.scene_targets.contains_key(scene) {
+            Ok(())
+        } else {
+            Err(DeviceModelError::UnknownScene(scene.to_string()))
+        }
+    }
+
+    pub fn assert_scene_targets_exist(&self) -> Result<(), DeviceModelError> {
+        for targets in self.scene_targets.values() {
+            for fixture in targets.keys() {
+                self.assert_fixture_exists(fixture)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn drop_command_for_fixture(&mut self, fixture: &str) -> Result<(), DeviceModelError> {
+        self.assert_fixture_exists(fixture)?;
+        self.command_drops.insert(fixture.to_string());
+        Ok(())
+    }
+
+    pub fn activate_scene(&mut self, scene: &str) -> Result<Vec<LightingEvent>, DeviceModelError> {
+        let Some(targets) = self.scene_targets.get(scene).cloned() else {
+            return Err(DeviceModelError::UnknownScene(scene.to_string()));
+        };
+        let mut events = Vec::new();
+        for (fixture, level) in targets {
+            if self.command_drops.contains(&fixture) {
+                events.push(LightingEvent::CommandDropped { fixture });
+            } else {
+                self.levels.insert(fixture.clone(), level);
+                events.push(LightingEvent::LevelChanged { fixture, level });
+            }
+        }
+        Ok(events)
+    }
+
+    pub fn scene_consistency_failures(&self, scene: &str) -> Result<Vec<String>, DeviceModelError> {
+        let Some(targets) = self.scene_targets.get(scene) else {
+            return Err(DeviceModelError::UnknownScene(scene.to_string()));
+        };
+        let mut failures = Vec::new();
+        for (fixture, expected) in targets {
+            let actual = self.levels.get(fixture).copied().unwrap_or(0);
+            if actual != *expected {
+                failures.push(format!(
+                    "{fixture} expected level {expected}, actual {actual}"
+                ));
+            }
+        }
+        Ok(failures)
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ContactModel {
+    states: BTreeMap<String, String>,
+}
+
+impl ContactModel {
+    pub fn from_config(contacts: &BTreeMap<String, serde_yaml::Value>) -> Self {
+        let mut states = BTreeMap::new();
+        let Some(inputs) = contacts.get("inputs").and_then(|value| value.as_sequence()) else {
+            return Self { states };
+        };
+        for input in inputs {
+            let Some(mapping) = input.as_mapping() else {
+                continue;
+            };
+            let Some(id) = yaml_mapping_get(mapping, "id").and_then(|value| value.as_str()) else {
+                continue;
+            };
+            let state = yaml_mapping_get(mapping, "state")
+                .and_then(|value| value.as_str())
+                .unwrap_or("off");
+            states.insert(id.to_string(), state.to_string());
+        }
+        Self { states }
+    }
+
+    pub fn set_state(&mut self, id: &str, state: &str) -> Result<(), DeviceModelError> {
+        if !self.states.contains_key(id) {
+            return Err(DeviceModelError::UnknownContact(id.to_string()));
+        }
+        self.states.insert(id.to_string(), state.to_string());
+        Ok(())
+    }
+
+    pub fn has_contact(&self, id: &str) -> bool {
+        self.states.contains_key(id)
+    }
+}
+
+fn yaml_mapping_get<'a>(
+    mapping: &'a serde_yaml::Mapping,
+    key: &str,
+) -> Option<&'a serde_yaml::Value> {
+    mapping.get(serde_yaml::Value::String(key.to_string()))
+}
+
+fn yaml_key_u32(value: &serde_yaml::Value) -> Option<u32> {
+    value
+        .as_u64()
+        .and_then(|value| u32::try_from(value).ok())
+        .or_else(|| value.as_str().and_then(|value| value.parse::<u32>().ok()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,5 +467,104 @@ mod tests {
     #[test]
     fn unsupported_command_is_rejected_by_capability_check() {
         assert!(!command_is_supported("smart_lock", "set_temperature"));
+    }
+
+    #[test]
+    fn modbus_decimal_readable_value_uses_register_metadata() {
+        let model = ModbusModel::from_config(
+            &serde_yaml::from_str(
+                r#"
+devices:
+  - id: floor_heating
+    holding_registers:
+      40001:
+        type: decimal_0_1
+        value: 245
+"#,
+            )
+            .unwrap(),
+        );
+
+        assert_eq!(model.readable_value("floor_heating", 40001), Some(24.5));
+    }
+
+    #[test]
+    fn modbus_rejects_writes_to_read_only_registers() {
+        let mut model = ModbusModel::from_config(
+            &serde_yaml::from_str(
+                r#"
+devices:
+  - id: floor_heating
+    input_registers:
+      30001:
+        type: decimal_0_1
+        value: 228
+"#,
+            )
+            .unwrap(),
+        );
+
+        assert_eq!(
+            model.write("floor_heating", 30001, serde_yaml::Value::from(230)),
+            Err(DeviceModelError::ReadOnlyModbusRegister {
+                device: "floor_heating".to_string(),
+                register: 30001
+            })
+        );
+    }
+
+    #[test]
+    fn lighting_scene_reports_partial_failure() {
+        let scenes = BTreeMap::from([(
+            "welcome".to_string(),
+            BTreeMap::from([("D411S10".to_string(), 60), ("D411S11".to_string(), 40)]),
+        )]);
+        let mut model = LightingModel::from_config(
+            &serde_yaml::from_str(
+                r#"
+fixtures:
+  - id: D411S10
+    level: 0
+  - id: D411S11
+    level: 0
+"#,
+            )
+            .unwrap(),
+            &scenes,
+        );
+
+        model.drop_command_for_fixture("D411S10").unwrap();
+        model.activate_scene("welcome").unwrap();
+
+        assert_eq!(
+            model.scene_consistency_failures("welcome").unwrap(),
+            vec!["D411S10 expected level 60, actual 0".to_string()]
+        );
+    }
+
+    #[test]
+    fn lighting_rejects_scene_with_unknown_fixture() {
+        let scenes = BTreeMap::from([(
+            "welcome".to_string(),
+            BTreeMap::from([("missing_fixture".to_string(), 60)]),
+        )]);
+        let model = LightingModel::from_config(
+            &serde_yaml::from_str(
+                r#"
+fixtures:
+  - id: D411S10
+    level: 0
+"#,
+            )
+            .unwrap(),
+            &scenes,
+        );
+
+        assert_eq!(
+            model.assert_scene_targets_exist(),
+            Err(DeviceModelError::UnknownFixture(
+                "missing_fixture".to_string()
+            ))
+        );
     }
 }

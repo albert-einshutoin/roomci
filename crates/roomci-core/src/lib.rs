@@ -1,6 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use chrono::Duration;
+use roomci_device_model::{
+    ContactModel, DeviceModelError, LightingEvent, LightingModel, ModbusModel,
+};
 use roomci_edge::{EdgeError, EdgeModel, EdgeStatus};
 use roomci_mqtt::{device_id_from_command_topic, BrokerModel, MqttError};
 use roomci_scenario::{
@@ -20,6 +23,8 @@ pub enum CoreError {
     Mqtt(#[from] MqttError),
     #[error(transparent)]
     Edge(#[from] EdgeError),
+    #[error(transparent)]
+    DeviceModel(#[from] DeviceModelError),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -67,11 +72,9 @@ struct RuntimeState {
     edge_failover_at: Option<Duration>,
     edge_expected_within: Option<Duration>,
     duplicate_delivery_by_topic: BTreeMap<String, u32>,
-    modbus_registers: BTreeMap<String, BTreeMap<u32, serde_json::Value>>,
-    dali_levels: BTreeMap<String, i64>,
-    scene_targets: BTreeMap<String, BTreeMap<String, i64>>,
-    dali_command_drops: BTreeSet<String>,
-    contact_states: BTreeMap<String, String>,
+    modbus: ModbusModel,
+    lighting: LightingModel,
+    contacts: ContactModel,
     timeline: Vec<TimelineEvent>,
 }
 
@@ -158,15 +161,16 @@ impl RuntimeState {
             edge_failover_at: None,
             edge_expected_within: edge_expected_within(&scenario.edge)?,
             duplicate_delivery_by_topic: BTreeMap::new(),
-            modbus_registers: modbus_registers(&scenario.modbus),
-            dali_levels: dali_levels(&scenario.lighting),
-            scene_targets: scenario
-                .scenes
-                .iter()
-                .map(|(name, scene)| (name.clone(), scene.fixtures.clone()))
-                .collect(),
-            dali_command_drops: BTreeSet::new(),
-            contact_states: contact_states(&scenario.contacts),
+            modbus: ModbusModel::from_config(&scenario.modbus),
+            lighting: LightingModel::from_config(
+                &scenario.lighting,
+                &scenario
+                    .scenes
+                    .iter()
+                    .map(|(name, scene)| (name.clone(), scene.fixtures.clone()))
+                    .collect(),
+            ),
+            contacts: ContactModel::from_config(&scenario.contacts),
             timeline: Vec::new(),
         })
     }
@@ -210,8 +214,7 @@ impl RuntimeState {
                     self.apply_mqtt_publish(at, &mqtt_publish);
                 }
                 if let Some(contact) = step.contact {
-                    self.contact_states
-                        .insert(contact.id.clone(), contact.state.clone());
+                    self.contacts.set_state(&contact.id, &contact.state)?;
                     self.push(
                         at,
                         "contact_changed",
@@ -261,7 +264,15 @@ impl RuntimeState {
         }
         if let Some(fixture) = target.strip_prefix("dali.fixture.") {
             if fault_type == "command_drop" {
-                self.dali_command_drops.insert(fixture.to_string());
+                if let Err(error) = self.lighting.drop_command_for_fixture(fixture) {
+                    self.push(
+                        at,
+                        "fault_rejected",
+                        Some(target.to_string()),
+                        error.to_string(),
+                    );
+                    return;
+                }
             }
         }
         self.push(
@@ -293,39 +304,48 @@ impl RuntimeState {
         register: u32,
         value: serde_yaml::Value,
     ) {
-        let json_value = serde_json::to_value(value).unwrap_or(serde_json::Value::Null);
-        self.modbus_registers
-            .entry(device.to_string())
-            .or_default()
-            .insert(register, json_value.clone());
-        self.push(
-            at,
-            "modbus_write",
-            Some(device.to_string()),
-            format!("register {} set to {}", register, json_value),
-        );
+        match self.modbus.write(device, register, value) {
+            Ok(json_value) => self.push(
+                at,
+                "modbus_write",
+                Some(device.to_string()),
+                format!("register {} set to {}", register, json_value),
+            ),
+            Err(error) => self.push(
+                at,
+                "modbus_write_rejected",
+                Some(device.to_string()),
+                error.to_string(),
+            ),
+        }
     }
 
     fn activate_scene(&mut self, at: Duration, scene: &str) {
-        if let Some(targets) = self.scene_targets.get(scene).cloned() {
-            for (fixture, level) in targets {
-                if self.dali_command_drops.contains(&fixture) {
-                    self.push(
-                        at,
-                        "dali_command_dropped",
-                        Some(fixture),
-                        "fixture command dropped".to_string(),
-                    );
-                } else {
-                    self.dali_levels.insert(fixture.clone(), level);
-                    self.push(
-                        at,
-                        "dali_level_changed",
-                        Some(fixture),
-                        format!("fixture level changed to {level}"),
-                    );
+        match self.lighting.activate_scene(scene) {
+            Ok(events) => {
+                for event in events {
+                    match event {
+                        LightingEvent::LevelChanged { fixture, level } => self.push(
+                            at,
+                            "dali_level_changed",
+                            Some(fixture),
+                            format!("fixture level changed to {level}"),
+                        ),
+                        LightingEvent::CommandDropped { fixture } => self.push(
+                            at,
+                            "dali_command_dropped",
+                            Some(fixture),
+                            "fixture command dropped".to_string(),
+                        ),
+                    }
                 }
             }
+            Err(error) => self.push(
+                at,
+                "scene_activation_failed",
+                Some(scene.to_string()),
+                error.to_string(),
+            ),
         }
         self.push(
             at,
@@ -457,14 +477,11 @@ impl RuntimeState {
         }
 
         if let Some(modbus) = &assertion.modbus {
-            let actual = self
-                .modbus_registers
-                .get(&modbus.device)
-                .and_then(|registers| registers.get(&modbus.register));
+            let actual = self.modbus.value(&modbus.device, modbus.register);
             let passed = if let Some(expected_readable) = modbus.readable_value {
-                actual
-                    .and_then(|value| value.as_f64().or_else(|| value.as_i64().map(|v| v as f64)))
-                    .map(|value| ((value / 10.0) - expected_readable).abs() < f64::EPSILON)
+                self.modbus
+                    .readable_value(&modbus.device, modbus.register)
+                    .map(|value| (value - expected_readable).abs() < f64::EPSILON)
                     .unwrap_or(false)
             } else if let Some(expected) = &modbus.value {
                 let expected_json =
@@ -643,25 +660,19 @@ impl RuntimeState {
     }
 
     fn evaluate_scene_consistency(&self, scene: &str) -> AssertionResult {
-        let Some(targets) = self.scene_targets.get(scene) else {
-            return AssertionResult {
-                name: format!("scene_consistency:{scene}"),
-                assertion_type: "scene_consistency".to_string(),
-                passed: false,
-                message: format!("scene {scene} is not defined"),
-                impact_level: Some("medium".to_string()),
-                impact_message: Some("Scene mapping is missing from the scenario.".to_string()),
-            };
-        };
-        let mut failures = Vec::new();
-        for (fixture, expected) in targets {
-            let actual = self.dali_levels.get(fixture).copied().unwrap_or(0);
-            if actual != *expected {
-                failures.push(format!(
-                    "{fixture} expected level {expected}, actual {actual}"
-                ));
+        let failures = match self.lighting.scene_consistency_failures(scene) {
+            Ok(failures) => failures,
+            Err(_) => {
+                return AssertionResult {
+                    name: format!("scene_consistency:{scene}"),
+                    assertion_type: "scene_consistency".to_string(),
+                    passed: false,
+                    message: format!("scene {scene} is not defined"),
+                    impact_level: Some("medium".to_string()),
+                    impact_message: Some("Scene mapping is missing from the scenario.".to_string()),
+                };
             }
-        }
+        };
         let passed = failures.is_empty();
         AssertionResult {
             name: format!("scene_consistency:{scene}"),
@@ -717,112 +728,6 @@ fn edge_expected_within(
         return Ok(None);
     };
     parse_duration(expected_within).map(Some)
-}
-
-fn modbus_registers(
-    modbus: &BTreeMap<String, serde_yaml::Value>,
-) -> BTreeMap<String, BTreeMap<u32, serde_json::Value>> {
-    let mut devices = BTreeMap::new();
-    let Some(device_values) = modbus.get("devices").and_then(|value| value.as_sequence()) else {
-        return devices;
-    };
-    for device_value in device_values {
-        let Some(device_map) = device_value.as_mapping() else {
-            continue;
-        };
-        let Some(device_id) = yaml_mapping_get(device_map, "id").and_then(|value| value.as_str())
-        else {
-            continue;
-        };
-        let registers = devices
-            .entry(device_id.to_string())
-            .or_insert_with(BTreeMap::new);
-        for section in [
-            "holding_registers",
-            "input_registers",
-            "discrete_inputs",
-            "coils",
-        ] {
-            let Some(section_map) =
-                yaml_mapping_get(device_map, section).and_then(|value| value.as_mapping())
-            else {
-                continue;
-            };
-            for (address, definition) in section_map {
-                let Some(address) = yaml_key_u32(address) else {
-                    continue;
-                };
-                let Some(value) = definition
-                    .as_mapping()
-                    .and_then(|mapping| yaml_mapping_get(mapping, "value"))
-                else {
-                    continue;
-                };
-                registers.insert(
-                    address,
-                    serde_json::to_value(value).unwrap_or(serde_json::Value::Null),
-                );
-            }
-        }
-    }
-    devices
-}
-
-fn dali_levels(lighting: &BTreeMap<String, serde_yaml::Value>) -> BTreeMap<String, i64> {
-    let mut levels = BTreeMap::new();
-    let Some(fixtures) = lighting
-        .get("fixtures")
-        .and_then(|value| value.as_sequence())
-    else {
-        return levels;
-    };
-    for fixture in fixtures {
-        let Some(mapping) = fixture.as_mapping() else {
-            continue;
-        };
-        let Some(id) = yaml_mapping_get(mapping, "id").and_then(|value| value.as_str()) else {
-            continue;
-        };
-        let level = yaml_mapping_get(mapping, "level")
-            .and_then(|value| value.as_i64())
-            .unwrap_or(0);
-        levels.insert(id.to_string(), level);
-    }
-    levels
-}
-
-fn contact_states(contacts: &BTreeMap<String, serde_yaml::Value>) -> BTreeMap<String, String> {
-    let mut states = BTreeMap::new();
-    let Some(inputs) = contacts.get("inputs").and_then(|value| value.as_sequence()) else {
-        return states;
-    };
-    for input in inputs {
-        let Some(mapping) = input.as_mapping() else {
-            continue;
-        };
-        let Some(id) = yaml_mapping_get(mapping, "id").and_then(|value| value.as_str()) else {
-            continue;
-        };
-        let state = yaml_mapping_get(mapping, "state")
-            .and_then(|value| value.as_str())
-            .unwrap_or("off");
-        states.insert(id.to_string(), state.to_string());
-    }
-    states
-}
-
-fn yaml_mapping_get<'a>(
-    mapping: &'a serde_yaml::Mapping,
-    key: &str,
-) -> Option<&'a serde_yaml::Value> {
-    mapping.get(serde_yaml::Value::String(key.to_string()))
-}
-
-fn yaml_key_u32(value: &serde_yaml::Value) -> Option<u32> {
-    value
-        .as_u64()
-        .and_then(|value| u32::try_from(value).ok())
-        .or_else(|| value.as_str().and_then(|value| value.parse::<u32>().ok()))
 }
 
 fn format_duration(duration: Duration) -> String {

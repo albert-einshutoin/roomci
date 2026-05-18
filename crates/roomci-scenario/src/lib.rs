@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, fs, path::Path};
 
 use chrono::Duration;
+use roomci_device_model::{ContactModel, DeviceModelError, LightingModel, ModbusModel};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -26,6 +27,8 @@ pub enum ScenarioError {
     InvalidStepKind,
     #[error("assertion must contain a supported condition")]
     InvalidAssertionKind,
+    #[error(transparent)]
+    DeviceModel(#[from] DeviceModelError),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -235,6 +238,16 @@ pub fn load_scenario(path: impl AsRef<Path>) -> Result<ScenarioFile, ScenarioErr
 }
 
 pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
+    let modbus = ModbusModel::from_config(&scenario.modbus);
+    let scene_targets = scenario
+        .scenes
+        .iter()
+        .map(|(name, scene)| (name.clone(), scene.fixtures.clone()))
+        .collect::<BTreeMap<_, _>>();
+    let lighting = LightingModel::from_config(&scenario.lighting, &scene_targets);
+    let contacts = ContactModel::from_config(&scenario.contacts);
+    lighting.assert_scene_targets_exist()?;
+
     for fault in &scenario.faults {
         if let Some(at) = &fault.at {
             resolve_time_offset(at)?;
@@ -242,6 +255,7 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
         if let Some(duration) = &fault.duration {
             parse_duration(duration)?;
         }
+        validate_fault_reference(fault, &lighting)?;
     }
 
     for step in &scenario.steps {
@@ -266,6 +280,20 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
             if let Some(duration) = &fault.duration {
                 parse_duration(duration)?;
             }
+            validate_fault_reference(fault, &lighting)?;
+        }
+        if let Some(command) = &step.command {
+            if let Some(scene) = command.target.strip_prefix("scene.") {
+                lighting.assert_scene_exists(scene)?;
+            }
+        }
+        if let Some(modbus_write) = &step.modbus_write {
+            modbus.assert_writable(&modbus_write.device, modbus_write.register)?;
+        }
+        if let Some(contact) = &step.contact {
+            if !contacts.has_contact(&contact.id) {
+                return Err(DeviceModelError::UnknownContact(contact.id.clone()).into());
+            }
         }
     }
 
@@ -285,8 +313,32 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
         if kinds != 1 {
             return Err(ScenarioError::InvalidAssertionKind);
         }
+        if let Some(modbus_assertion) = &assertion.modbus {
+            if !modbus.has_register(&modbus_assertion.device, modbus_assertion.register) {
+                return Err(DeviceModelError::UnknownModbusRegister {
+                    device: modbus_assertion.device.clone(),
+                    register: modbus_assertion.register,
+                }
+                .into());
+            }
+        }
+        if let Some(inline_assert) = &assertion.inline_assert {
+            if let Some(scene) = inline_assert.get("scene").and_then(|value| value.as_str()) {
+                lighting.assert_scene_exists(scene)?;
+            }
+        }
     }
 
+    Ok(())
+}
+
+fn validate_fault_reference(
+    fault: &FaultStep,
+    lighting: &LightingModel,
+) -> Result<(), ScenarioError> {
+    if let Some(fixture) = fault.target.strip_prefix("dali.fixture.") {
+        lighting.assert_fixture_exists(fixture)?;
+    }
     Ok(())
 }
 
@@ -364,5 +416,138 @@ mod tests {
     fn resolves_symbolic_time_without_clock() {
         assert_eq!(resolve_time_offset("T+15s").unwrap(), Duration::seconds(15));
         assert_eq!(resolve_time_offset("T").unwrap(), Duration::zero());
+    }
+
+    #[test]
+    fn rejects_modbus_write_to_read_only_register() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: invalid_read_only_modbus_write
+modbus:
+  devices:
+    - id: floor_heating
+      input_registers:
+        30001:
+          type: decimal_0_1
+          value: 228
+steps:
+  - at: T
+    modbus_write:
+      device: floor_heating
+      register: 30001
+      value: 230
+assertions:
+  - at: T+1s
+    modbus:
+      device: floor_heating
+      register: 30001
+      readable_value: 23.0
+"#,
+        )
+        .unwrap();
+
+        let error = validate_scenario(&scenario).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ScenarioError::DeviceModel(
+                roomci_device_model::DeviceModelError::ReadOnlyModbusRegister { .. }
+            )
+        ));
+    }
+
+    #[test]
+    fn rejects_unknown_scene_reference() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: invalid_scene_reference
+steps:
+  - at: T
+    command:
+      target: scene.missing
+      action: activate
+assertions:
+  - at: T+1s
+    assert:
+      scene: missing
+      consistency: complete
+"#,
+        )
+        .unwrap();
+
+        let error = validate_scenario(&scenario).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ScenarioError::DeviceModel(roomci_device_model::DeviceModelError::UnknownScene(_))
+        ));
+    }
+
+    #[test]
+    fn rejects_scene_with_unknown_fixture_reference() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: invalid_scene_fixture_reference
+lighting:
+  fixtures:
+    - id: D411S10
+      level: 0
+scenes:
+  welcome:
+    fixtures:
+      missing_fixture: 60
+steps:
+  - at: T
+    command:
+      target: scene.welcome
+      action: activate
+assertions:
+  - at: T+1s
+    assert:
+      scene: welcome
+      consistency: complete
+"#,
+        )
+        .unwrap();
+
+        let error = validate_scenario(&scenario).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ScenarioError::DeviceModel(roomci_device_model::DeviceModelError::UnknownFixture(_))
+        ));
+    }
+
+    #[test]
+    fn rejects_unknown_contact_reference() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: invalid_contact_reference
+steps:
+  - at: T
+    contact:
+      id: missing_contact
+      state: on
+assertions:
+  - at: T+1s
+    guest_experience: unaffected
+"#,
+        )
+        .unwrap();
+
+        let error = validate_scenario(&scenario).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ScenarioError::DeviceModel(roomci_device_model::DeviceModelError::UnknownContact(_))
+        ));
     }
 }
