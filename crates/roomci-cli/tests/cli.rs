@@ -12,6 +12,9 @@ fn validate_accepts_example_scenarios() {
         .arg("validate")
         .arg(fixture("examples/local_first_cloud_outage.yaml"))
         .arg(fixture("examples/edge_server_failover.yaml"))
+        .arg(fixture("examples/modbus_floor_heating.yaml"))
+        .arg(fixture("examples/dali_scene_partial_failure.yaml"))
+        .arg(fixture("examples/bms_sauna_emergency_alert.yaml"))
         .output()
         .unwrap();
 

@@ -49,6 +49,8 @@ pub struct ScenarioFile {
     #[serde(default)]
     pub lighting: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
+    pub scenes: BTreeMap<String, SceneDefinition>,
+    #[serde(default)]
     pub contacts: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
     pub alerts: Vec<BTreeMap<String, serde_yaml::Value>>,
@@ -118,6 +120,8 @@ pub struct ScenarioStep {
     #[serde(default)]
     pub command: Option<CommandStep>,
     #[serde(default)]
+    pub modbus_write: Option<ModbusWriteStep>,
+    #[serde(default)]
     pub mqtt_publish: Option<MqttPublishStep>,
     #[serde(default)]
     pub fault: Option<FaultStep>,
@@ -135,6 +139,13 @@ pub struct CommandStep {
     pub action: String,
     #[serde(default)]
     pub value: Option<serde_yaml::Value>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ModbusWriteStep {
+    pub device: String,
+    pub register: u32,
+    pub value: serde_yaml::Value,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -178,6 +189,8 @@ pub struct AssertionDefinition {
     #[serde(default)]
     pub mqtt: Option<MqttAssertion>,
     #[serde(default)]
+    pub modbus: Option<ModbusAssertion>,
+    #[serde(default)]
     pub guest_experience: Option<String>,
     #[serde(default)]
     pub ops: Option<BTreeMap<String, serde_yaml::Value>>,
@@ -186,10 +199,26 @@ pub struct AssertionDefinition {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct SceneDefinition {
+    #[serde(default)]
+    pub fixtures: BTreeMap<String, i64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct MqttAssertion {
     pub topic: String,
     #[serde(default)]
     pub retained: BTreeMap<String, serde_yaml::Value>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ModbusAssertion {
+    pub device: String,
+    pub register: u32,
+    #[serde(default)]
+    pub value: Option<serde_yaml::Value>,
+    #[serde(default)]
+    pub readable_value: Option<f64>,
 }
 
 pub fn load_scenario(path: impl AsRef<Path>) -> Result<ScenarioFile, ScenarioError> {
@@ -220,6 +249,7 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
         let kinds = [
             step.event.is_some(),
             step.command.is_some(),
+            step.modbus_write.is_some(),
             step.mqtt_publish.is_some(),
             step.fault.is_some(),
             step.contact.is_some(),
@@ -243,6 +273,7 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
         resolve_time_offset(&assertion.at)?;
         let kinds = [
             assertion.mqtt.is_some(),
+            assertion.modbus.is_some(),
             assertion.guest_experience.is_some(),
             assertion.ops.is_some(),
             assertion.target.is_some() && assertion.condition.is_some(),
