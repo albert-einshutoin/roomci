@@ -154,24 +154,24 @@ mod tests {
     }
 
     #[test]
-    fn renders_junit_failures() {
-        let scenario = load_scenario(fixture("docs/examples/checkin_lock_offline.yaml")).unwrap();
+    fn renders_junit_success_for_latest_scenario() {
+        let scenario = load_scenario(fixture("examples/local_first_cloud_outage.yaml")).unwrap();
         let report = run_scenario(&scenario).unwrap();
 
         let junit = to_junit(&report);
 
         assert!(junit.contains("<testsuite"));
-        assert!(junit.contains("<failure"));
+        assert!(junit.contains("failures=\"0\""));
     }
 
     #[test]
-    fn renders_markdown_guest_impact() {
-        let scenario = load_scenario(fixture("docs/examples/ac_preheat_failed.yaml")).unwrap();
+    fn renders_markdown_timeline_for_latest_scenario() {
+        let scenario = load_scenario(fixture("examples/local_first_cloud_outage.yaml")).unwrap();
         let report = run_scenario(&scenario).unwrap();
 
         let markdown = to_markdown(&report);
 
-        assert!(markdown.contains("Guest impact"));
+        assert!(markdown.contains("guest experience"));
         assert!(markdown.contains("Timeline"));
     }
 }

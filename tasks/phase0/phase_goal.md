@@ -1,39 +1,37 @@
-# Phase 0 Goal — Core Engine and CLI
+# Phase 0 Goal — Latest Scenario Contract, CLI, Reports
 
 ## Goal
 
-Build the minimum executable roomci foundation: parse YAML scenarios, run deterministic device/fault timelines, evaluate assertions, and emit reports.
+Move the implementation from the legacy smart-room scenario shape to the latest `roomci-docs-latest` contract.
 
-Phase 0 must prove roomci can validate the two existing hospitality scenarios without HTTP, MQTT, or cloud adapter surfaces.
+The first success target is:
+
+```bash
+roomci validate examples/local_first_cloud_outage.yaml
+roomci run examples/local_first_cloud_outage.yaml --report-md report.md --report-json report.json --junit report.xml
+```
 
 ## In Scope
 
-- Rust workspace and crate skeleton matching `docs/02_architecture.md`.
-- CLI commands: `run` and `validate`.
-- Canonical room, device, capability, state, command, event, fault, and assertion models.
-- YAML scenario parser for `docs/examples/checkin_lock_offline.yaml` and `docs/examples/ac_preheat_failed.yaml`.
-- Simulated clock and relative time expressions.
-- Deterministic fault application.
-- JSON, Markdown, and JUnit report generation.
+- Scenario parser aligned with `docs/15_scenario_spec.md`.
+- Optional `scenario.clock`; symbolic `T` starts at virtual time zero.
+- Top-level `devices`, `mqtt`, `faults`, `steps`, `assertions`, and `report` fields.
+- CLI aliases: `--report-md`, `--report-json`, and existing `--markdown`, `--json`.
+- Local-first cloud outage scenario support.
+- JSON, Markdown, and JUnit reports.
+- Backward compatibility only where cheap.
 
 ## Non-goals
 
-- Long-running server mode.
-- HTTP or MQTT API.
-- Vendor-shaped compatibility endpoints.
-- Real device bridge or production gateway behavior.
-
-## Deliverables
-
-- `roomci run <scenario.yaml>` executes a scenario to completion.
-- `roomci validate <scenario.yaml>` validates schema and semantic constraints.
-- Reports include scenario result, timeline, assertions, and guest impact.
-- Golden fixtures exist for the two example scenarios.
+- Real MQTT broker.
+- `serve` implementation.
+- Docker image build.
+- Full Modbus, DALI, contact I/O, BMS, or network simulation.
 
 ## Exit Criteria
 
-- Existing example scenarios can be parsed and executed.
-- Failed assertions produce non-zero CLI exit in `run`.
-- JUnit report represents failed assertions as failed tests.
-- Markdown report is readable by product/operations stakeholders.
-- No network dependency is required for tests.
+- Latest `examples/local_first_cloud_outage.yaml` validates.
+- Running latest local-first scenario produces reports.
+- Scenario result passes when local retained state works despite `mqtt.cloud` outage.
+- `cargo test` passes.
+- CLI examples in `docs/02_product_requirements.md` and Compose use supported flags.

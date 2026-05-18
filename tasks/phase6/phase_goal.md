@@ -1,32 +1,17 @@
-# Phase 6 Goal — Hue-like Lighting and Scene Adapter
+# Phase 6 Goal — Reliability Depth and Future Integrations
 
 ## Goal
 
-Support room, zone, group, and scene-oriented lighting tests, including partial welcome-scene failures.
+Extend beyond MVP into network reliability, comfort automation, intercom/access control, and field commissioning depth.
 
 ## In Scope
 
-- Hue-like lighting and group vocabulary.
-- Room/zone/group model for lights and covers where useful.
-- Scene activation.
-- Scene consistency assertions.
-- Partial scene failure fault.
-
-## Non-goals
-
-- Full Philips Hue API clone.
-- Vendor app compatibility.
-- Bridge discovery or real device pairing.
-
-## Deliverables
-
-- Scene model integrated with canonical commands.
-- Scene activation API or adapter behavior.
-- `welcome_scene_partial_failure` example.
-- Golden reports for complete and partial scene results.
+- WAN/Starlink failover.
+- VLAN checks.
+- Comfort automation.
+- Intercom/access-control mocks.
+- Commissioning checklist generation.
 
 ## Exit Criteria
 
-- A scene activates multiple devices through canonical commands.
-- Partial failure is visible in the report timeline and assertion output.
-- Scene consistency assertion can fail with guest impact context.
+- Future examples validate and are mapped to explicit milestones.

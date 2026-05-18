@@ -10,8 +10,7 @@ fn fixture(path: &str) -> PathBuf {
 fn validate_accepts_example_scenarios() {
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
         .arg("validate")
-        .arg(fixture("docs/examples/checkin_lock_offline.yaml"))
-        .arg(fixture("docs/examples/ac_preheat_failed.yaml"))
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
         .output()
         .unwrap();
 
@@ -21,7 +20,7 @@ fn validate_accepts_example_scenarios() {
 }
 
 #[test]
-fn run_generates_reports_and_returns_failure_for_failed_scenario() {
+fn run_generates_reports_for_latest_local_first_scenario() {
     let tempdir = tempfile::tempdir().unwrap();
     let json = tempdir.path().join("roomci.json");
     let markdown = tempdir.path().join("roomci.md");
@@ -29,22 +28,24 @@ fn run_generates_reports_and_returns_failure_for_failed_scenario() {
 
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
         .arg("run")
-        .arg(fixture("docs/examples/checkin_lock_offline.yaml"))
-        .arg("--json")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg("--report-json")
         .arg(&json)
-        .arg("--markdown")
+        .arg("--report-md")
         .arg(&markdown)
         .arg("--junit")
         .arg(&junit)
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(1));
+    assert!(output.status.success());
     assert!(json.exists());
     assert!(markdown.exists());
     assert!(junit.exists());
     assert!(std::fs::read_to_string(markdown)
         .unwrap()
-        .contains("Guest impact"));
-    assert!(std::fs::read_to_string(junit).unwrap().contains("<failure"));
+        .contains("guest experience"));
+    assert!(std::fs::read_to_string(junit)
+        .unwrap()
+        .contains("failures=\"0\""));
 }

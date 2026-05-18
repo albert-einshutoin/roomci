@@ -1,49 +1,33 @@
 # roomci Task Plan
 
-This directory breaks the roomci roadmap into implementation phases.
+This task plan now follows `roomci-docs-latest` as the product source of truth.
 
-Each phase contains:
+The product target is:
 
-- `phase_status.md`: task progress, quality gate status, blockers, and next action.
-- `phase_goal.md`: scope, non-goals, deliverables, and exit criteria.
-- `phase_test.md`: quality gates and test strategy for the phase.
-- `01_*_task.md`, `02_*_task.md`: concrete implementation task files.
-
-Use `status.md` as the top-level progress board.
+```txt
+Local-first Smart Home QA & Operations Emulator for CI
+```
 
 ## Phase Map
 
 | Phase | Focus | Primary Outcome |
 |---|---|---|
-| Phase 0 | Core engine, CLI, scenario runner, reports | Deterministic scenario execution without network adapters |
-| Phase 1 | HTTP adapter | Backend/app tests can control roomci through REST APIs |
-| Phase 2 | MQTT adapter | IoT-style command/state/event topics work through Mosquitto-compatible flow |
-| Phase 3 | Home Assistant Discovery-like adapter | Canonical devices can be advertised through HA-style MQTT discovery payloads |
-| Phase 4 | AWS Shadow-like adapter | Desired/reported/delta shadow behavior is available locally |
-| Phase 5 | Azure Device Twin-like adapter | Desired/reported property flow and cloud-to-device messages are available locally |
-| Phase 6 | Hue-like lighting and scene adapter | Room scenes and partial scene failures can be tested |
-| Phase 7 | Matter-like profile adapter | Canonical devices can import/export Matter-like profile metadata |
-
-## Quality Policy
-
-Every phase must be independently shippable behind documented scope boundaries.
-
-Before a phase is considered complete:
-
-- All phase tasks have acceptance criteria checked off.
-- `phase_test.md` quality gates pass.
-- User-facing examples or docs are updated when behavior changes.
-- Deterministic behavior is preserved for CI scenarios.
-- Compatibility wording remains `*-like` unless actual vendor certification exists.
+| Phase 0 | Latest scenario contract, CLI, reports | `local_first_cloud_outage.yaml` validates and runs from the new schema |
+| Phase 1 | Local MQTT retained-state model | MQTT publish/state/retained assertions work in scenario mode |
+| Phase 2 | Edge server emulator | iPad/controller commands route through edge to devices during cloud outage |
+| Phase 3 | Device mocks | Modbus TCP, DALI-like lighting, and contact I/O scenarios run |
+| Phase 4 | Ops/BMS mock | Contact alerts trigger Slack/phone/ticket/runbook mock outputs |
+| Phase 5 | Docker and CI packaging | Docker image, Compose, and GitHub Actions examples execute the demos |
+| Phase 6 | Reliability depth | Edge failover, network/WAN failover, comfort automation, and future integrations |
 
 ## Progress Management
 
-Status is tracked in two layers:
+Use:
 
-- `tasks/status.md`: phase-level status and current blocking issues.
-- `tasks/phase*/phase_status.md`: task-level status, quality gate status, evidence, blockers, and next action.
+- `tasks/status.md` for the top-level phase board.
+- `tasks/phase*/phase_status.md` for task-level status, quality gates, blockers, and next action.
 
-Valid status values are:
+Valid statuses:
 
 - `todo`
 - `in_progress`
@@ -51,4 +35,10 @@ Valid status values are:
 - `review`
 - `done`
 
-When implementation starts, update the target task to `in_progress`. When code exists but quality gates are still running, use `review`. Only use `done` after the task acceptance criteria and relevant phase quality gates pass.
+## Quality Policy
+
+- A task is not `done` until its acceptance criteria pass.
+- A phase is not `done` until its `phase_test.md` quality gates pass.
+- Reports must remain useful to both software engineers and field engineers.
+- Protocol support must be documented as `*-like` unless real protocol conformance is implemented.
+- Default behavior must not call real Slack, phone, cloud, SIP, or device endpoints.

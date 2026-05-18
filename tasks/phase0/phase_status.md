@@ -1,25 +1,25 @@
-# Phase 0 Status — Core Engine and CLI
+# Phase 0 Status — Latest Scenario Contract, CLI, Reports
 
 ## Phase Status
 
-`in_progress`
+`done`
 
 ## Task Board
 
 | Task | Status | Owner | Evidence | Notes |
 |---|---|---|---|---|
-| `01_workspace_and_cli_task.md` | `done` | Codex | `cargo run -p roomci-cli -- --help`; `cargo run -p roomci-cli -- validate ...` | Workspace and CLI skeleton implemented |
-| `02_core_runner_and_reports_task.md` | `review` | Codex | `cargo test`; CLI `run` generated JSON/Markdown/JUnit reports | Runner and reports implemented; dedicated golden fixture files still pending |
+| `01_latest_scenario_contract_task.md` | `done` | Codex | `cargo run -p roomci-cli -- validate examples/local_first_cloud_outage.yaml` | Latest scenario shape is accepted |
+| `02_local_first_runner_task.md` | `done` | Codex | `cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml ...` | Local-first cloud outage scenario passes |
+| `03_cli_report_flags_task.md` | `done` | Codex | `cargo test`; CLI integration tests | `--report-md` and `--report-json` supported |
 
 ## Quality Gate Status
 
 | Gate | Status | Evidence |
 |---|---|---|
-| Unit tests for state transitions | `done` | `cargo test` passed; `roomci-device-model` state transition tests |
-| Unit tests for fault precedence | `review` | `cargo test` passed; offline fault covered by `checkin_lock_offline` runner test |
-| Parser tests for scenario YAML | `done` | `cargo test` passed; relative time and invalid target tests |
-| Golden tests for JSON/Markdown/JUnit | `review` | Report rendering tests pass; dedicated golden fixture files not yet added |
-| CLI integration tests for `run` and `validate` | `done` | `cargo test` passed; `crates/roomci-cli/tests/cli.rs` |
+| Latest scenario parser tests | `done` | `cargo test` |
+| Local-first runner tests | `done` | `cargo test` |
+| CLI integration tests for latest flags | `done` | `cargo test` |
+| Report generation tests | `done` | `cargo test` |
 
 ## Blockers
 
@@ -27,4 +27,4 @@
 
 ## Next Action
 
-Add dedicated golden fixture files for report outputs, then mark Phase 0 complete if no behavior changes are required.
+Start Phase 1 retained-state module extraction.

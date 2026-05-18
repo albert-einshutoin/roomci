@@ -10,7 +10,7 @@ use thiserror::Error;
 #[command(
     name = "roomci",
     version,
-    about = "Smart-room scenario emulator for local and CI tests"
+    about = "Local-first smart-home QA and operations emulator for CI"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -24,9 +24,9 @@ enum Command {
         scenario: PathBuf,
         #[arg(long)]
         junit: Option<PathBuf>,
-        #[arg(long)]
+        #[arg(long, alias = "report-md")]
         markdown: Option<PathBuf>,
-        #[arg(long)]
+        #[arg(long, alias = "report-json")]
         json: Option<PathBuf>,
     },
     /// Validate scenario files.

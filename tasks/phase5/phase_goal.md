@@ -1,31 +1,17 @@
-# Phase 5 Goal — Azure Device Twin-like Adapter
+# Phase 5 Goal — Docker and CI Packaging
 
 ## Goal
 
-Provide Azure IoT Hub Device Twin-inspired desired/reported property behavior for local backend tests.
+Make the emulator usable through Docker Compose and GitHub Actions.
 
 ## In Scope
 
-- Twin document model.
-- Desired property patch.
-- Reported property patch.
-- Cloud-to-device message simulation.
-- Mapping to canonical commands, state, and telemetry.
-
-## Non-goals
-
-- Azure auth, IoT Hub service SDK emulation, SAS tokens, TLS, or production cloud behavior.
-- Full Azure IoT Hub clone claims.
-
-## Deliverables
-
-- Twin-like API or adapter module.
-- Desired/reported patch handling.
-- Cloud-to-device command simulation.
-- Tests for AC setpoint and sensor reported values.
+- Dockerfile.
+- Docker Compose demo.
+- GitHub Actions workflow.
+- Report artifact output.
 
 ## Exit Criteria
 
-- Desired AC setpoint maps to canonical climate command.
-- Reported sensor values update canonical telemetry/state.
-- Cloud-to-device message can drive a canonical command.
+- `docker compose -f compose/docker-compose.yml up --abort-on-container-exit` works.
+- CI workflow uses supported CLI flags.
