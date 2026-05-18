@@ -15,6 +15,10 @@ fn validate_accepts_example_scenarios() {
         .arg(fixture("examples/modbus_floor_heating.yaml"))
         .arg(fixture("examples/dali_scene_partial_failure.yaml"))
         .arg(fixture("examples/bms_sauna_emergency_alert.yaml"))
+        .arg(fixture("examples/starlink_failover.yaml"))
+        .arg(fixture("examples/comfort_auto_mode.yaml"))
+        .arg(fixture("examples/access_permission_drift.yaml"))
+        .arg(fixture("examples/commissioning_checklist.yaml"))
         .output()
         .unwrap();
 

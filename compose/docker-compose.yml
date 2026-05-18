@@ -13,7 +13,15 @@ services:
         roomci run /scenarios/bms_sauna_emergency_alert.yaml \
           --junit /reports/bms_sauna_emergency_alert.xml \
           --report-md /reports/bms_sauna_emergency_alert.md \
-          --report-json /reports/bms_sauna_emergency_alert.json
+          --report-json /reports/bms_sauna_emergency_alert.json &&
+        roomci run /scenarios/starlink_failover.yaml \
+          --junit /reports/starlink_failover.xml \
+          --report-md /reports/starlink_failover.md \
+          --report-json /reports/starlink_failover.json &&
+        roomci run /scenarios/comfort_auto_mode.yaml \
+          --junit /reports/comfort_auto_mode.xml \
+          --report-md /reports/comfort_auto_mode.md \
+          --report-json /reports/comfort_auto_mode.json
     volumes:
       - ../examples:/scenarios:ro
       - ../reports:/reports

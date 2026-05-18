@@ -1,0 +1,29 @@
+version: "0.1"
+scenario:
+  name: access_permission_drift
+  description: Future milestone placeholder for access-control drift detection.
+  tags: [future, access-control, drift]
+
+future_milestone:
+  release: v0.3
+  module: access_control_drift
+  reason: Detect stale users that remain in access-control systems after identity offboarding.
+  expected_capabilities:
+    - compare identity provider groups with access system groups
+    - report unexpected users with unlock permissions
+    - generate remediation checklist
+
+inputs:
+  identity_group:
+    - alice@example.com
+    - bob@example.com
+  access_system_group:
+    - alice@example.com
+    - bob@example.com
+    - retired@example.com
+
+assertions:
+  - at: T
+    assert:
+      future_milestone: access_control_drift
+      status: planned

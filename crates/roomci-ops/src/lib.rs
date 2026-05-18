@@ -133,6 +133,20 @@ impl OpsModel {
         events
     }
 
+    pub fn record_slack_notification(
+        &mut self,
+        alert_id: impl Into<String>,
+        runbook_url: Option<String>,
+    ) -> OpsEvent {
+        let alert_id = alert_id.into();
+        self.slack_notifications
+            .insert(alert_id.clone(), runbook_url.clone());
+        OpsEvent::SlackNotificationSent {
+            alert_id,
+            runbook_url,
+        }
+    }
+
     pub fn acknowledge(
         &mut self,
         alert_id: Option<&str>,
@@ -405,6 +419,19 @@ mod tests {
                 "contact.sauna_emergency_button".to_string()
             ))
         );
+    }
+
+    #[test]
+    fn records_synthetic_slack_notification_for_network_events() {
+        let mut ops = OpsModel::default();
+
+        ops.record_slack_notification("wan_failover", None);
+
+        let assertion = BTreeMap::from([(
+            "slack_notification_sent".to_string(),
+            serde_yaml::Value::Bool(true),
+        )]);
+        assert!(ops.evaluate_assertion(&assertion).unwrap().passed);
     }
 
     #[test]

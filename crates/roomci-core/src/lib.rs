@@ -74,11 +74,19 @@ struct RuntimeState {
     edge_primary_failed_at: Option<Duration>,
     edge_failover_at: Option<Duration>,
     edge_expected_within: Option<Duration>,
+    wan_primary_failed_at: Option<Duration>,
+    wan_failover_at: Option<Duration>,
+    wan_expected_within: Option<Duration>,
+    wan_backup_status: Option<String>,
     duplicate_delivery_by_topic: BTreeMap<String, u32>,
     modbus: ModbusModel,
     lighting: LightingModel,
     contacts: ContactModel,
     ops: OpsModel,
+    comfort_target: Option<f64>,
+    comfort_range: Option<(f64, f64)>,
+    discomfort_by_target: BTreeMap<String, f64>,
+    user_override_count: u32,
     timeline: Vec<TimelineEvent>,
 }
 
@@ -178,6 +186,10 @@ impl RuntimeState {
             edge_primary_failed_at: None,
             edge_failover_at: None,
             edge_expected_within: edge_expected_within(&scenario.edge)?,
+            wan_primary_failed_at: None,
+            wan_failover_at: None,
+            wan_expected_within: expected_within(&scenario.wan)?,
+            wan_backup_status: status_at(&scenario.wan, "backup"),
             duplicate_delivery_by_topic: BTreeMap::new(),
             modbus: ModbusModel::from_config(&scenario.modbus),
             lighting: LightingModel::from_config(
@@ -190,6 +202,10 @@ impl RuntimeState {
             ),
             contacts: ContactModel::from_config(&scenario.contacts),
             ops: OpsModel::try_from_config(&scenario.alerts)?,
+            comfort_target: yaml_mapping_number(&scenario.comfort, "target_discomfort_index"),
+            comfort_range: comfort_range(&scenario.comfort),
+            discomfort_by_target: discomfort_by_target(&scenario.sensors),
+            user_override_count: 0,
             timeline: Vec::new(),
         })
     }
@@ -250,8 +266,8 @@ impl RuntimeState {
                 if let Some(ops) = step.ops {
                     self.apply_ops_step(at, &ops);
                 }
-                if step.automation.is_some() {
-                    self.push(at, "automation_started", None, "automation started");
+                if let Some(automation) = step.automation {
+                    self.apply_automation(at, &automation);
                 }
                 Ok(None)
             }
@@ -283,6 +299,19 @@ impl RuntimeState {
                     format!("edge failover completed from {}", outcome.from),
                 );
             }
+        }
+        if target == "wan.primary" && fault_type == "down" {
+            self.wan_primary_failed_at = Some(at);
+            self.wan_backup_status = Some("active".to_string());
+            self.wan_failover_at = Some(at);
+            self.push(
+                at,
+                "wan_failover",
+                Some("wan.backup".to_string()),
+                "backup WAN activated after primary failure",
+            );
+            let event = self.ops.record_slack_notification("wan_failover", None);
+            self.push_ops_event(at, event);
         }
         if target == "mqtt.local" && fault_type == "duplicate_delivery" {
             if let Some(topic) = topic {
@@ -484,6 +513,23 @@ impl RuntimeState {
             }
         }
         self.push(at, "ops_action", None, "ops action applied");
+    }
+
+    fn apply_automation(&mut self, at: Duration, automation: &BTreeMap<String, serde_yaml::Value>) {
+        let automation_type = automation.get("type").and_then(|value| value.as_str());
+        if automation_type == Some("hvac_auto_mode") {
+            if let Some(target) = self.comfort_target {
+                self.discomfort_by_target
+                    .insert("living_area.discomfort_index".to_string(), target);
+                self.push(
+                    at,
+                    "comfort_auto_mode_applied",
+                    Some("living_area".to_string()),
+                    format!("target discomfort index set to {target}"),
+                );
+            }
+        }
+        self.push(at, "automation_started", None, "automation started");
     }
 
     fn push_ops_event(&mut self, at: Duration, event: OpsEvent) {
@@ -734,6 +780,90 @@ impl RuntimeState {
                     },
                 };
             }
+            if target == "wan.backup" {
+                let status_passed = condition_text == "active"
+                    && self.wan_backup_status.as_deref() == Some("active");
+                let timing_passed = self
+                    .wan_expected_within
+                    .map(|expected_within| {
+                        match (self.wan_primary_failed_at, self.wan_failover_at) {
+                            (Some(failed_at), Some(failover_at)) => {
+                                failover_at - failed_at <= expected_within
+                            }
+                            _ => false,
+                        }
+                    })
+                    .unwrap_or(true);
+                let passed = status_passed && timing_passed;
+                return AssertionResult {
+                    name: "wan.backup".to_string(),
+                    assertion_type: "wan_failover".to_string(),
+                    passed,
+                    message: if passed {
+                        "backup WAN is active".to_string()
+                    } else {
+                        "backup WAN is not active within expected failover window".to_string()
+                    },
+                    impact_level: if passed {
+                        None
+                    } else {
+                        Some("high".to_string())
+                    },
+                    impact_message: if passed {
+                        None
+                    } else {
+                        Some("WAN failover did not preserve internet resilience.".to_string())
+                    },
+                };
+            }
+            if target == "living_area.discomfort_index" {
+                let passed = self.evaluate_between_condition(target, condition_text);
+                return AssertionResult {
+                    name: target.clone(),
+                    assertion_type: "comfort_metric".to_string(),
+                    passed,
+                    message: if passed {
+                        "comfort metric stayed within expected range".to_string()
+                    } else {
+                        "comfort metric did not reach expected range".to_string()
+                    },
+                    impact_level: if passed {
+                        None
+                    } else {
+                        Some("medium".to_string())
+                    },
+                    impact_message: if passed {
+                        None
+                    } else {
+                        Some("HVAC auto mode did not meet comfort expectation.".to_string())
+                    },
+                };
+            }
+            if target == "user_override" {
+                let expected_false =
+                    condition.as_bool() == Some(false) || condition_text == "false";
+                let passed = expected_false && self.user_override_count == 0;
+                return AssertionResult {
+                    name: target.clone(),
+                    assertion_type: "comfort_user_override".to_string(),
+                    passed,
+                    message: if passed {
+                        "no user override occurred".to_string()
+                    } else {
+                        "user override occurred".to_string()
+                    },
+                    impact_level: if passed {
+                        None
+                    } else {
+                        Some("medium".to_string())
+                    },
+                    impact_message: if passed {
+                        None
+                    } else {
+                        Some("Guest manually overrode comfort automation.".to_string())
+                    },
+                };
+            }
             if target == "guest_experience" {
                 let passed = condition_text == "unaffected"
                     && self.broker.is_online("mqtt.local")
@@ -841,6 +971,19 @@ impl RuntimeState {
             message: message.into(),
         });
     }
+
+    fn evaluate_between_condition(&self, target: &str, condition_text: &str) -> bool {
+        let Some(actual) = self.discomfort_by_target.get(target).copied() else {
+            return false;
+        };
+        if let Some((min, max)) = parse_between_condition(condition_text) {
+            return actual >= min && actual <= max;
+        }
+        if let Some((min, max)) = self.comfort_range {
+            return actual >= min && actual <= max;
+        }
+        false
+    }
 }
 
 fn edge_expected_within(
@@ -856,6 +999,99 @@ fn edge_expected_within(
         return Ok(None);
     };
     parse_duration(expected_within).map(Some)
+}
+
+fn expected_within(
+    config: &BTreeMap<String, serde_yaml::Value>,
+) -> Result<Option<Duration>, ScenarioError> {
+    let Some(failover) = config.get("failover").and_then(|value| value.as_mapping()) else {
+        return Ok(None);
+    };
+    let Some(expected_within) = failover
+        .get(serde_yaml::Value::String("expected_within".to_string()))
+        .and_then(|value| value.as_str())
+    else {
+        return Ok(None);
+    };
+    parse_duration(expected_within).map(Some)
+}
+
+fn status_at(config: &BTreeMap<String, serde_yaml::Value>, key: &str) -> Option<String> {
+    config
+        .get(key)
+        .and_then(|value| value.as_mapping())
+        .and_then(|mapping| {
+            mapping
+                .get(serde_yaml::Value::String("status".to_string()))
+                .and_then(|value| value.as_str())
+        })
+        .map(str::to_string)
+}
+
+fn yaml_mapping_number(map: &BTreeMap<String, serde_yaml::Value>, key: &str) -> Option<f64> {
+    map.get(key).and_then(|value| {
+        value
+            .as_f64()
+            .or_else(|| value.as_i64().map(|value| value as f64))
+    })
+}
+
+fn comfort_range(comfort: &BTreeMap<String, serde_yaml::Value>) -> Option<(f64, f64)> {
+    let range = comfort
+        .get("acceptable_range")
+        .and_then(|value| value.as_mapping())?;
+    let min = range
+        .get(serde_yaml::Value::String("min".to_string()))
+        .and_then(|value| {
+            value
+                .as_f64()
+                .or_else(|| value.as_i64().map(|value| value as f64))
+        })?;
+    let max = range
+        .get(serde_yaml::Value::String("max".to_string()))
+        .and_then(|value| {
+            value
+                .as_f64()
+                .or_else(|| value.as_i64().map(|value| value as f64))
+        })?;
+    Some((min, max))
+}
+
+fn discomfort_by_target(sensors: &BTreeMap<String, serde_yaml::Value>) -> BTreeMap<String, f64> {
+    sensors
+        .iter()
+        .filter_map(|(sensor, value)| {
+            let mapping = value.as_mapping()?;
+            let temperature = mapping
+                .get(serde_yaml::Value::String("temperature".to_string()))
+                .and_then(|value| {
+                    value
+                        .as_f64()
+                        .or_else(|| value.as_i64().map(|value| value as f64))
+                })?;
+            let humidity = mapping
+                .get(serde_yaml::Value::String("humidity".to_string()))
+                .and_then(|value| {
+                    value
+                        .as_f64()
+                        .or_else(|| value.as_i64().map(|value| value as f64))
+                })?;
+            Some((
+                format!("{sensor}.discomfort_index"),
+                discomfort_index(temperature, humidity),
+            ))
+        })
+        .collect()
+}
+
+fn discomfort_index(temperature: f64, humidity: f64) -> f64 {
+    0.81 * temperature + 0.01 * humidity * (0.99 * temperature - 14.3) + 46.3
+}
+
+fn parse_between_condition(condition_text: &str) -> Option<(f64, f64)> {
+    let rest = condition_text.strip_prefix("between ")?;
+    let (min, max) = rest.split_once(" and ")?;
+    Some((min.parse().ok()?, max.parse().ok()?))
 }
 
 fn format_duration(duration: Duration) -> String {
@@ -1118,5 +1354,38 @@ assertions:
             .timeline
             .iter()
             .any(|event| event.event_type == "edge_command_failed"));
+    }
+
+    #[test]
+    fn starlink_failover_passes() {
+        let scenario = load_scenario(fixture("examples/starlink_failover.yaml")).unwrap();
+
+        let report = run_scenario(&scenario).unwrap();
+
+        assert_eq!(report.result, RunResult::Passed);
+        assert!(report
+            .timeline
+            .iter()
+            .any(|event| event.event_type == "wan_failover"));
+        assert!(report
+            .assertions
+            .iter()
+            .any(|assertion| assertion.assertion_type == "wan_failover" && assertion.passed));
+    }
+
+    #[test]
+    fn comfort_auto_mode_passes() {
+        let scenario = load_scenario(fixture("examples/comfort_auto_mode.yaml")).unwrap();
+
+        let report = run_scenario(&scenario).unwrap();
+
+        assert_eq!(report.result, RunResult::Passed);
+        assert!(report
+            .assertions
+            .iter()
+            .any(|assertion| assertion.assertion_type == "comfort_metric" && assertion.passed));
+        assert!(report.assertions.iter().any(|assertion| {
+            assertion.assertion_type == "comfort_user_override" && assertion.passed
+        }));
     }
 }

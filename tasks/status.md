@@ -10,7 +10,7 @@
 | Phase 3 | `done` | Modbus, DALI-like, contact I/O mocks | None | `phase3/phase_status.md` |
 | Phase 4 | `done` | BMS/ops alert mock | None | `phase4/phase_status.md` |
 | Phase 5 | `done` | Docker and CI packaging | None | `phase5/phase_status.md` |
-| Phase 6 | `todo` | Reliability depth and future integrations | None | `phase6/phase_status.md` |
+| Phase 6 | `done` | Reliability depth and future integrations | None | `phase6/phase_status.md` |
 
 ## Update Rules
 
@@ -21,4 +21,4 @@
 
 ## Current Recommendation
 
-Start Phase 6 by adding reliability-depth scenarios for network/WAN failover, comfort automation, and future integrations.
+Phase 0-6 are complete. Next step is a release-readiness review covering docs freshness, security/resource limits, and public demo packaging.

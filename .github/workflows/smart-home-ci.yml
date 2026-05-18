@@ -26,7 +26,11 @@ jobs:
             /scenarios/edge_server_failover.yaml \
             /scenarios/modbus_floor_heating.yaml \
             /scenarios/dali_scene_partial_failure.yaml \
-            /scenarios/bms_sauna_emergency_alert.yaml
+            /scenarios/bms_sauna_emergency_alert.yaml \
+            /scenarios/starlink_failover.yaml \
+            /scenarios/comfort_auto_mode.yaml \
+            /scenarios/access_permission_drift.yaml \
+            /scenarios/commissioning_checklist.yaml
 
       - name: Run local-first cloud outage scenario
         run: |
@@ -49,6 +53,25 @@ jobs:
             --junit /reports/bms_sauna_emergency_alert.xml \
             --report-md /reports/bms_sauna_emergency_alert.md \
             --report-json /reports/bms_sauna_emergency_alert.json
+
+      - name: Run reliability depth scenarios
+        run: |
+          docker run --rm \
+            -v $PWD/examples:/scenarios:ro \
+            -v $PWD/reports:/reports \
+            roomci:ci \
+            run /scenarios/starlink_failover.yaml \
+            --junit /reports/starlink_failover.xml \
+            --report-md /reports/starlink_failover.md \
+            --report-json /reports/starlink_failover.json
+          docker run --rm \
+            -v $PWD/examples:/scenarios:ro \
+            -v $PWD/reports:/reports \
+            roomci:ci \
+            run /scenarios/comfort_auto_mode.yaml \
+            --junit /reports/comfort_auto_mode.xml \
+            --report-md /reports/comfort_auto_mode.md \
+            --report-json /reports/comfort_auto_mode.json
 
       - name: Upload roomci reports
         uses: actions/upload-artifact@v4

@@ -45,6 +45,10 @@ pub struct ScenarioFile {
     #[serde(default)]
     pub wan: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
+    pub sensors: BTreeMap<String, serde_yaml::Value>,
+    #[serde(default)]
+    pub comfort: BTreeMap<String, serde_yaml::Value>,
+    #[serde(default)]
     pub edge: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
     pub mqtt: MqttConfig,
