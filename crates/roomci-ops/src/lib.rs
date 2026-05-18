@@ -6,6 +6,8 @@ use thiserror::Error;
 pub enum OpsError {
     #[error("unknown alert source {0}")]
     UnknownAlertSource(String),
+    #[error("invalid alert config: {0}")]
+    InvalidAlertConfig(String),
     #[error("unsupported ops assertion {0}")]
     UnsupportedAssertion(String),
 }
@@ -50,17 +52,23 @@ pub struct OpsModel {
 
 impl OpsModel {
     pub fn from_config(alerts: &[BTreeMap<String, serde_yaml::Value>]) -> Self {
+        Self::try_from_config(alerts).unwrap_or_default()
+    }
+
+    pub fn try_from_config(
+        alerts: &[BTreeMap<String, serde_yaml::Value>],
+    ) -> Result<Self, OpsError> {
         let alerts = alerts
             .iter()
-            .filter_map(OpsAlert::from_map)
-            .collect::<Vec<_>>();
-        Self {
+            .map(OpsAlert::from_map)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self {
             alerts,
             tickets: BTreeMap::new(),
             slack_notifications: BTreeMap::new(),
             phone_calls: BTreeMap::new(),
             runbook_urls: BTreeMap::new(),
-        }
+        })
     }
 
     pub fn validate_sources<F>(&self, mut has_contact: F) -> Result<(), OpsError>
@@ -125,13 +133,22 @@ impl OpsModel {
         events
     }
 
-    pub fn acknowledge(&mut self, assignee: Option<String>) -> Vec<OpsEvent> {
+    pub fn acknowledge(
+        &mut self,
+        alert_id: Option<&str>,
+        assignee: Option<String>,
+    ) -> Vec<OpsEvent> {
         let mut events = Vec::new();
-        for (alert_id, ticket) in &mut self.tickets {
+        for (ticket_alert_id, ticket) in &mut self.tickets {
+            if let Some(expected_alert_id) = alert_id {
+                if ticket_alert_id != expected_alert_id {
+                    continue;
+                }
+            }
             ticket.status = "acknowledged".to_string();
             ticket.assignee = assignee.clone();
             events.push(OpsEvent::TicketAcknowledged {
-                alert_id: alert_id.clone(),
+                alert_id: ticket_alert_id.clone(),
                 assignee: assignee.clone(),
             });
         }
@@ -143,32 +160,37 @@ impl OpsModel {
         assertion: &BTreeMap<String, serde_yaml::Value>,
     ) -> Result<OpsAssertionOutcome, OpsError> {
         let mut failures = Vec::new();
+        let alert_id = assertion
+            .get("alert_id")
+            .and_then(|value| value.as_str())
+            .or_else(|| assertion.get("source").and_then(|value| value.as_str()));
         for (key, expected) in assertion {
             match key.as_str() {
+                "alert_id" | "source" => {}
                 "slack_notification_sent" => {
-                    if expected.as_bool() == Some(true) && self.slack_notifications.is_empty() {
+                    if expected.as_bool() == Some(true)
+                        && !contains_key_or_any(&self.slack_notifications, alert_id)
+                    {
                         failures.push("Slack notification was not sent".to_string());
                     }
                 }
                 "phone_call_triggered" => {
                     if expected.as_bool() == Some(true)
-                        && !self.phone_calls.values().any(|sent| *sent)
+                        && !bool_key_or_any(&self.phone_calls, alert_id)
                     {
                         failures.push("Phone escalation was not triggered".to_string());
                     }
                 }
                 "runbook_url_included" => {
-                    if expected.as_bool() == Some(true) && self.runbook_urls.is_empty() {
+                    if expected.as_bool() == Some(true)
+                        && !contains_key_or_any(&self.runbook_urls, alert_id)
+                    {
                         failures.push("Runbook URL was not included".to_string());
                     }
                 }
                 "ticket_status" => {
                     let expected_status = expected.as_str().unwrap_or_default();
-                    if !self
-                        .tickets
-                        .values()
-                        .any(|ticket| ticket.status == expected_status)
-                    {
+                    if !ticket_status_matches(&self.tickets, alert_id, expected_status) {
                         failures.push(format!(
                             "No ticket reached expected status {expected_status}"
                         ));
@@ -194,9 +216,9 @@ struct OpsAlert {
 }
 
 impl OpsAlert {
-    fn from_map(map: &BTreeMap<String, serde_yaml::Value>) -> Option<Self> {
-        let id = map.get("id")?.as_str()?.to_string();
-        let source = map.get("source")?.as_str()?.to_string();
+    fn from_map(map: &BTreeMap<String, serde_yaml::Value>) -> Result<Self, OpsError> {
+        let id = required_string(map, "id")?;
+        let source = required_string(map, "source")?;
         let notify = map.get("notify").and_then(|value| value.as_mapping());
         let notify_slack = notify
             .and_then(|mapping| yaml_mapping_get(mapping, "slack"))
@@ -210,7 +232,7 @@ impl OpsAlert {
             .get("runbook_url")
             .and_then(|value| value.as_str())
             .map(str::to_string);
-        Some(Self {
+        Ok(Self {
             id,
             source,
             notify_slack,
@@ -233,6 +255,46 @@ fn yaml_mapping_get<'a>(
     mapping.get(serde_yaml::Value::String(key.to_string()))
 }
 
+fn required_string(
+    map: &BTreeMap<String, serde_yaml::Value>,
+    key: &str,
+) -> Result<String, OpsError> {
+    map.get(key)
+        .and_then(|value| value.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| OpsError::InvalidAlertConfig(format!("missing or invalid {key}")))
+}
+
+fn contains_key_or_any<T>(map: &BTreeMap<String, T>, alert_id: Option<&str>) -> bool {
+    match alert_id {
+        Some(alert_id) => map.contains_key(alert_id),
+        None => !map.is_empty(),
+    }
+}
+
+fn bool_key_or_any(map: &BTreeMap<String, bool>, alert_id: Option<&str>) -> bool {
+    match alert_id {
+        Some(alert_id) => map.get(alert_id).copied().unwrap_or(false),
+        None => map.values().any(|sent| *sent),
+    }
+}
+
+fn ticket_status_matches(
+    tickets: &BTreeMap<String, TicketState>,
+    alert_id: Option<&str>,
+    expected_status: &str,
+) -> bool {
+    match alert_id {
+        Some(alert_id) => tickets
+            .get(alert_id)
+            .map(|ticket| ticket.status == expected_status)
+            .unwrap_or(false),
+        None => tickets
+            .values()
+            .any(|ticket| ticket.status == expected_status),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,7 +315,7 @@ mod tests {
 
     #[test]
     fn critical_contact_triggers_notifications_and_runbook() {
-        let mut ops = OpsModel::from_config(&sauna_alerts());
+        let mut ops = OpsModel::try_from_config(&sauna_alerts()).unwrap();
 
         let events = ops.apply_contact_change("sauna_emergency_button", "on");
 
@@ -272,26 +334,67 @@ mod tests {
 
     #[test]
     fn acknowledge_updates_ticket_status() {
-        let mut ops = OpsModel::from_config(&sauna_alerts());
+        let mut ops = OpsModel::try_from_config(&sauna_alerts()).unwrap();
         ops.apply_contact_change("sauna_emergency_button", "on");
 
-        let events = ops.acknowledge(Some("ops_member_01".to_string()));
+        let events = ops.acknowledge(
+            Some("sauna_emergency_button"),
+            Some("ops_member_01".to_string()),
+        );
 
         assert!(events.iter().any(|event| matches!(
             event,
             OpsEvent::TicketAcknowledged { assignee, .. }
                 if assignee.as_deref() == Some("ops_member_01")
         )));
-        let assertion = BTreeMap::from([(
-            "ticket_status".to_string(),
-            serde_yaml::Value::String("acknowledged".to_string()),
-        )]);
+        let assertion = BTreeMap::from([
+            (
+                "alert_id".to_string(),
+                serde_yaml::Value::String("sauna_emergency_button".to_string()),
+            ),
+            (
+                "ticket_status".to_string(),
+                serde_yaml::Value::String("acknowledged".to_string()),
+            ),
+        ]);
         assert!(ops.evaluate_assertion(&assertion).unwrap().passed);
     }
 
     #[test]
+    fn scoped_assertion_does_not_pass_with_other_alert_state() {
+        let alerts: Vec<BTreeMap<String, serde_yaml::Value>> = serde_yaml::from_str(
+            r#"
+- id: sauna_emergency_button
+  source: contact.sauna_emergency_button
+  notify:
+    slack: true
+- id: kitchen_alarm
+  source: contact.kitchen_alarm
+  notify:
+    slack: true
+"#,
+        )
+        .unwrap();
+        let mut ops = OpsModel::try_from_config(&alerts).unwrap();
+        ops.apply_contact_change("kitchen_alarm", "on");
+
+        let assertion = BTreeMap::from([
+            (
+                "alert_id".to_string(),
+                serde_yaml::Value::String("sauna_emergency_button".to_string()),
+            ),
+            (
+                "slack_notification_sent".to_string(),
+                serde_yaml::Value::Bool(true),
+            ),
+        ]);
+
+        assert!(!ops.evaluate_assertion(&assertion).unwrap().passed);
+    }
+
+    #[test]
     fn validates_alert_contact_sources() {
-        let ops = OpsModel::from_config(&sauna_alerts());
+        let ops = OpsModel::try_from_config(&sauna_alerts()).unwrap();
 
         assert!(ops
             .validate_sources(|contact| contact == "sauna_emergency_button")
@@ -300,6 +403,23 @@ mod tests {
             ops.validate_sources(|_| false),
             Err(OpsError::UnknownAlertSource(
                 "contact.sauna_emergency_button".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_malformed_alert_config() {
+        let alerts: Vec<BTreeMap<String, serde_yaml::Value>> = serde_yaml::from_str(
+            r#"
+- source: contact.sauna_emergency_button
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            OpsModel::try_from_config(&alerts),
+            Err(OpsError::InvalidAlertConfig(
+                "missing or invalid id".to_string()
             ))
         );
     }

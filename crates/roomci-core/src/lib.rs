@@ -102,15 +102,19 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
             step.clone(),
         ));
     }
-    events.sort_by_key(|event| event.at().num_milliseconds());
-
-    for event in events {
-        runtime.apply_event(event)?;
+    for assertion in &scenario.assertions {
+        events.push(ScheduledEvent::Assertion(
+            resolve_time_offset(&assertion.at)?,
+            assertion.clone(),
+        ));
     }
+    events.sort_by_key(|event| (event.at().num_milliseconds(), event.order()));
 
     let mut assertions = Vec::new();
-    for assertion in &scenario.assertions {
-        assertions.push(runtime.evaluate_assertion(assertion));
+    for event in events {
+        if let Some(assertion) = runtime.apply_event(event)? {
+            assertions.push(assertion);
+        }
     }
 
     let result = if assertions.iter().all(|assertion| assertion.passed) {
@@ -133,12 +137,22 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
 enum ScheduledEvent {
     GlobalFault(Duration, roomci_scenario::FaultStep),
     Step(Duration, roomci_scenario::ScenarioStep),
+    Assertion(Duration, roomci_scenario::AssertionDefinition),
 }
 
 impl ScheduledEvent {
     fn at(&self) -> Duration {
         match self {
-            ScheduledEvent::GlobalFault(at, _) | ScheduledEvent::Step(at, _) => *at,
+            ScheduledEvent::GlobalFault(at, _)
+            | ScheduledEvent::Step(at, _)
+            | ScheduledEvent::Assertion(at, _) => *at,
+        }
+    }
+
+    fn order(&self) -> u8 {
+        match self {
+            ScheduledEvent::GlobalFault(_, _) | ScheduledEvent::Step(_, _) => 0,
+            ScheduledEvent::Assertion(_, _) => 1,
         }
     }
 }
@@ -175,12 +189,12 @@ impl RuntimeState {
                     .collect(),
             ),
             contacts: ContactModel::from_config(&scenario.contacts),
-            ops: OpsModel::from_config(&scenario.alerts),
+            ops: OpsModel::try_from_config(&scenario.alerts)?,
             timeline: Vec::new(),
         })
     }
 
-    fn apply_event(&mut self, event: ScheduledEvent) -> Result<(), CoreError> {
+    fn apply_event(&mut self, event: ScheduledEvent) -> Result<Option<AssertionResult>, CoreError> {
         match event {
             ScheduledEvent::GlobalFault(at, fault) => {
                 self.apply_fault(
@@ -190,6 +204,7 @@ impl RuntimeState {
                     fault.topic.as_deref(),
                     fault.count,
                 );
+                Ok(None)
             }
             ScheduledEvent::Step(at, step) => {
                 if let Some(event) = step.event {
@@ -238,9 +253,12 @@ impl RuntimeState {
                 if step.automation.is_some() {
                     self.push(at, "automation_started", None, "automation started");
                 }
+                Ok(None)
+            }
+            ScheduledEvent::Assertion(_, assertion) => {
+                Ok(Some(self.evaluate_assertion(&assertion)))
             }
         }
-        Ok(())
     }
 
     fn apply_fault(
@@ -460,7 +478,8 @@ impl RuntimeState {
                 .get("assignee")
                 .and_then(|value| value.as_str())
                 .map(str::to_string);
-            for event in self.ops.acknowledge(assignee) {
+            let alert_id = ops.get("alert_id").and_then(|value| value.as_str());
+            for event in self.ops.acknowledge(alert_id, assignee) {
                 self.push_ops_event(at, event);
             }
         }
@@ -1008,6 +1027,50 @@ assertions:
             .iter()
             .any(|event| event.event_type == "ops_ticket_acknowledged"
                 && event.message.contains("ops_member_01")));
+    }
+
+    #[test]
+    fn assertions_are_evaluated_in_timeline_order() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: ops_timeline_assertions
+contacts:
+  inputs:
+    - id: sauna_emergency_button
+      state: off
+alerts:
+  - id: sauna_emergency_button
+    source: contact.sauna_emergency_button
+    notify:
+      slack: true
+steps:
+  - at: T
+    contact:
+      id: sauna_emergency_button
+      state: on
+  - at: T+20s
+    ops:
+      action: acknowledge
+      alert_id: sauna_emergency_button
+assertions:
+  - at: T+1s
+    ops:
+      alert_id: sauna_emergency_button
+      ticket_status: open
+  - at: T+30s
+    ops:
+      alert_id: sauna_emergency_button
+      ticket_status: acknowledged
+"#,
+        )
+        .unwrap();
+
+        let report = run_scenario(&scenario).unwrap();
+
+        assert_eq!(report.result, RunResult::Passed);
+        assert_eq!(report.assertions.len(), 2);
     }
 
     #[test]

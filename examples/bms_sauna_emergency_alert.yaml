@@ -29,14 +29,17 @@ steps:
   - at: T+20s
     ops:
       action: acknowledge
+      alert_id: sauna_emergency_button
       assignee: ops_member_01
 
 assertions:
   - at: T+1s
     ops:
+      alert_id: sauna_emergency_button
       slack_notification_sent: true
       phone_call_triggered: true
       runbook_url_included: true
   - at: T+30s
     ops:
+      alert_id: sauna_emergency_button
       ticket_status: acknowledged

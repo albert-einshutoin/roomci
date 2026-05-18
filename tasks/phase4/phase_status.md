@@ -23,4 +23,7 @@
 | Phone escalation mock tests | `done` | `cargo test` |
 | Ticket acknowledge tests | `done` | `cargo test` |
 | Runbook URL inclusion tests | `done` | `cargo test`; `target/phase4-bms.md` |
+| Time-ordered ops assertion tests | `done` | `cargo test` |
+| Alert-scoped ops assertion tests | `done` | `cargo test` |
+| Malformed alert validation tests | `done` | `cargo test` |
 | BMS emergency scenario CLI run | `done` | `cargo run -p roomci-cli -- run examples/bms_sauna_emergency_alert.yaml --report-md target/phase4-bms.md --report-json target/phase4-bms.json --junit target/phase4-bms.xml` |

@@ -249,7 +249,7 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
         .collect::<BTreeMap<_, _>>();
     let lighting = LightingModel::from_config(&scenario.lighting, &scene_targets);
     let contacts = ContactModel::from_config(&scenario.contacts);
-    let ops = OpsModel::from_config(&scenario.alerts);
+    let ops = OpsModel::try_from_config(&scenario.alerts)?;
     lighting.assert_scene_targets_exist()?;
     ops.validate_sources(|contact_id| contacts.has_contact(contact_id))?;
 
@@ -590,6 +590,40 @@ assertions:
         assert!(matches!(
             error,
             ScenarioError::Ops(roomci_ops::OpsError::UnknownAlertSource(_))
+        ));
+    }
+
+    #[test]
+    fn rejects_malformed_alert_config() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: malformed_alert
+contacts:
+  inputs:
+    - id: known_contact
+      state: off
+alerts:
+  - source: contact.known_contact
+steps:
+  - at: T
+    contact:
+      id: known_contact
+      state: on
+assertions:
+  - at: T+1s
+    ops:
+      slack_notification_sent: true
+"#,
+        )
+        .unwrap();
+
+        let error = validate_scenario(&scenario).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ScenarioError::Ops(roomci_ops::OpsError::InvalidAlertConfig(_))
         ));
     }
 }
