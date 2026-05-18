@@ -593,4 +593,48 @@ fixtures:
             ))
         );
     }
+
+    #[test]
+    fn modbus_value_returns_none_for_unknown_device() {
+        let model = ModbusModel::default();
+
+        assert_eq!(model.value("unknown_device", 40001), None);
+        assert_eq!(model.readable_value("unknown_device", 40001), None);
+        assert!(!model.has_register("unknown_device", 40001));
+    }
+
+    #[test]
+    fn modbus_write_fails_for_unknown_device() {
+        let mut model = ModbusModel::default();
+
+        let error = model
+            .write("unknown_device", 40001, serde_yaml::Value::from(1))
+            .unwrap_err();
+
+        assert_eq!(
+            error,
+            DeviceModelError::UnknownModbusDevice("unknown_device".to_string())
+        );
+    }
+
+    #[test]
+    fn contact_set_state_fails_for_unknown_id() {
+        let mut contacts = ContactModel::default();
+
+        let error = contacts.set_state("missing", "on").unwrap_err();
+
+        assert_eq!(
+            error,
+            DeviceModelError::UnknownContact("missing".to_string())
+        );
+    }
+
+    #[test]
+    fn lighting_activate_scene_fails_for_unknown_scene() {
+        let mut model = LightingModel::default();
+
+        let error = model.activate_scene("missing").unwrap_err();
+
+        assert_eq!(error, DeviceModelError::UnknownScene("missing".to_string()));
+    }
 }

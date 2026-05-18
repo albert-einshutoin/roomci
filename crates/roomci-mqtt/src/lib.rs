@@ -204,6 +204,40 @@ mod tests {
     }
 
     #[test]
+    fn publishing_to_offline_broker_returns_error() {
+        let mut broker = BrokerModel::new(false, false);
+
+        let error = broker
+            .publish_device_command(
+                "mqtt.local",
+                "ipad_controller",
+                "house/minakami/room/living/device/living_light/command",
+                payload(),
+                1,
+            )
+            .unwrap_err();
+
+        assert_eq!(error, MqttError::BrokerOffline("mqtt.local".to_string()));
+    }
+
+    #[test]
+    fn non_device_command_topic_is_rejected() {
+        let mut broker = BrokerModel::new(true, false);
+
+        let error = broker
+            .publish_device_command(
+                "mqtt.local",
+                "ipad_controller",
+                "house/minakami/room/living/status",
+                payload(),
+                1,
+            )
+            .unwrap_err();
+
+        assert!(matches!(error, MqttError::InvalidCommandTopic(_)));
+    }
+
+    #[test]
     fn reconnect_receives_retained_state() {
         let mut broker = BrokerModel::new(true, false);
         broker

@@ -657,4 +657,56 @@ assertions:
             ScenarioError::Ops(roomci_ops::OpsError::InvalidAlertConfig(_))
         ));
     }
+
+    #[test]
+    fn missing_scenario_file_returns_read_error() {
+        let error = load_scenario("/nonexistent/path/scenario.yaml").unwrap_err();
+
+        assert!(matches!(error, ScenarioError::Read { .. }));
+    }
+
+    #[test]
+    fn invalid_yaml_returns_parse_error() {
+        let tempfile = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(tempfile.path(), "this is: : not valid: yaml: : :").unwrap();
+
+        let error = load_scenario(tempfile.path()).unwrap_err();
+
+        assert!(matches!(error, ScenarioError::Parse { .. }));
+    }
+
+    #[test]
+    fn rejects_step_with_no_action() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: empty_step
+steps:
+  - at: T
+assertions:
+  - at: T+1s
+    guest_experience: unaffected
+"#,
+        )
+        .unwrap();
+
+        let error = validate_scenario(&scenario).unwrap_err();
+
+        assert!(matches!(error, ScenarioError::InvalidStepKind));
+    }
+
+    #[test]
+    fn rejects_invalid_time_offset() {
+        let error = resolve_time_offset("invalid_time").unwrap_err();
+
+        assert!(matches!(error, ScenarioError::InvalidRelativeTime(_)));
+    }
+
+    #[test]
+    fn rejects_invalid_duration() {
+        let error = parse_duration("notaduration").unwrap_err();
+
+        assert!(matches!(error, ScenarioError::InvalidDuration(_)));
+    }
 }

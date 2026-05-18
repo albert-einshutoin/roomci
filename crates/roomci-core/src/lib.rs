@@ -182,6 +182,7 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
 }
 
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 enum ScheduledEvent {
     GlobalFault(Duration, roomci_scenario::FaultStep),
     Step(Duration, roomci_scenario::ScenarioStep),

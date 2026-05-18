@@ -465,4 +465,38 @@ mod tests {
             ))
         );
     }
+
+    #[test]
+    fn unsupported_assertion_returns_error() {
+        let ops = OpsModel::default();
+        let assertion = BTreeMap::from([(
+            "completely_unknown_field".to_string(),
+            serde_yaml::Value::Bool(true),
+        )]);
+
+        let error = ops.evaluate_assertion(&assertion).unwrap_err();
+
+        assert!(matches!(error, OpsError::UnsupportedAssertion(_)));
+    }
+
+    #[test]
+    fn validate_sources_rejects_non_contact_alert_source() {
+        let alerts: Vec<BTreeMap<String, serde_yaml::Value>> = serde_yaml::from_str(
+            r#"
+- id: external_alert
+  source: webhook.external
+  notify:
+    slack: true
+"#,
+        )
+        .unwrap();
+        let ops = OpsModel::try_from_config(&alerts).unwrap();
+
+        let error = ops.validate_sources(|_| true).unwrap_err();
+
+        assert_eq!(
+            error,
+            OpsError::UnknownAlertSource("webhook.external".to_string())
+        );
+    }
 }

@@ -57,3 +57,45 @@ fn run_generates_reports_for_latest_local_first_scenario() {
         .unwrap()
         .contains("failures=\"0\""));
 }
+
+#[test]
+fn run_with_missing_scenario_file_exits_with_error() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg("/tmp/roomci-test-does-not-exist.yaml")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.to_lowercase().contains("error"),
+        "expected error message on stderr, got: {stderr}"
+    );
+}
+
+#[test]
+fn validate_without_arguments_exits_with_error() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("validate")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.to_lowercase().contains("error")
+            || stderr.to_lowercase().contains("at least one"),
+        "expected error message on stderr, got: {stderr}"
+    );
+}
+
+#[test]
+fn unknown_subcommand_exits_with_error() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("frobnicate")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+}

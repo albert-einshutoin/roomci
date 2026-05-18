@@ -212,6 +212,45 @@ mod tests {
     }
 
     #[test]
+    fn routing_fails_when_no_edge_is_active() {
+        let edge = EdgeModel {
+            primary: EdgeServer {
+                id: "edge_primary".to_string(),
+                status: EdgeStatus::Failed,
+            },
+            secondary: None,
+            failover_enabled: true,
+        };
+
+        let error = edge
+            .route_mqtt_command("ipad_controller", "living_light", None)
+            .unwrap_err();
+
+        assert_eq!(error, EdgeError::NoActiveEdge);
+    }
+
+    #[test]
+    fn power_loss_with_failover_disabled_does_not_promote_secondary() {
+        let mut edge = EdgeModel {
+            primary: EdgeServer {
+                id: "edge_primary".to_string(),
+                status: EdgeStatus::Active,
+            },
+            secondary: Some(EdgeServer {
+                id: "edge_secondary".to_string(),
+                status: EdgeStatus::Standby,
+            }),
+            failover_enabled: false,
+        };
+
+        let outcome = edge.apply_power_lost_to_primary();
+
+        assert!(outcome.is_none());
+        assert_eq!(edge.secondary_status(), Some(EdgeStatus::Standby));
+        assert!(edge.active_id().is_none());
+    }
+
+    #[test]
     fn primary_power_loss_activates_secondary() {
         let mut edge = EdgeModel::default();
 
