@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, fs, path::Path};
 
 use chrono::Duration;
 use roomci_device_model::{ContactModel, DeviceModelError, LightingModel, ModbusModel};
+use roomci_ops::{OpsError, OpsModel};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -29,6 +30,8 @@ pub enum ScenarioError {
     InvalidAssertionKind,
     #[error(transparent)]
     DeviceModel(#[from] DeviceModelError),
+    #[error(transparent)]
+    Ops(#[from] OpsError),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -246,7 +249,9 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
         .collect::<BTreeMap<_, _>>();
     let lighting = LightingModel::from_config(&scenario.lighting, &scene_targets);
     let contacts = ContactModel::from_config(&scenario.contacts);
+    let ops = OpsModel::from_config(&scenario.alerts);
     lighting.assert_scene_targets_exist()?;
+    ops.validate_sources(|contact_id| contacts.has_contact(contact_id))?;
 
     for fault in &scenario.faults {
         if let Some(at) = &fault.at {
@@ -548,6 +553,43 @@ assertions:
         assert!(matches!(
             error,
             ScenarioError::DeviceModel(roomci_device_model::DeviceModelError::UnknownContact(_))
+        ));
+    }
+
+    #[test]
+    fn rejects_alert_with_unknown_contact_source() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: invalid_alert_source
+contacts:
+  inputs:
+    - id: known_contact
+      state: off
+alerts:
+  - id: missing_contact_alert
+    source: contact.missing_contact
+    notify:
+      slack: true
+steps:
+  - at: T
+    contact:
+      id: known_contact
+      state: on
+assertions:
+  - at: T+1s
+    ops:
+      slack_notification_sent: true
+"#,
+        )
+        .unwrap();
+
+        let error = validate_scenario(&scenario).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ScenarioError::Ops(roomci_ops::OpsError::UnknownAlertSource(_))
         ));
     }
 }

@@ -438,6 +438,7 @@ dependencies = [
  "roomci-edge",
  "roomci-fault",
  "roomci-mqtt",
+ "roomci-ops",
  "roomci-scenario",
  "serde",
  "serde_json",
@@ -483,6 +484,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "roomci-ops"
+version = "0.1.0"
+dependencies = [
+ "serde_yaml",
+ "thiserror",
+]
+
+[[package]]
 name = "roomci-report"
 version = "0.1.0"
 dependencies = [
@@ -497,6 +506,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "roomci-device-model",
+ "roomci-ops",
  "serde",
  "serde_json",
  "serde_yaml",

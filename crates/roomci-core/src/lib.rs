@@ -6,6 +6,7 @@ use roomci_device_model::{
 };
 use roomci_edge::{EdgeError, EdgeModel, EdgeStatus};
 use roomci_mqtt::{device_id_from_command_topic, BrokerModel, MqttError};
+use roomci_ops::{OpsError, OpsEvent, OpsModel};
 use roomci_scenario::{
     parse_duration, resolve_time_offset, validate_scenario, yaml_map_to_json, MqttPublishStep,
     ScenarioError, ScenarioFile,
@@ -25,6 +26,8 @@ pub enum CoreError {
     Edge(#[from] EdgeError),
     #[error(transparent)]
     DeviceModel(#[from] DeviceModelError),
+    #[error(transparent)]
+    Ops(#[from] OpsError),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -75,6 +78,7 @@ struct RuntimeState {
     modbus: ModbusModel,
     lighting: LightingModel,
     contacts: ContactModel,
+    ops: OpsModel,
     timeline: Vec<TimelineEvent>,
 }
 
@@ -171,6 +175,7 @@ impl RuntimeState {
                     .collect(),
             ),
             contacts: ContactModel::from_config(&scenario.contacts),
+            ops: OpsModel::from_config(&scenario.alerts),
             timeline: Vec::new(),
         })
     }
@@ -214,16 +219,21 @@ impl RuntimeState {
                     self.apply_mqtt_publish(at, &mqtt_publish);
                 }
                 if let Some(contact) = step.contact {
-                    self.contacts.set_state(&contact.id, &contact.state)?;
+                    let contact_id = contact.id.clone();
+                    let contact_state = contact.state.clone();
+                    self.contacts.set_state(&contact_id, &contact_state)?;
                     self.push(
                         at,
                         "contact_changed",
-                        Some(contact.id),
-                        format!("contact state changed to {}", contact.state),
+                        Some(contact_id.clone()),
+                        format!("contact state changed to {contact_state}"),
                     );
+                    for event in self.ops.apply_contact_change(&contact_id, &contact_state) {
+                        self.push_ops_event(at, event);
+                    }
                 }
-                if step.ops.is_some() {
-                    self.push(at, "ops_action", None, "ops action applied");
+                if let Some(ops) = step.ops {
+                    self.apply_ops_step(at, &ops);
                 }
                 if step.automation.is_some() {
                     self.push(at, "automation_started", None, "automation started");
@@ -443,6 +453,67 @@ impl RuntimeState {
         }
     }
 
+    fn apply_ops_step(&mut self, at: Duration, ops: &BTreeMap<String, serde_yaml::Value>) {
+        let action = ops.get("action").and_then(|value| value.as_str());
+        if action == Some("acknowledge") {
+            let assignee = ops
+                .get("assignee")
+                .and_then(|value| value.as_str())
+                .map(str::to_string);
+            for event in self.ops.acknowledge(assignee) {
+                self.push_ops_event(at, event);
+            }
+        }
+        self.push(at, "ops_action", None, "ops action applied");
+    }
+
+    fn push_ops_event(&mut self, at: Duration, event: OpsEvent) {
+        match event {
+            OpsEvent::SlackNotificationSent {
+                alert_id,
+                runbook_url,
+            } => self.push(
+                at,
+                "ops_slack_notification_sent",
+                Some(alert_id),
+                match runbook_url {
+                    Some(url) => format!("Slack notification sent with runbook {url}"),
+                    None => "Slack notification sent".to_string(),
+                },
+            ),
+            OpsEvent::PhoneCallTriggered { alert_id } => self.push(
+                at,
+                "ops_phone_call_triggered",
+                Some(alert_id),
+                "Phone escalation triggered".to_string(),
+            ),
+            OpsEvent::TicketOpened { alert_id, status } => self.push(
+                at,
+                "ops_ticket_opened",
+                Some(alert_id),
+                format!("Ops ticket opened with status {status}"),
+            ),
+            OpsEvent::TicketAcknowledged { alert_id, assignee } => self.push(
+                at,
+                "ops_ticket_acknowledged",
+                Some(alert_id),
+                match assignee {
+                    Some(assignee) => format!("Ops ticket acknowledged by {assignee}"),
+                    None => "Ops ticket acknowledged".to_string(),
+                },
+            ),
+            OpsEvent::RunbookUrlIncluded {
+                alert_id,
+                runbook_url,
+            } => self.push(
+                at,
+                "ops_runbook_url_included",
+                Some(alert_id),
+                format!("Runbook URL included: {runbook_url}"),
+            ),
+        }
+    }
+
     fn evaluate_assertion(
         &self,
         assertion: &roomci_scenario::AssertionDefinition,
@@ -536,6 +607,44 @@ impl RuntimeState {
                     None
                 } else {
                     Some("Local-first control did not preserve guest experience.".to_string())
+                },
+            };
+        }
+
+        if let Some(ops) = &assertion.ops {
+            return match self.ops.evaluate_assertion(ops) {
+                Ok(outcome) => AssertionResult {
+                    name: "ops".to_string(),
+                    assertion_type: "ops".to_string(),
+                    passed: outcome.passed,
+                    message: if outcome.passed {
+                        "ops escalation matched expected state".to_string()
+                    } else {
+                        format!("ops escalation mismatch: {}", outcome.failures.join("; "))
+                    },
+                    impact_level: if outcome.passed {
+                        None
+                    } else {
+                        Some("high".to_string())
+                    },
+                    impact_message: if outcome.passed {
+                        None
+                    } else {
+                        Some(
+                            "Operations response did not meet the emergency alert contract."
+                                .to_string(),
+                        )
+                    },
+                },
+                Err(error) => AssertionResult {
+                    name: "ops".to_string(),
+                    assertion_type: "ops".to_string(),
+                    passed: false,
+                    message: error.to_string(),
+                    impact_level: Some("unknown".to_string()),
+                    impact_message: Some(
+                        "The ops assertion is not supported by the runner.".to_string(),
+                    ),
                 },
             };
         }
@@ -875,11 +984,30 @@ assertions:
 
         let report = run_scenario(&scenario).unwrap();
 
+        assert_eq!(report.result, RunResult::Passed);
         assert!(report
             .timeline
             .iter()
             .any(|event| event.event_type == "contact_changed"
                 && event.target.as_deref() == Some("sauna_emergency_button")));
+        assert!(report
+            .timeline
+            .iter()
+            .any(|event| event.event_type == "ops_slack_notification_sent"));
+        assert!(report
+            .timeline
+            .iter()
+            .any(|event| event.event_type == "ops_phone_call_triggered"));
+        assert!(report
+            .timeline
+            .iter()
+            .any(|event| event.event_type == "ops_runbook_url_included"
+                && event.message.contains("sauna-emergency")));
+        assert!(report
+            .timeline
+            .iter()
+            .any(|event| event.event_type == "ops_ticket_acknowledged"
+                && event.message.contains("ops_member_01")));
     }
 
     #[test]

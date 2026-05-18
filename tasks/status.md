@@ -8,8 +8,8 @@
 | Phase 1 | `done` | Local MQTT retained-state model | None | `phase1/phase_status.md` |
 | Phase 2 | `done` | Edge server emulator | None | `phase2/phase_status.md` |
 | Phase 3 | `done` | Modbus, DALI-like, contact I/O mocks | None | `phase3/phase_status.md` |
-| Phase 4 | `todo` | BMS/ops alert mock | None | `phase4/phase_status.md` |
-| Phase 5 | `todo` | Docker and CI packaging | Runtime behavior not complete | `phase5/phase_status.md` |
+| Phase 4 | `done` | BMS/ops alert mock | None | `phase4/phase_status.md` |
+| Phase 5 | `todo` | Docker and CI packaging | None | `phase5/phase_status.md` |
 | Phase 6 | `todo` | Reliability depth and future integrations | MVP demos not complete | `phase6/phase_status.md` |
 
 ## Update Rules
@@ -21,4 +21,4 @@
 
 ## Current Recommendation
 
-Start Phase 4 by connecting contact I/O events to BMS/ops alert, notification, and ticket mocks.
+Start Phase 5 by packaging the CLI/runtime into Docker and Compose-based CI smoke tests.

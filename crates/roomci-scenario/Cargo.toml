@@ -8,6 +8,7 @@ repository.workspace = true
 [dependencies]
 chrono.workspace = true
 roomci-device-model = { path = "../roomci-device-model" }
+roomci-ops = { path = "../roomci-ops" }
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true

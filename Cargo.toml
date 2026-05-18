@@ -6,6 +6,7 @@ members = [
   "crates/roomci-edge",
   "crates/roomci-fault",
   "crates/roomci-mqtt",
+  "crates/roomci-ops",
   "crates/roomci-report",
   "crates/roomci-scenario",
 ]
