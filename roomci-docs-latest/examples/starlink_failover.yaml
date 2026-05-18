@@ -1,0 +1,34 @@
+version: "0.1"
+scenario:
+  name: starlink_failover
+  description: Verify backup WAN activates and local smart-home control remains available.
+  tags: [network, starlink, failover]
+
+wan:
+  primary:
+    id: mcat_cable
+    type: cable
+    status: up
+  backup:
+    id: starlink
+    type: satellite
+    status: standby
+  failover:
+    enabled: true
+    expected_within: 30s
+
+faults:
+  - at: T+10s
+    target: wan.primary
+    type: down
+
+assertions:
+  - at: T+20s
+    target: wan.backup
+    condition: active
+  - at: T+30s
+    target: mqtt.local
+    condition: available
+  - at: T+40s
+    ops:
+      slack_notification_sent: true

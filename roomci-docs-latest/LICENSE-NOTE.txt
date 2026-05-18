@@ -1,0 +1,3 @@
+This package contains planning and design documents generated from user-provided summaries and pasted article excerpts.
+It does not include source article text except where short paraphrased references are necessary for design decisions.
+Before publishing publicly, review names, examples, and claims for accuracy and ensure no proprietary or private implementation detail is included.

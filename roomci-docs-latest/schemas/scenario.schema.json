@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "roomci scenario schema",
+  "type": "object",
+  "required": ["version", "scenario"],
+  "properties": {
+    "version": { "type": "string" },
+    "scenario": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "mqtt": { "type": "object" },
+    "network": { "type": "object" },
+    "wan": { "type": "object" },
+    "edge": { "type": "object" },
+    "devices": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "modbus": { "type": "object" },
+    "lighting": { "type": "object" },
+    "contacts": { "type": "object" },
+    "alerts": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "faults": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target", "type"],
+        "properties": {
+          "at": { "type": "string" },
+          "target": { "type": "string" },
+          "type": { "type": "string" },
+          "duration": { "type": "string" },
+          "severity": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "assertions": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "report": { "type": "object" }
+  },
+  "additionalProperties": true
+}

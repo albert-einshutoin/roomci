@@ -1,0 +1,31 @@
+name: smart-home-ci
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  roomci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Run local-first cloud outage scenario
+        run: |
+          docker run --rm \
+            -v $PWD/examples:/scenarios \
+            -v $PWD/reports:/reports \
+            ghcr.io/albert-einshutoin/roomci:latest \
+            run /scenarios/local_first_cloud_outage.yaml \
+            --junit /reports/local_first_cloud_outage.xml \
+            --report-md /reports/local_first_cloud_outage.md \
+            --report-json /reports/local_first_cloud_outage.json
+
+      - name: Upload roomci reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: roomci-reports
+          path: reports

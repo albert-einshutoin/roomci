@@ -1,0 +1,42 @@
+version: "0.1"
+scenario:
+  name: bms_sauna_emergency_alert
+  description: Verify critical contact alarm triggers Slack, phone, ticket, and runbook flow.
+  tags: [bms, ops, contact, emergency]
+
+contacts:
+  inputs:
+    - id: sauna_emergency_button
+      state: off
+      location: sauna_room
+      criticality: emergency
+
+alerts:
+  - id: sauna_emergency_button
+    source: contact.sauna_emergency_button
+    severity: critical
+    location: sauna_room
+    notify:
+      slack: true
+      phone: true
+    runbook_url: https://example.com/runbooks/sauna-emergency
+
+steps:
+  - at: T
+    contact:
+      id: sauna_emergency_button
+      state: on
+  - at: T+20s
+    ops:
+      action: acknowledge
+      assignee: ops_member_01
+
+assertions:
+  - at: T+1s
+    ops:
+      slack_notification_sent: true
+      phone_call_triggered: true
+      runbook_url_included: true
+  - at: T+30s
+    ops:
+      ticket_status: acknowledged

@@ -1,0 +1,29 @@
+services:
+  roomci:
+    image: ghcr.io/albert-einshutoin/roomci:latest
+    command: serve --config /scenarios/local_first_cloud_outage.yaml
+    ports:
+      - "8080:8080"
+      - "1883:1883"
+    volumes:
+      - ../examples:/scenarios
+
+  scenario-test:
+    image: ghcr.io/albert-einshutoin/roomci:latest
+    command: run /scenarios/local_first_cloud_outage.yaml --junit /reports/roomci.xml --report-md /reports/roomci.md
+    volumes:
+      - ../examples:/scenarios
+      - ../reports:/reports
+    depends_on:
+      - roomci
+
+  # Example app backend placeholder.
+  # Replace with a real backend when integrating roomci into an application repository.
+  app-backend:
+    image: alpine:3.20
+    command: ["sh", "-c", "echo backend placeholder; sleep 3600"]
+    environment:
+      ROOMCI_HTTP_URL: http://roomci:8080
+      ROOMCI_MQTT_URL: mqtt://roomci:1883
+    depends_on:
+      - roomci
