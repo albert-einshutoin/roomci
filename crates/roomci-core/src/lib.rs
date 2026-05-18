@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 
 use chrono::Duration;
 use roomci_edge::{EdgeError, EdgeModel, EdgeStatus};
-use roomci_mqtt::{BrokerModel, MqttError};
+use roomci_mqtt::{device_id_from_command_topic, BrokerModel, MqttError};
 use roomci_scenario::{
-    resolve_time_offset, validate_scenario, yaml_map_to_json, MqttPublishStep, ScenarioError,
-    ScenarioFile,
+    parse_duration, resolve_time_offset, validate_scenario, yaml_map_to_json, MqttPublishStep,
+    ScenarioError, ScenarioFile,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -63,6 +63,9 @@ struct RuntimeState {
     protocols: BTreeMap<String, Option<String>>,
     broker: BrokerModel,
     edge: EdgeModel,
+    edge_primary_failed_at: Option<Duration>,
+    edge_failover_at: Option<Duration>,
+    edge_expected_within: Option<Duration>,
     duplicate_delivery_by_topic: BTreeMap<String, u32>,
     timeline: Vec<TimelineEvent>,
 }
@@ -70,7 +73,7 @@ struct RuntimeState {
 pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
     validate_scenario(scenario)?;
 
-    let mut runtime = RuntimeState::new(scenario);
+    let mut runtime = RuntimeState::new(scenario)?;
     let mut events = Vec::new();
     for fault in &scenario.faults {
         let at = fault
@@ -129,7 +132,7 @@ impl ScheduledEvent {
 }
 
 impl RuntimeState {
-    fn new(scenario: &ScenarioFile) -> Self {
+    fn new(scenario: &ScenarioFile) -> Result<Self, CoreError> {
         let states = scenario
             .devices
             .iter()
@@ -141,14 +144,17 @@ impl RuntimeState {
             .map(|device| (device.id.clone(), device.protocol.clone()))
             .collect::<BTreeMap<_, _>>();
 
-        Self {
+        Ok(Self {
             states,
             protocols,
             broker: BrokerModel::new(true, scenario.mqtt.cloud.enabled),
             edge: EdgeModel::from_config(&scenario.edge),
+            edge_primary_failed_at: None,
+            edge_failover_at: None,
+            edge_expected_within: edge_expected_within(&scenario.edge)?,
             duplicate_delivery_by_topic: BTreeMap::new(),
             timeline: Vec::new(),
-        }
+        })
     }
 
     fn apply_event(&mut self, event: ScheduledEvent) -> Result<(), CoreError> {
@@ -217,7 +223,9 @@ impl RuntimeState {
             self.broker.set_online(target, false);
         }
         if target == "edge.primary" && fault_type == "power_lost" {
+            self.edge_primary_failed_at = Some(at);
             if let Some(outcome) = self.edge.apply_power_lost_to_primary() {
+                self.edge_failover_at = Some(at);
                 self.push(
                     at,
                     "edge_failover",
@@ -253,6 +261,40 @@ impl RuntimeState {
             .get(&publish.topic)
             .copied()
             .unwrap_or(1);
+        let Some(device_id) = device_id_from_command_topic(&publish.topic) else {
+            self.push(
+                at,
+                "mqtt_publish_failed",
+                Some("mqtt.local".to_string()),
+                format!("topic is not a device command topic: {}", publish.topic),
+            );
+            return;
+        };
+        match self.edge.route_mqtt_command(
+            &publish.client,
+            &device_id,
+            self.protocols.get(&device_id).cloned().flatten(),
+        ) {
+            Ok(routed) => self.push(
+                at,
+                "edge_command_routed",
+                Some(routed.edge_id),
+                format!(
+                    "{} routed command from {} to {}",
+                    routed.action, routed.source_client, routed.target_device
+                ),
+            ),
+            Err(error) => {
+                self.push(
+                    at,
+                    "edge_command_failed",
+                    Some(device_id),
+                    error.to_string(),
+                );
+                return;
+            }
+        }
+
         let payload = yaml_map_to_json(&publish.payload);
         match self.broker.publish_device_command(
             "mqtt.local",
@@ -265,27 +307,6 @@ impl RuntimeState {
                 if let (Some(device_id), Some(retained_payload)) =
                     (outcome.device_id.clone(), outcome.retained_payload)
                 {
-                    match self.edge.route_mqtt_command(
-                        &publish.client,
-                        &device_id,
-                        self.protocols.get(&device_id).cloned().flatten(),
-                    ) {
-                        Ok(routed) => self.push(
-                            at,
-                            "edge_command_routed",
-                            Some(routed.edge_id),
-                            format!(
-                                "{} routed command from {} to {}",
-                                routed.action, routed.source_client, routed.target_device
-                            ),
-                        ),
-                        Err(error) => self.push(
-                            at,
-                            "edge_command_failed",
-                            Some(device_id.clone()),
-                            error.to_string(),
-                        ),
-                    }
                     self.states.insert(device_id.clone(), retained_payload);
                     let state_topic = outcome.state_topic.unwrap_or_default();
                     let delivery_word = if outcome.deliveries == 1 {
@@ -376,14 +397,31 @@ impl RuntimeState {
         if let (Some(target), Some(condition)) = (&assertion.target, &assertion.condition) {
             let condition_text = condition.as_str().unwrap_or_default();
             if target == "edge.secondary" {
-                let passed = condition_text == "active"
+                let status_passed = condition_text == "active"
                     && self.edge.secondary_status() == Some(EdgeStatus::Active);
+                let timing_passed = self
+                    .edge_expected_within
+                    .map(|expected_within| {
+                        match (self.edge_primary_failed_at, self.edge_failover_at) {
+                            (Some(failed_at), Some(failover_at)) => {
+                                failover_at - failed_at <= expected_within
+                            }
+                            _ => false,
+                        }
+                    })
+                    .unwrap_or(true);
+                let passed = status_passed && timing_passed;
                 return AssertionResult {
                     name: "edge.secondary".to_string(),
                     assertion_type: "edge_state".to_string(),
                     passed,
                     message: if passed {
-                        "secondary edge server is active".to_string()
+                        if timing_passed {
+                            "secondary edge server is active".to_string()
+                        } else {
+                            "secondary edge server did not activate within expected failover window"
+                                .to_string()
+                        }
                     } else {
                         "secondary edge server is not active".to_string()
                     },
@@ -477,6 +515,21 @@ impl RuntimeState {
             message: message.into(),
         });
     }
+}
+
+fn edge_expected_within(
+    edge: &BTreeMap<String, serde_yaml::Value>,
+) -> Result<Option<Duration>, ScenarioError> {
+    let Some(failover) = edge.get("failover").and_then(|value| value.as_mapping()) else {
+        return Ok(None);
+    };
+    let Some(expected_within) = failover
+        .get(serde_yaml::Value::String("expected_within".to_string()))
+        .and_then(|value| value.as_str())
+    else {
+        return Ok(None);
+    };
+    parse_duration(expected_within).map(Some)
 }
 
 fn format_duration(duration: Duration) -> String {
@@ -590,5 +643,52 @@ assertions:
             .timeline
             .iter()
             .any(|event| event.event_type == "edge_failover"));
+    }
+
+    #[test]
+    fn mqtt_command_does_not_update_state_when_edge_is_unavailable() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: no_active_edge
+edge:
+  primary:
+    id: edge_primary
+    status: failed
+mqtt:
+  local:
+    retained: true
+devices:
+  - id: living_light
+    type: light
+    protocol: dali
+    state:
+      power: false
+steps:
+  - at: T
+    mqtt_publish:
+      client: ipad_controller
+      topic: house/minakami/room/living/device/living_light/command
+      payload:
+        power: true
+assertions:
+  - at: T+1s
+    mqtt:
+      topic: house/minakami/room/living/device/living_light/state
+      retained:
+        power: true
+"#,
+        )
+        .unwrap();
+
+        let report = run_scenario(&scenario).unwrap();
+
+        assert_eq!(report.result, RunResult::Failed);
+        assert!(report.retained_messages.is_empty());
+        assert!(report
+            .timeline
+            .iter()
+            .any(|event| event.event_type == "edge_command_failed"));
     }
 }
