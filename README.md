@@ -1,8 +1,8 @@
 # roomci
 
-[![smart-home-ci](https://github.com/albert-einshutoin/roomci/actions/workflows/smart-home-ci.yml/badge.svg)](https://github.com/albert-einshutoin/roomci/actions/workflows/smart-home-ci.yml)
+[![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
-[![Coverage](https://img.shields.io/badge/coverage-86%25-brightgreen.svg)](#quality-gates)
+[![Coverage](https://img.shields.io/badge/coverage-84.47%25-green.svg)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **MQTT / Edge / Device QA Contract Emulator for CI**

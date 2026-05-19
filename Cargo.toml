@@ -15,8 +15,12 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+description = "Local-first Smart Home QA & Operations Emulator for CI"
 license = "MIT"
 repository = "https://github.com/albert-einshutoin/roomci"
+readme = "README.md"
+keywords = ["iot", "smart-home", "mqtt", "emulator", "ci"]
+categories = ["simulation", "command-line-utilities", "development-tools::testing"]
 
 [workspace.dependencies]
 chrono = { version = "0.4.42", features = ["serde"] }

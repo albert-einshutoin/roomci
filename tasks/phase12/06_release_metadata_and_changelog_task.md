@@ -59,3 +59,7 @@ Close the "public surface vs reality" gap that the strict review of Phase 9 + 10
 - `head -30 CHANGELOG.md` shows the Keep a Changelog header and the `[Unreleased]` section.
 - `grep -c '^## \[' CHANGELOG.md` returns at least 14 (one `[Unreleased]` plus one per phase 0–12).
 - `cargo package -p roomci-cli --list` log shows no `warning: manifest has no ...` lines.
+
+## Execution Note
+
+The current implementation uses static `img.shields.io` README badges instead of the GitHub Actions badge because the public repository URL still returns 404. `roomci-serve` package verification is intentionally deferred until Task 01 creates that crate.

@@ -13,12 +13,12 @@
 | `03_mutex_safety_and_run_lock_task.md` | `todo` | Unassigned | None yet | Replace `.expect("serve state mutex poisoned")` with 500 response; run scenarios without holding the mutex across the whole `/run` request |
 | `04_health_semantics_task.md` | `todo` | Unassigned | None yet | `/health` reflects `latest_report.result` and serve lifecycle instead of a constant `"ok"` |
 | `05_mqtt_connect_validation_task.md` | `todo` | Unassigned | None yet | Validate MQTT protocol name (`MQTT`) and protocol level (`4`) and return the documented CONNACK return code on mismatch |
-| `06_release_metadata_and_changelog_task.md` | `todo` | Unassigned | None yet | Add workspace `description`/`keywords`/`categories`/`readme`, add `CHANGELOG.md`, and fix or remove the broken README badges |
+| `06_release_metadata_and_changelog_task.md` | `review` | Codex | `Cargo.toml`; crate manifests; `CHANGELOG.md`; README static badges; `cargo metadata`; `cargo package --list --allow-dirty` for all current crates; badge `curl -I` checks | Current crates are metadata-ready and README badges resolve; `roomci-serve` package check remains pending until Task 01 creates that crate |
 
 ## Blockers
 
-- README badge URL repair depends on the GitHub repository being pushed public under the URL the README references. If that account/repo cannot be created, the badges must be replaced with working ones (or removed) so README claims match reality.
-- No other Phase 12 task is blocked.
+- No current Phase 12 task is blocked.
+- `roomci-serve` package verification in Task 06 remains pending until Task 01 creates the crate.
 
 ## Quality Gate Status
 
@@ -31,9 +31,9 @@
 | `/run` does not block other routes for its full duration | `todo` | None yet |
 | `/health` reflects `latest_report.result` | `todo` | None yet |
 | MQTT `CONNECT` validates protocol name and level | `todo` | None yet |
-| Workspace metadata is publish-ready | `todo` | None yet |
-| `CHANGELOG.md` exists at repo root | `todo` | None yet |
-| README badges resolve (or are removed) | `todo` | None yet |
+| Workspace metadata is publish-ready | `done` | `cargo metadata --format-version 1 --no-deps`; `cargo package --list --allow-dirty` for all current crates |
+| `CHANGELOG.md` exists at repo root | `done` | `grep -c '^## \[' CHANGELOG.md` -> 14 |
+| README badges resolve (or are removed) | `done` | Static `img.shields.io` badge URLs return HTTP 200 |
 | `cargo tarpaulin --workspace --fail-under 80` still passes | `todo` | None yet |
 
 ## Current Recommendation
