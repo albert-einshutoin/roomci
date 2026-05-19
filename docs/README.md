@@ -12,6 +12,7 @@ its own.
 | Positioning | [Product positioning](PRODUCT_POSITIONING.md) | QA contract emulator category, audience, and scope boundaries |
 | Domains | [Domain packs](DOMAIN_PACKS.md) | Core emulator modules and reusable domain packs |
 | MQTT | [Generic MQTT contracts](GENERIC_MQTT_CONTRACTS.md) | Generic MQTT command/state examples and current supported subset |
+| MQTT serve | [MQTT serve subset](MQTT_SERVE_SUBSET.md) | Minimal MQTT 3.1.1 CONNECT + QoS0 PUBLISH ingress for PoC tests |
 | 19 | [Interview positioning](19_interview_positioning.md) | NOT A HOTEL casual-interview narrative and demo scenarios |
 | Demo | [Interview demo](INTERVIEW_DEMO.md) | Three-minute pitch, ten-minute walkthrough, expected questions |
 | Principles | [Design principles](DESIGN_PRINCIPLES.md) | Product philosophy and scope boundaries |
@@ -59,6 +60,7 @@ its own.
 |---|---|---|
 | 17 | [Docker / CI design](17_docker_ci_design.md) | Container layout and GitHub Actions integration |
 | Serve | [HTTP serve MVP plan](HTTP_SERVE_MVP_PLAN.md) | Planned localhost-bound control/report API before MQTT-compatible serve mode |
+| PoC | [Pre-adoption PoC checklist](PRE_ADOPTION_POC_CHECKLIST.md) | Integration checklist for external protocol contracts and acceptance criteria |
 | 20 | [Appendix: future integrations](20_appendix_future_integrations.md) | Out-of-scope work and where it would live |
 
 For the API-level reference, run `cargo doc --no-deps --open` from the repo

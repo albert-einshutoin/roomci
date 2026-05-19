@@ -424,6 +424,7 @@ dependencies = [
  "roomci-core",
  "roomci-report",
  "roomci-scenario",
+ "serde",
  "serde_json",
  "tempfile",
  "thiserror",

@@ -68,10 +68,37 @@ docker run --rm \
   serve --config /scenarios/local_first_cloud_outage.yaml --check
 ```
 
+Serve-mode black-box PoC:
+
+```bash
+make compose-poc
+```
+
+This starts `roomci serve` as one Compose service and runs `examples/controllers/http_poc_controller.sh` as a separate external controller service. The controller talks to `roomci` through HTTP only and writes JSON, Markdown, and JUnit reports under `reports/`.
+
 ## Docker Compose pattern
 
 ```yaml
 services:
+  roomci-serve:
+    image: ghcr.io/albert-einshutoin/roomci:latest
+    command: serve --config /scenarios/generic_mqtt_retained_state.yaml --host 0.0.0.0 --port 8080 --mqtt-port 1883 --allow-non-loopback
+    volumes:
+      - ../examples:/scenarios:ro
+
+  external-controller:
+    image: ghcr.io/albert-einshutoin/roomci:latest
+    entrypoint: ["/bin/sh"]
+    command: /controllers/http_poc_controller.sh
+    environment:
+      ROOMCI_URL: http://roomci-serve:8080
+      REPORT_DIR: /reports
+    depends_on:
+      - roomci-serve
+    volumes:
+      - ../examples/controllers:/controllers:ro
+      - ../reports:/reports
+
   scenario-smoke:
     image: ghcr.io/albert-einshutoin/roomci:latest
     command: run /scenarios/local_first_cloud_outage.yaml --junit /reports/roomci.xml

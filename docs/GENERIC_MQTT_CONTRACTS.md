@@ -20,17 +20,18 @@ Supported today:
 - retained command/state update behavior
 - duplicate delivery idempotency through a scheduled fault
 - edge routing into a declared device id
+- configurable `mqtt.contracts` topic mappings with `{device_id}` extraction
+- serve-mode MQTT 3.1.1 `CONNECT` + QoS0 `PUBLISH` PoC ingress
 - JSON, Markdown, and JUnit reporting from the same run
 
 Not supported today:
 
-- external MQTT clients connecting to a live broker
-- arbitrary topic mapping
-- MQTT 3.1.1 or MQTT 5 protocol conformance
+- full MQTT broker conformance
+- arbitrary transformation language for topic/payload mapping
 - QoS2, session persistence, authorization, TLS, ACLs, or clustering
 - production broker replacement behavior
 
-Those are Phase 10+ adapter concerns.
+See [`MQTT_SERVE_SUBSET.md`](MQTT_SERVE_SUBSET.md) for the serve-mode protocol boundary.
 
 ## Examples
 
@@ -70,17 +71,20 @@ Or run both generic MQTT examples:
 make demo-generic-mqtt
 ```
 
-## Why Fixed Topic Mapping Is Acceptable in Phase 9
+## Configurable Topic Mapping
 
-Phase 9 is positioning and contract-shape work. The fixed `.../device/<id>/command` convention is enough to prove the generic core is not tied to hospitality naming.
-
-For pre-adoption PoC use, Phase 10 should add configurable topic mappings such as:
+For pre-adoption PoC use, scenarios can declare topic mappings:
 
 ```yaml
 mqtt:
   contracts:
-    - command_topic: fleet/{tenant}/site/{site}/device/{device_id}/command
-      state_topic: fleet/{tenant}/site/{site}/device/{device_id}/state
+    - name: generic_device_retained_state
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/demo/site/lab/device/{device_id}/command
+      state_topic: fleet/demo/site/lab/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [online, sample_interval_seconds]
 ```
 
 That keeps vendor-specific MQTT naming out of code and lets a real integration contract be supplied later.

@@ -10,6 +10,9 @@ RUN cargo build --release -p roomci-cli
 
 FROM debian:bookworm-slim AS runtime
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
 RUN useradd --uid 10001 --user-group --create-home --home-dir /home/roomci --shell /usr/sbin/nologin roomci
 COPY --from=builder /app/target/release/roomci /usr/local/bin/roomci
 

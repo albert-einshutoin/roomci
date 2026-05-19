@@ -7,6 +7,14 @@ scenario:
 mqtt:
   local:
     retained: true
+  contracts:
+    - name: generic_device_retained_state
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/demo/site/lab/device/{device_id}/command
+      state_topic: fleet/demo/site/lab/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [online, sample_interval_seconds]
 
 devices:
   - id: env_sensor_01

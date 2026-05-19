@@ -1,4 +1,38 @@
 services:
+  roomci-serve:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command:
+      - serve
+      - --config
+      - /scenarios/generic_mqtt_retained_state.yaml
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --mqtt-port
+      - "1883"
+      - --allow-non-loopback
+    volumes:
+      - ../examples:/scenarios:ro
+
+  external-controller:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    entrypoint: ["/bin/sh"]
+    command:
+      - /controllers/http_poc_controller.sh
+    environment:
+      ROOMCI_URL: http://roomci-serve:8080
+      REPORT_DIR: /reports
+    depends_on:
+      - roomci-serve
+    volumes:
+      - ../examples/controllers:/controllers:ro
+      - ../reports:/reports
+
   scenario-smoke:
     build:
       context: ..

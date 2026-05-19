@@ -14,7 +14,7 @@
 | Phase 7 | `done` | Production readiness (docs, coverage, CLI, CI) | None | `phase7/phase_status.md` |
 | Phase 8 | `done` | Public release and interview polish | None | `phase8/phase_status.md` |
 | Phase 9 | `done` | Generic MQTT contract positioning | None | `phase9/phase_status.md` |
-| Phase 10 | `todo` | Pre-adoption PoC productization with external endpoints | None | `phase10/phase_status.md` |
+| Phase 10 | `done` | Pre-adoption PoC productization with HTTP serve, black-box controller E2E, MQTT QoS0 ingress, configurable contracts, and PoC docs | None | `phase10/phase_status.md` |
 
 ## Update Rules
 

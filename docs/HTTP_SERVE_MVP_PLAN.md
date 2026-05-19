@@ -4,7 +4,7 @@
 
 Turn `roomci serve` into a localhost-bound virtual system that external tests can drive before full MQTT-compatible serve mode exists.
 
-This is a plan, not the current implementation. Today, `roomci serve --config <scenario> --check` validates configuration and exits; long-running adapters are not enabled yet.
+This document records the Phase 10 serve-mode direction. The first implementation step now starts a localhost-bound HTTP control/report API from `roomci serve --config <scenario>`, while `--check` still validates configuration and exits.
 
 ## Why HTTP First
 
@@ -32,6 +32,14 @@ GET /reports/latest?format=markdown
 GET /reports/latest?format=junit
 ```
 
+The current implementation also exposes explicit report paths:
+
+```txt
+GET /reports/latest.json
+GET /reports/latest.md
+GET /reports/latest.junit.xml
+```
+
 ## What This Enables
 
 An external test can:
@@ -43,16 +51,17 @@ An external test can:
 5. Read `GET /timeline` and `GET /state`.
 6. Collect `GET /reports/latest` for CI.
 
-## What MQTT-compatible Serve Mode Requires Later
+The current black-box PoC uses `make compose-poc`. Docker Compose starts `roomci serve` and then runs `examples/controllers/http_poc_controller.sh` as a separate controller process that only talks to the HTTP API.
 
-MQTT-compatible serve mode should be added after the HTTP surface is stable. It requires:
+## MQTT-compatible Serve Mode Boundary
 
-- choosing embedded broker versus broker adapter
+The current `--mqtt-port` surface supports a narrow PoC subset: MQTT 3.1.1 `CONNECT` and QoS0 `PUBLISH` with JSON object payloads. It updates retained state through configured `mqtt.contracts`, and the result is observed through the HTTP state/report API.
+
+Full broker compatibility still requires:
+
 - a supported MQTT subset document
-- configurable command/state topic mappings
-- retained message behavior exposed through the same report model
-- local/cloud broker fault behavior
-- external client tests
 - clear non-goals around TLS, ACLs, clustering, and full MQTT conformance
+- MQTT subscriber replay if external subscription is required
+- QoS1/QoS2 wire-level behavior if required by the customer contract
 
-The product claim should remain "QA contract emulator" until a real MQTT compatibility surface is implemented and tested.
+The product claim should remain "QA contract emulator" rather than "production MQTT broker."

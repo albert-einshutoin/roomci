@@ -36,6 +36,14 @@ pub enum ScenarioError {
     InvalidStepKind,
     #[error("assertion must contain a supported condition")]
     InvalidAssertionKind,
+    #[error("unsupported MQTT adapter declaration {0}")]
+    UnsupportedMqttAdapter(String),
+    #[error("MQTT contract {0} is missing command_topic or state_topic")]
+    MissingMqttTopicMapping(String),
+    #[error("ambiguous MQTT command topic mapping {0}")]
+    AmbiguousMqttMapping(String),
+    #[error("MQTT contract {0} uses unsupported device_id_from_topic strategy {1}")]
+    UnsupportedMqttDeviceIdStrategy(String, String),
     #[error(transparent)]
     DeviceModel(#[from] DeviceModelError),
     #[error(transparent)]
@@ -120,6 +128,8 @@ pub struct MqttConfig {
     pub local: BrokerConfig,
     #[serde(default)]
     pub cloud: BrokerConfig,
+    #[serde(default)]
+    pub contracts: Vec<MqttConnectionContract>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
@@ -128,6 +138,33 @@ pub struct BrokerConfig {
     pub retained: bool,
     #[serde(default)]
     pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct MqttConnectionContract {
+    pub name: String,
+    #[serde(default = "default_mqtt_adapter")]
+    pub adapter: String,
+    pub command_topic: String,
+    pub state_topic: String,
+    #[serde(default = "default_device_id_strategy")]
+    pub device_id_from_topic: String,
+    #[serde(default)]
+    pub payload: MqttPayloadExpectation,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+pub struct MqttPayloadExpectation {
+    #[serde(default)]
+    pub required_fields: Vec<String>,
+}
+
+fn default_mqtt_adapter() -> String {
+    "mqtt_v3_qos0_subset".to_string()
+}
+
+fn default_device_id_strategy() -> String {
+    "placeholder:{device_id}".to_string()
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -284,6 +321,7 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
     let ops = OpsModel::try_from_config(&scenario.alerts)?;
     lighting.assert_scene_targets_exist()?;
     ops.validate_sources(|contact_id| contacts.has_contact(contact_id))?;
+    validate_mqtt_contracts(&scenario.mqtt.contracts)?;
 
     for fault in &scenario.faults {
         if let Some(at) = &fault.at {
@@ -366,6 +404,45 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
         }
     }
 
+    Ok(())
+}
+
+fn validate_mqtt_contracts(contracts: &[MqttConnectionContract]) -> Result<(), ScenarioError> {
+    let mut command_topics = BTreeMap::<String, String>::new();
+    for contract in contracts {
+        if contract.adapter != "mqtt_v3_qos0_subset" {
+            return Err(ScenarioError::UnsupportedMqttAdapter(
+                contract.adapter.clone(),
+            ));
+        }
+        if contract.command_topic.trim().is_empty() || contract.state_topic.trim().is_empty() {
+            return Err(ScenarioError::MissingMqttTopicMapping(
+                contract.name.clone(),
+            ));
+        }
+        if contract.device_id_from_topic != "placeholder:{device_id}" {
+            return Err(ScenarioError::UnsupportedMqttDeviceIdStrategy(
+                contract.name.clone(),
+                contract.device_id_from_topic.clone(),
+            ));
+        }
+        if !contract.command_topic.contains("{device_id}")
+            || !contract.state_topic.contains("{device_id}")
+        {
+            return Err(ScenarioError::UnsupportedMqttDeviceIdStrategy(
+                contract.name.clone(),
+                "missing {device_id} placeholder".to_string(),
+            ));
+        }
+        if let Some(existing) =
+            command_topics.insert(contract.command_topic.clone(), contract.name.clone())
+        {
+            return Err(ScenarioError::AmbiguousMqttMapping(format!(
+                "{} used by {} and {}",
+                contract.command_topic, existing, contract.name
+            )));
+        }
+    }
     Ok(())
 }
 
@@ -591,6 +668,67 @@ assertions:
             error,
             ScenarioError::DeviceModel(roomci_device_model::DeviceModelError::UnknownContact(_))
         ));
+    }
+
+    #[test]
+    fn validates_mqtt_connection_contracts() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: valid_mqtt_contract
+mqtt:
+  contracts:
+    - name: device_state
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/demo/device/{device_id}/command
+      state_topic: fleet/demo/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [online]
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+        )
+        .unwrap();
+
+        validate_scenario(&scenario).unwrap();
+    }
+
+    #[test]
+    fn rejects_ambiguous_mqtt_connection_contracts() {
+        let scenario: ScenarioFile = serde_yaml::from_str(
+            r#"
+version: "0.1"
+scenario:
+  name: invalid_mqtt_contract
+mqtt:
+  contracts:
+    - name: first
+      command_topic: fleet/demo/device/{device_id}/command
+      state_topic: fleet/demo/device/{device_id}/state
+    - name: second
+      command_topic: fleet/demo/device/{device_id}/command
+      state_topic: fleet/demo/device/{device_id}/shadow
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+        )
+        .unwrap();
+
+        let error = validate_scenario(&scenario).unwrap_err();
+
+        assert!(matches!(error, ScenarioError::AmbiguousMqttMapping(_)));
     }
 
     #[test]

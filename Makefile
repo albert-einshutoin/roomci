@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -67,6 +67,8 @@ verify:
 		/scenarios/generic_mqtt_duplicate_delivery.yaml
 	docker compose -f compose/docker-compose.yml build scenario-smoke
 	docker compose -f compose/docker-compose.yml run --rm scenario-smoke
+	docker compose -f compose/docker-compose.yml build roomci-serve external-controller
+	docker compose -f compose/docker-compose.yml run --rm external-controller
 	docker compose -f compose/docker-compose.yml down
 
 docker-demo:
@@ -82,6 +84,11 @@ docker-demo:
 		/scenarios/commissioning_checklist.yaml \
 		/scenarios/generic_mqtt_retained_state.yaml \
 		/scenarios/generic_mqtt_duplicate_delivery.yaml
+
+compose-poc:
+	docker compose -f compose/docker-compose.yml build roomci-serve external-controller
+	docker compose -f compose/docker-compose.yml run --rm external-controller
+	docker compose -f compose/docker-compose.yml down
 
 clean-reports:
 	rm -f reports/*.json reports/*.md reports/*.xml

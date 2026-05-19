@@ -68,6 +68,9 @@ make demo-hospitality
 # Generic MQTT contract demo
 make demo-generic-mqtt
 
+# Black-box serve-mode PoC with an external controller container
+make compose-poc
+
 # Full local verification
 make verify
 
@@ -100,6 +103,15 @@ cargo run --release -- run --verbose examples/edge_server_failover.yaml
 # Service-mode config check
 cargo run --release -- serve --config examples/local_first_cloud_outage.yaml --check
 
+# Start localhost HTTP control/report API
+cargo run --release -- serve --config examples/generic_mqtt_retained_state.yaml --port 8080
+
+# Start HTTP plus minimal MQTT ingress for external PoC clients
+cargo run --release -- serve \
+  --config examples/generic_mqtt_retained_state.yaml \
+  --port 8080 \
+  --mqtt-port 1883
+
 # Or use the Docker image
 docker build -t roomci:latest .
 docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
@@ -113,6 +125,7 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 | Curated full demo | General product review | `make demo` |
 | Hospitality domain pack | NOT A HOTEL-facing interview walkthrough | `make demo-hospitality` |
 | Generic MQTT contracts | MQTT / edge-device platform teams | `make demo-generic-mqtt` |
+| Serve-mode PoC | Teams validating external-controller integration shape | `make compose-poc` |
 
 ## Passing demo scenarios
 
@@ -163,9 +176,63 @@ roomci validate <scenarios...>
 
 roomci serve --config <scenario> --check
   validate service-mode configuration without starting a long-running process
+
+roomci serve --config <scenario>
+  start a localhost-bound HTTP control/report API
+
+roomci serve --config <scenario> --mqtt-port <port>
+  also start the minimal MQTT 3.1.1 CONNECT + QoS0 PUBLISH PoC ingress
 ```
 
 Exit codes: `0` (all scenarios passed), `1` (one or more assertions failed), `2` (load, validate, or runtime error).
+
+## Serve-mode HTTP API
+
+`roomci serve` starts on `127.0.0.1:8080` by default. It refuses non-loopback hosts unless `--allow-non-loopback` is passed.
+
+Current HTTP endpoints:
+
+- `GET /health`
+- `GET /scenario`
+- `GET /state`
+- `GET /timeline`
+- `POST /fault`
+- `POST /run`
+- `POST /finish`
+- `GET /reports/latest`
+- `GET /reports/latest.json`
+- `GET /reports/latest.md`
+- `GET /reports/latest.junit.xml`
+
+This is a local PoC integration surface, not a production API or MQTT broker replacement.
+
+## Serve-mode MQTT PoC
+
+`roomci serve --mqtt-port <port>` enables a minimal MQTT-shaped ingress for external PoC clients. It supports MQTT 3.1.1 `CONNECT` and QoS0 `PUBLISH` with JSON object payloads. Published topics are matched against `mqtt.contracts` in the scenario file, and matching payloads update retained state visible through the HTTP state and report endpoints.
+
+Example contract:
+
+```yaml
+mqtt:
+  contracts:
+    - name: generic_device_retained_state
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/demo/site/lab/device/{device_id}/command
+      state_topic: fleet/demo/site/lab/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [online, sample_interval_seconds]
+```
+
+The supported subset is documented in [`docs/MQTT_SERVE_SUBSET.md`](docs/MQTT_SERVE_SUBSET.md). The integration checklist is in [`docs/PRE_ADOPTION_POC_CHECKLIST.md`](docs/PRE_ADOPTION_POC_CHECKLIST.md).
+
+The black-box PoC path is:
+
+```bash
+make compose-poc
+```
+
+That command starts `roomci serve` in Docker Compose, runs `examples/controllers/http_poc_controller.sh` as a separate controller service, drives the HTTP API, and writes JSON, Markdown, and JUnit reports under `reports/`.
 
 ## Quality gates
 
@@ -177,7 +244,7 @@ Exit codes: `0` (all scenarios passed), `1` (one or more assertions failed), `2`
 - `cargo doc --workspace --no-deps` (`RUSTDOCFLAGS=-D warnings`)
 - `cargo tarpaulin --workspace --fail-under 80`
 
-Current measurements: **69 tests** pass, **86.57%** line coverage.
+Current measurements: **84 tests** pass, **84.47%** line coverage.
 
 ## Core concept
 

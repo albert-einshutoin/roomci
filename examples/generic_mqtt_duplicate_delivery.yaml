@@ -7,6 +7,14 @@ scenario:
 mqtt:
   local:
     retained: true
+  contracts:
+    - name: generic_device_retained_state
+      adapter: mqtt_v3_qos0_subset
+      command_topic: plant/demo/line/a/device/{device_id}/command
+      state_topic: plant/demo/line/a/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [enabled, target_pressure_kpa]
 
 devices:
   - id: pump_controller_01
