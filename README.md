@@ -18,9 +18,49 @@ It is designed as a **LocalStack-like emulator**, but for smart-home and buildin
 
 > Reproduce smart-home field failures before guests experience them.
 
+## Why this exists
+
+Smart-home quality in hospitality is not only whether a device command works. It is whether the stay experience survives cloud outages, edge failures, field commissioning gaps, lighting scene drift, access-permission drift, and operations escalation.
+
+`roomci` turns those failure modes into repeatable scenarios that can run locally, in Docker, or in CI.
+
+## Try the strongest demo
+
+Run the local-first outage scenario with a verbose timeline:
+
+```bash
+cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml --verbose
+```
+
+Then run the intentional failure-report demo:
+
+```bash
+cargo run -p roomci-cli -- run examples/dali_scene_partial_failure.yaml \
+  --report-md reports/dali_scene_partial_failure.md
+```
+
+Expected result: `roomci run` exits with code `1` and writes a guest-impact report.
+
+Report excerpt:
+
+```text
+Result: failed
+scene_consistency:welcome
+DALI-like scene consistency violation: D411S10 expected level 60, actual 0
+Guest impact: Lighting scene did not match intended guest ambience.
+```
+
+For the full interview walkthrough, see [`docs/INTERVIEW_DEMO.md`](docs/INTERVIEW_DEMO.md). For the product philosophy, see [`docs/DESIGN_PRINCIPLES.md`](docs/DESIGN_PRINCIPLES.md).
+
 ## Quick start
 
 ```bash
+# Fast interview demo
+make demo
+
+# Full local verification
+make verify
+
 # Build the workspace
 cargo build --workspace --release
 

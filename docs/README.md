@@ -10,6 +10,8 @@ its own.
 |---|---|---|
 | 00 | [Executive summary](00_executive_summary.md) | One-page overview of roomci, who it is for, and how it is used |
 | 19 | [Interview positioning](19_interview_positioning.md) | NOT A HOTEL casual-interview narrative and demo scenarios |
+| Demo | [Interview demo](INTERVIEW_DEMO.md) | Three-minute pitch, ten-minute walkthrough, expected questions |
+| Principles | [Design principles](DESIGN_PRINCIPLES.md) | Product philosophy and scope boundaries |
 
 ## Product
 
