@@ -18,7 +18,7 @@
 | `08_notahotel_evaluation_path_task.md` | `todo` | Unassigned | None yet | Preserve a strong NOT A HOTEL-style evaluation path without claiming private compatibility |
 | `09_dual_track_positioning_task.md` | `todo` | Unassigned | None yet | Keep industry-wide positioning and hospitality relevance mutually reinforcing |
 | `10_evaluation_evidence_pack_task.md` | `todo` | Unassigned | None yet | Give evaluators a measurable evidence pack instead of only product copy |
-| `11_adoption_maximization_review_task.md` | `todo` | Unassigned | None yet | Strictly review whether roomci can be shortlisted by NOT A HOTEL and broader IoT/SmartHome teams |
+| `11_adoption_maximization_review_task.md` | `done` | Codex | `adoption_maximization_review.md`; `make compose-poc`; badge URL check; serve-runtime grep checks | Review scored current evaluator readiness and kept Phase 11 open with concrete blockers |
 
 ## Blockers
 
@@ -39,8 +39,8 @@
 | Generic IoT/SmartHome evaluator checklist exists | `todo` | None yet |
 | Dual-track positioning is documented | `todo` | None yet |
 | Evaluation evidence pack exists | `todo` | None yet |
-| Adoption maximization review completed | `todo` | None yet |
+| Adoption maximization review completed | `done` | `adoption_maximization_review.md` |
 
 ## Current Recommendation
 
-Start with Task 01 and Task 02 before new protocol work. The product cannot credibly compete as a first-choice emulator if README/CI claims are inconsistent or if protocol support levels are ambiguous. Then implement Task 08 and Task 09 before broad public copy changes, so the industry-wide narrative continues to maximize NOT A HOTEL relevance. After that, implement the adapter contract kit, external protocol depth, customer PoC packs, evidence pack, and final adoption review.
+Start with Task 01 and Task 02 before new protocol work. The product cannot credibly compete as a first-choice emulator if README/CI claims are inconsistent or if protocol support levels are ambiguous. Then implement Task 08 and Task 09 before broad public copy changes, so the industry-wide narrative continues to maximize NOT A HOTEL relevance. The Task 11 adoption review recommends closing public badge truthfulness, protocol support matrix, NOT A HOTEL evaluator guide, adapter contract kit, Phase 12 runtime hardening, and evidence pack before asking for serious company evaluation.
