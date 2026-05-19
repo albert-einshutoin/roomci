@@ -19,6 +19,10 @@ Local-first Smart Home QA & Operations Emulator for CI
 | Phase 4 | Ops/BMS mock | Contact alerts trigger Slack/phone/ticket/runbook mock outputs |
 | Phase 5 | Docker and CI packaging | Docker image, Compose, and GitHub Actions examples execute the demos |
 | Phase 6 | Reliability depth | Edge failover, network/WAN failover, comfort automation, and future integrations |
+| Phase 7 | Production readiness | Docs, coverage, CLI, and CI quality gates are hardened |
+| Phase 8 | Public release and interview polish | Public claims, demos, license, and release gates are honest and reproducible |
+| Phase 9 | Generic MQTT contract positioning | Product is reframed as a generic MQTT / edge / device QA contract emulator |
+| Phase 10 | Pre-adoption PoC productization | External clients can connect to localhost endpoints and produce CI-ready reports |
 
 ## Progress Management
 
