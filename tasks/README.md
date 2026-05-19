@@ -23,6 +23,8 @@ Local-first Smart Home QA & Operations Emulator for CI
 | Phase 8 | Public release and interview polish | Public claims, demos, license, and release gates are honest and reproducible |
 | Phase 9 | Generic MQTT contract positioning | Product is reframed as a generic MQTT / edge / device QA contract emulator |
 | Phase 10 | Pre-adoption PoC productization | External clients can connect to localhost endpoints and produce CI-ready reports |
+| Phase 11 | Integration-ready emulator platform | Company-specific specs can be mapped through contracts, PoC packs, and external protocol endpoints |
+| Phase 12 | Serve runtime hardening and release plumbing | Existing serve endpoints survive evaluator-style concurrency, malformed clients, and public release checks |
 
 ## Progress Management
 
