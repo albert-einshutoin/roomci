@@ -5,22 +5,26 @@
 [![Coverage](https://img.shields.io/badge/coverage-86%25-brightgreen.svg)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Local-first Smart Home QA & Operations Emulator for CI**
+**MQTT / Edge / Device QA Contract Emulator for CI**
 
-`roomci` is a Docker-friendly emulator for reproducing smart-home commissioning, local-first control, field QA, BMS alerting, and operations scenarios without real devices or an on-site environment.
+`roomci` is a Docker-friendly **QA contract emulator** for MQTT-based edge, smart-home, and building-automation systems. It turns command/state contracts, local-first failure modes, device-adapter behavior, commissioning checks, and operations escalation into repeatable local and CI scenarios.
 
-It is designed as a **LocalStack-like emulator**, but for smart-home and building-automation systems:
+It is a **behavioral emulator**: it validates the behavior a controller, edge service, device adapter, or operations flow should satisfy without requiring real devices or an on-site environment.
+
+It is designed as a **LocalStack-like emulator**, but for MQTT/edge/device QA:
 
 - LocalStack: emulate cloud services for local and CI testing.
-- roomci: emulate a smart-home control stack for local and CI testing.
+- roomci: emulate device, edge, MQTT, and operations contracts for local and CI testing.
 
 ## Tagline
 
-> Reproduce smart-home field failures before guests experience them.
+> Reproduce edge-device and smart-home field failures before users experience them.
 
 ## Why this exists
 
-Smart-home quality in hospitality is not only whether a device command works. It is whether the stay experience survives cloud outages, edge failures, field commissioning gaps, lighting scene drift, access-permission drift, and operations escalation.
+MQTT and edge-device quality is not only whether one command works. It is whether state synchronization, retained messages, local-first control, edge failover, device-adapter behavior, and operations escalation survive realistic failure modes.
+
+Hospitality smart home is the strongest included domain pack because failures affect guest experience directly: cloud outages, lighting scene drift, access-permission drift, comfort automation, and BMS escalation. `roomci` keeps that NOT A HOTEL-facing depth while framing it as one domain-specific application of a reusable QA contract emulator.
 
 `roomci` turns those failure modes into repeatable scenarios that can run locally, in Docker, or in CI.
 
@@ -50,13 +54,19 @@ DALI-like scene consistency violation: D411S10 expected level 60, actual 0
 Guest impact: Lighting scene did not match intended guest ambience.
 ```
 
-For the full interview walkthrough, see [`docs/INTERVIEW_DEMO.md`](docs/INTERVIEW_DEMO.md). For the product philosophy, see [`docs/DESIGN_PRINCIPLES.md`](docs/DESIGN_PRINCIPLES.md).
+For the full interview walkthrough, see [`docs/INTERVIEW_DEMO.md`](docs/INTERVIEW_DEMO.md). For product positioning, see [`docs/PRODUCT_POSITIONING.md`](docs/PRODUCT_POSITIONING.md), [`docs/DOMAIN_PACKS.md`](docs/DOMAIN_PACKS.md), and [`docs/GENERIC_MQTT_CONTRACTS.md`](docs/GENERIC_MQTT_CONTRACTS.md).
 
 ## Quick start
 
 ```bash
-# Fast interview demo
+# Full curated demo
 make demo
+
+# Hospitality / NOT A HOTEL-facing domain demo
+make demo-hospitality
+
+# Generic MQTT contract demo
+make demo-generic-mqtt
 
 # Full local verification
 make verify
@@ -96,10 +106,20 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
   run /scenarios/starlink_failover.yaml
 ```
 
+## Demo paths
+
+| Demo | Audience | Command |
+|---|---|---|
+| Curated full demo | General product review | `make demo` |
+| Hospitality domain pack | NOT A HOTEL-facing interview walkthrough | `make demo-hospitality` |
+| Generic MQTT contracts | MQTT / edge-device platform teams | `make demo-generic-mqtt` |
+
 ## Passing demo scenarios
 
 | Scenario | What it shows |
 |---|---|
+| `examples/generic_mqtt_retained_state.yaml` | Generic MQTT command/state contract updates retained state without hospitality naming. |
+| `examples/generic_mqtt_duplicate_delivery.yaml` | Duplicate MQTT delivery remains idempotent for retained command/state behavior. |
 | `examples/local_first_cloud_outage.yaml` | iPad → local MQTT → edge → device works while the cloud broker is offline; retained state survives the outage. |
 | `examples/edge_server_failover.yaml` | Primary edge loses power; standby is promoted and routes the next command. |
 | `examples/modbus_floor_heating.yaml` | Floor-heating setpoint reaches the Modbus register with 0.1 °C precision. |
@@ -161,7 +181,17 @@ Current measurements: **69 tests** pass, **86.57%** line coverage.
 
 ## Core concept
 
-Modern hospitality smart homes are not just IoT devices. They combine:
+The reusable core is a QA contract emulator:
+
+- scenario definitions
+- MQTT command/state and retained-state contracts
+- edge routing and failover behavior
+- failure injection
+- device and operations models
+- JSON, Markdown, and JUnit reports
+- CI execution through Cargo, Docker, and Compose
+
+Hospitality smart homes are a high-signal domain pack on top of that core. They combine:
 
 - iPad / mobile controllers
 - local MQTT brokers
@@ -172,27 +202,30 @@ Modern hospitality smart homes are not just IoT devices. They combine:
 - network segmentation, WAN failover, Starlink-style backup paths
 - commissioning, field QA, maintenance, and continuous operation
 
-`roomci` makes these dependencies reproducible in CI so teams can test failure scenarios before guests experience them.
+`roomci` makes these dependencies reproducible in CI so teams can test failure scenarios before users or guests experience them.
 
 ## Primary use cases
 
-1. **Local-first control QA** — verify that local iPad → local MQTT → edge → device control still works when the cloud is unavailable.
-2. **Commissioning QA** — turn field commissioning checks into reusable YAML scenarios.
-3. **Building-automation protocol simulation** — DALI-like lighting, Modbus registers, contact I/O alerts, HVAC, KNX-like legacy bus behavior.
-4. **BMS / operations alert simulation** — verify Slack / phone-call / ticket / runbook flows for emergency alerts and recoveries.
-5. **Network failure simulation** — ISP outage, Starlink-style failover, VLAN isolation issues, local-only operation.
-6. **Comfort automation simulation** — discomfort-index targets, HVAC auto mode, user override, room-specific tuning.
+1. **Generic MQTT contract QA** — verify command/state topics, retained state, duplicate delivery, and local broker availability.
+2. **Local-first control QA** — verify that local controller → local MQTT → edge → device control still works when the cloud is unavailable.
+3. **Commissioning QA** — turn field commissioning checks into reusable YAML scenarios.
+4. **Building-automation protocol simulation** — DALI-like lighting, Modbus registers, contact I/O alerts, HVAC, KNX-like legacy bus behavior.
+5. **BMS / operations alert simulation** — verify Slack / phone-call / ticket / runbook flows for emergency alerts and recoveries.
+6. **Network failure simulation** — ISP outage, Starlink-style failover, VLAN isolation issues, local-only operation.
+7. **Comfort automation simulation** — discomfort-index targets, HVAC auto mode, user override, room-specific tuning.
 
 ## What this is not
 
 `roomci` is not intended to be:
 
+- a production MQTT broker or MQTT broker replacement
+- a protocol conformance suite
 - a full KNX, DALI, BACnet, or Matter implementation
 - a replacement for production smart-home controllers
 - a real BMS product
 - a production-grade SIP / PBX implementation
 
-The goal is to model enough behavior to make smart-home QA, field failures, commissioning, and operations flows testable in local and CI environments.
+The goal is to model enough behavior to make MQTT/edge/device contracts, smart-home QA, field failures, commissioning, and operations flows testable in local and CI environments.
 
 ## Directory structure
 
@@ -201,14 +234,14 @@ roomci/
   crates/                    Rust workspace
     roomci-cli/              CLI entry point (binary)
     roomci-core/             scenario runner (virtual time, assertions)
-    roomci-mqtt/             local + cloud MQTT broker model
+    roomci-mqtt/             local + cloud MQTT behavior model
     roomci-edge/             redundant edge-server emulator
     roomci-device-model/     Modbus, DALI lighting, contact I/O
     roomci-fault/            fault scheduling primitives
     roomci-ops/              BMS / Slack / phone / runbook escalation
     roomci-report/           JSON / Markdown / JUnit renderers
     roomci-scenario/         YAML scenario loader + validator
-  examples/                  8 passing demos and 1 failure-report demo
+  examples/                  generic MQTT, hospitality, building automation, and failure-report demos
   schemas/scenario.schema.json   JSON Schema for scenario files
   docs/                      architecture, protocols, scenario spec
   tasks/                     phase-by-phase build log
@@ -218,4 +251,6 @@ roomci/
 
 ## Positioning
 
-> I analyzed public NOT A HOTEL smart-home hiring pages, videos, and engineering articles. The public materials suggest their smart-home work is not just IoT device control; it is a local-first, MQTT-driven, edge-server-based, building-automation and operations platform. I designed `roomci` as a Docker-friendly external QA emulator to turn field QA, commissioning knowledge, and operational failure modes into repeatable CI scenarios.
+> I analyzed public NOT A HOTEL smart-home hiring pages, videos, and engineering articles. The public materials suggest their smart-home work is not just IoT device control; it is a local-first, MQTT-driven, edge-server-based, building-automation and operations platform. I designed `roomci` as a Docker-friendly QA contract emulator with hospitality smart home as the strongest domain pack, while keeping the reusable core applicable to generic MQTT, edge-device, BMS, and building-automation teams.
+
+NOT A HOTEL compatibility is not claimed. A real integration would require their actual MQTT topics, payload schemas, device/register maps, BMS/webhook contracts, authentication model, and acceptance criteria.

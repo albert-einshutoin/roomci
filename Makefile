@@ -1,6 +1,6 @@
-.PHONY: demo verify docker-demo clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo clean-reports
 
-PASSING_SCENARIOS := \
+HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
 	examples/edge_server_failover.yaml \
 	examples/modbus_floor_heating.yaml \
@@ -9,6 +9,14 @@ PASSING_SCENARIOS := \
 	examples/comfort_auto_mode.yaml \
 	examples/access_permission_drift.yaml \
 	examples/commissioning_checklist.yaml
+
+GENERIC_MQTT_SCENARIOS := \
+	examples/generic_mqtt_retained_state.yaml \
+	examples/generic_mqtt_duplicate_delivery.yaml
+
+PASSING_SCENARIOS := \
+	$(HOSPITALITY_SCENARIOS) \
+	$(GENERIC_MQTT_SCENARIOS)
 
 ALL_SCENARIOS := \
 	$(PASSING_SCENARIOS) \
@@ -24,6 +32,12 @@ demo:
 	status=$$?; \
 	set -e; \
 	test "$$status" -eq 1
+
+demo-hospitality:
+	cargo run -p roomci-cli -- run $(HOSPITALITY_SCENARIOS)
+
+demo-generic-mqtt:
+	cargo run -p roomci-cli -- run $(GENERIC_MQTT_SCENARIOS)
 
 verify:
 	cargo fmt --all --check
@@ -48,7 +62,9 @@ verify:
 		/scenarios/starlink_failover.yaml \
 		/scenarios/comfort_auto_mode.yaml \
 		/scenarios/access_permission_drift.yaml \
-		/scenarios/commissioning_checklist.yaml
+		/scenarios/commissioning_checklist.yaml \
+		/scenarios/generic_mqtt_retained_state.yaml \
+		/scenarios/generic_mqtt_duplicate_delivery.yaml
 	docker compose -f compose/docker-compose.yml build scenario-smoke
 	docker compose -f compose/docker-compose.yml run --rm scenario-smoke
 	docker compose -f compose/docker-compose.yml down
@@ -63,7 +79,9 @@ docker-demo:
 		/scenarios/starlink_failover.yaml \
 		/scenarios/comfort_auto_mode.yaml \
 		/scenarios/access_permission_drift.yaml \
-		/scenarios/commissioning_checklist.yaml
+		/scenarios/commissioning_checklist.yaml \
+		/scenarios/generic_mqtt_retained_state.yaml \
+		/scenarios/generic_mqtt_duplicate_delivery.yaml
 
 clean-reports:
 	rm -f reports/*.json reports/*.md reports/*.xml

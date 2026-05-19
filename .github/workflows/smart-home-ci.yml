@@ -67,7 +67,9 @@ jobs:
             /scenarios/starlink_failover.yaml \
             /scenarios/comfort_auto_mode.yaml \
             /scenarios/access_permission_drift.yaml \
-            /scenarios/commissioning_checklist.yaml
+            /scenarios/commissioning_checklist.yaml \
+            /scenarios/generic_mqtt_retained_state.yaml \
+            /scenarios/generic_mqtt_duplicate_delivery.yaml
 
       - name: Run passing demo scenarios
         run: |
@@ -79,7 +81,9 @@ jobs:
             starlink_failover.yaml \
             comfort_auto_mode.yaml \
             access_permission_drift.yaml \
-            commissioning_checklist.yaml
+            commissioning_checklist.yaml \
+            generic_mqtt_retained_state.yaml \
+            generic_mqtt_duplicate_delivery.yaml
           do
             name="${scenario%.yaml}"
             docker run --rm \

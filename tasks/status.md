@@ -13,7 +13,7 @@
 | Phase 6 | `done` | Reliability depth and future integrations | None | `phase6/phase_status.md` |
 | Phase 7 | `done` | Production readiness (docs, coverage, CLI, CI) | None | `phase7/phase_status.md` |
 | Phase 8 | `done` | Public release and interview polish | None | `phase8/phase_status.md` |
-| Phase 9 | `todo` | Generic MQTT contract positioning | None | `phase9/phase_status.md` |
+| Phase 9 | `done` | Generic MQTT contract positioning | None | `phase9/phase_status.md` |
 | Phase 10 | `todo` | Pre-adoption PoC productization with external endpoints | None | `phase10/phase_status.md` |
 
 ## Update Rules
@@ -25,6 +25,6 @@
 
 ## Current Recommendation
 
-Phase 9 should broaden `roomci` from a hospitality-focused smart-home portfolio project into a generic MQTT / edge / device QA contract emulator while preserving NOT A HOTEL-facing depth as a hospitality domain narrative.
+Phase 9 broadened `roomci` from a hospitality-focused smart-home portfolio project into a generic MQTT / edge / device QA contract emulator while preserving NOT A HOTEL-facing depth as a hospitality domain narrative.
 
 Phase 10 should then turn that contract emulator into a pre-adoption PoC product: a localhost-bound service that external clients can connect to, drive, observe, and collect CI-ready reports from without requiring private NOT A HOTEL protocol details.

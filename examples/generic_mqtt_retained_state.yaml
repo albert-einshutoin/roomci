@@ -1,0 +1,37 @@
+version: "0.1"
+scenario:
+  name: generic_mqtt_retained_state
+  description: Verify a generic MQTT edge-device command updates retained state.
+  tags: [mqtt, generic, retained-state, contract]
+
+mqtt:
+  local:
+    retained: true
+
+devices:
+  - id: env_sensor_01
+    type: sensor
+    protocol: mqtt
+    state:
+      online: false
+      sample_interval_seconds: 60
+
+steps:
+  - at: T
+    mqtt_publish:
+      client: edge_contract_test
+      topic: fleet/demo/site/lab/device/env_sensor_01/command
+      payload:
+        online: true
+        sample_interval_seconds: 30
+
+assertions:
+  - at: T+1s
+    mqtt:
+      topic: fleet/demo/site/lab/device/env_sensor_01/state
+      retained:
+        online: true
+        sample_interval_seconds: 30
+  - at: T+2s
+    target: mqtt.local
+    condition: available

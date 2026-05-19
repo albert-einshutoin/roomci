@@ -2,18 +2,18 @@
 
 ## Phase Status
 
-`todo`
+`done`
 
 ## Task Board
 
 | Task | Status | Owner | Evidence | Notes |
 |---|---|---|---|---|
-| `01_readme_positioning_task.md` | `todo` | Codex | Pending | Reframe product as generic core + hospitality domain |
-| `02_product_positioning_docs_task.md` | `todo` | Codex | Pending | Add product category and scope boundary docs |
-| `03_domain_packs_task.md` | `todo` | Codex | Pending | Map examples to reusable core/domain packs |
-| `04_generic_mqtt_contract_examples_task.md` | `todo` | Codex | Pending | Add generic MQTT examples that run |
-| `05_demo_targets_task.md` | `todo` | Codex | Pending | Add `demo-hospitality` and `demo-generic-mqtt` |
-| `06_http_serve_mvp_plan_task.md` | `todo` | Codex | Pending | Plan localhost-bound HTTP serve MVP |
+| `01_readme_positioning_task.md` | `done` | Codex | README now opens as an MQTT / edge / device QA contract emulator and uses behavioral emulator language | Keeps NOT A HOTEL as public-research/domain-pack context |
+| `02_product_positioning_docs_task.md` | `done` | Codex | Added `docs/PRODUCT_POSITIONING.md`; linked from README and docs index | Defines what roomci is and is not |
+| `03_domain_packs_task.md` | `done` | Codex | Added `docs/DOMAIN_PACKS.md` | Maps current examples to core/domain packs |
+| `04_generic_mqtt_contract_examples_task.md` | `done` | Codex | Added and validated `generic_mqtt_retained_state.yaml` and `generic_mqtt_duplicate_delivery.yaml` | `make demo-generic-mqtt` passes |
+| `05_demo_targets_task.md` | `done` | Codex | Added `demo-hospitality` and `demo-generic-mqtt` to `Makefile` | `make verify` includes generic MQTT examples through `PASSING_SCENARIOS` and `ALL_SCENARIOS` |
+| `06_http_serve_mvp_plan_task.md` | `done` | Codex | Added `docs/HTTP_SERVE_MVP_PLAN.md` | Documents HTTP-first serve plan without implementing or overclaiming MQTT compatibility |
 
 ## Blockers
 
@@ -23,8 +23,8 @@
 
 | Gate | Status | Evidence |
 |---|---|---|
-| Generic product positioning | `todo` | README and docs still primarily read as hospitality/smart-home |
-| NOT A HOTEL interview value preserved | `todo` | Interview docs exist; need to preserve while broadening README |
-| Generic MQTT examples | `todo` | Current examples are mostly hospitality/building-automation flavored |
-| Demo target split | `todo` | `make demo` exists; audience-specific demos do not |
-| Verification | `todo` | Run `make verify` after Phase 9 changes |
+| Generic product positioning | `done` | README and `docs/PRODUCT_POSITIONING.md` describe QA contract emulator and behavioral emulator scope |
+| NOT A HOTEL interview value preserved | `done` | README keeps NOT A HOTEL as public-research context and hospitality domain pack; interview docs remain linked |
+| Generic MQTT examples | `done` | `cargo run -q -p roomci-cli -- validate examples/generic_mqtt_retained_state.yaml examples/generic_mqtt_duplicate_delivery.yaml` passed |
+| Demo target split | `done` | `make demo-hospitality` and `make demo-generic-mqtt` passed |
+| Verification | `done` | `make verify` passed after Phase 9 changes |

@@ -38,6 +38,14 @@ services:
           --junit /reports/commissioning_checklist.xml \
           --report-md /reports/commissioning_checklist.md \
           --report-json /reports/commissioning_checklist.json &&
+        roomci run /scenarios/generic_mqtt_retained_state.yaml \
+          --junit /reports/generic_mqtt_retained_state.xml \
+          --report-md /reports/generic_mqtt_retained_state.md \
+          --report-json /reports/generic_mqtt_retained_state.json &&
+        roomci run /scenarios/generic_mqtt_duplicate_delivery.yaml \
+          --junit /reports/generic_mqtt_duplicate_delivery.xml \
+          --report-md /reports/generic_mqtt_duplicate_delivery.md \
+          --report-json /reports/generic_mqtt_duplicate_delivery.json &&
         roomci serve --config /scenarios/local_first_cloud_outage.yaml --check &&
         set +e &&
         roomci run /scenarios/dali_scene_partial_failure.yaml \

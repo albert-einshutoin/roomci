@@ -1,0 +1,44 @@
+version: "0.1"
+scenario:
+  name: generic_mqtt_duplicate_delivery
+  description: Verify duplicate MQTT delivery remains idempotent for retained command/state contracts.
+  tags: [mqtt, generic, qos1, duplicate-delivery, contract]
+
+mqtt:
+  local:
+    retained: true
+
+devices:
+  - id: pump_controller_01
+    type: actuator
+    protocol: mqtt
+    state:
+      enabled: false
+      target_pressure_kpa: 0
+
+faults:
+  - at: T
+    target: mqtt.local
+    type: duplicate_delivery
+    topic: plant/demo/line/a/device/pump_controller_01/command
+    count: 3
+
+steps:
+  - at: T+1s
+    mqtt_publish:
+      client: edge_contract_test
+      topic: plant/demo/line/a/device/pump_controller_01/command
+      payload:
+        enabled: true
+        target_pressure_kpa: 240
+
+assertions:
+  - at: T+2s
+    mqtt:
+      topic: plant/demo/line/a/device/pump_controller_01/state
+      retained:
+        enabled: true
+        target_pressure_kpa: 240
+  - at: T+3s
+    target: mqtt.local
+    condition: available
