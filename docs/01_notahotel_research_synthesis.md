@@ -1,6 +1,6 @@
 # 01. NOT A HOTEL Research Synthesis
 
-This document summarizes the design implications extracted from the hiring pages, video summaries, and smart-home engineering articles provided by the user.
+This document summarizes design implications extracted from public hiring pages, video summaries, smart-home engineering articles, and user-provided research notes. It should be read as product research and external interpretation, not as a claim about private NOT A HOTEL implementation details.
 
 ## Key observed themes
 
@@ -47,7 +47,7 @@ The team is scaling from roughly 10 locations toward many more. The articles emp
 
 NOT A HOTEL does not use one protocol everywhere. The direction is to pick the appropriate protocol per device class and failure domain.
 
-Observed stack and concepts:
+Publicly discussed or research-derived stack and concepts:
 
 - Go, TypeScript, Swift, Lua
 - Protocol Buffers, gRPC, TCP/IP, MQTT, RS485, Modbus, KNX, DALI, SIP

@@ -10,6 +10,14 @@ services:
           --junit /reports/local_first_cloud_outage.xml \
           --report-md /reports/local_first_cloud_outage.md \
           --report-json /reports/local_first_cloud_outage.json &&
+        roomci run /scenarios/edge_server_failover.yaml \
+          --junit /reports/edge_server_failover.xml \
+          --report-md /reports/edge_server_failover.md \
+          --report-json /reports/edge_server_failover.json &&
+        roomci run /scenarios/modbus_floor_heating.yaml \
+          --junit /reports/modbus_floor_heating.xml \
+          --report-md /reports/modbus_floor_heating.md \
+          --report-json /reports/modbus_floor_heating.json &&
         roomci run /scenarios/bms_sauna_emergency_alert.yaml \
           --junit /reports/bms_sauna_emergency_alert.xml \
           --report-md /reports/bms_sauna_emergency_alert.md \
@@ -21,7 +29,15 @@ services:
         roomci run /scenarios/comfort_auto_mode.yaml \
           --junit /reports/comfort_auto_mode.xml \
           --report-md /reports/comfort_auto_mode.md \
-          --report-json /reports/comfort_auto_mode.json
+          --report-json /reports/comfort_auto_mode.json &&
+        set +e &&
+        roomci run /scenarios/dali_scene_partial_failure.yaml \
+          --junit /reports/dali_scene_partial_failure.xml \
+          --report-md /reports/dali_scene_partial_failure.md \
+          --report-json /reports/dali_scene_partial_failure.json
+        status=$$?
+        set -e
+        test "$$status" -eq 1
     volumes:
       - ../examples:/scenarios:ro
       - ../reports:/reports

@@ -42,15 +42,16 @@ roomci run examples/local_first_cloud_outage.yaml
 
 Use this in CI.
 
-### 2. Server mode
+### 2. Future service mode
 
-Starts HTTP/MQTT/adapter endpoints for integration tests.
+Would start HTTP/MQTT/adapter endpoints for integration tests. This is not part of the current CLI.
 
 ```bash
+# planned, not implemented in v0.1
 roomci serve --config examples/house.yaml
 ```
 
-Use this for local development or backend/mobile E2E tests.
+Use this future mode for local development or backend/mobile E2E tests once implemented.
 
 ### 3. Compose stack mode
 

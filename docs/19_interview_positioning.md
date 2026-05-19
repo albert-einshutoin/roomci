@@ -2,7 +2,7 @@
 
 ## One-minute pitch
 
-I studied NOT A HOTEL's smart-home hiring materials, videos, and engineering articles. What stood out is that the smart home is not just device control; it is a local-first, MQTT-driven, edge-server-based, building-automation and operations system that protects the stay experience.
+I studied public NOT A HOTEL smart-home hiring materials, videos, and engineering articles. What stood out is that the smart home appears to be more than device control; it is a local-first, MQTT-driven, edge-server-based, building-automation and operations system that protects the stay experience.
 
 The hardest part is not only writing code. It is making field commissioning, device integration, BMS alerting, network failover, and guest-facing behavior reproducible as the number of sites grows.
 
@@ -12,7 +12,7 @@ The goal is not to replace production systems. The goal is to make field failure
 
 ## Japanese pitch
 
-NOT A HOTELのスマートホーム記事・採用情報・動画を見ると、単なるIoTデバイス制御ではなく、Local MQTT、Edge server、制御盤、Modbus、DALI、接点、BMS、Slack/電話通知、ネットワーク冗長化、空調自動化まで含めて、滞在体験を壊さないための総合システムを自社で作っていると理解しました。
+公開されているNOT A HOTELのスマートホーム記事・採用情報・動画を見ると、単なるIoTデバイス制御ではなく、Local MQTT、Edge server、制御盤、Modbus、DALI、接点、BMS、Slack/電話通知、ネットワーク冗長化、空調自動化まで含めて、滞在体験を壊さないための総合システムを自社で作っていると理解しました。
 
 特に、拠点数が増える中で、現地QAや施工・保守を人手だけでスケールさせるのではなく、仕組みとして再現可能にする必要があると感じました。
 

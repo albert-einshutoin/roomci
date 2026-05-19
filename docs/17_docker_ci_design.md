@@ -24,7 +24,6 @@ ghcr.io/albert-einshutoin/roomci:latest
 The single image includes:
 
 - scenario runner
-- HTTP server mode
 - MQTT behavior simulator
 - edge emulator
 - device mocks
@@ -59,9 +58,10 @@ docker run --rm \
   --junit /reports/roomci.xml
 ```
 
-Server mode:
+Future service mode:
 
 ```bash
+# planned, not implemented in v0.1
 docker run --rm \
   -p 8080:8080 \
   -p 1883:1883 \
@@ -74,31 +74,12 @@ docker run --rm \
 
 ```yaml
 services:
-  roomci:
-    image: ghcr.io/albert-einshutoin/roomci:latest
-    command: serve --config /scenarios/local_first_cloud_outage.yaml
-    ports:
-      - "8080:8080"
-      - "1883:1883"
-    volumes:
-      - ../examples:/scenarios
-
-  app-backend:
-    build: ../backend
-    environment:
-      ROOMCI_HTTP_URL: http://roomci:8080
-      ROOMCI_MQTT_URL: mqtt://roomci:1883
-    depends_on:
-      - roomci
-
-  scenario-test:
+  scenario-smoke:
     image: ghcr.io/albert-einshutoin/roomci:latest
     command: run /scenarios/local_first_cloud_outage.yaml --junit /reports/roomci.xml
     volumes:
       - ../examples:/scenarios
       - ../reports:/reports
-    depends_on:
-      - roomci
 ```
 
 ## GitHub Actions pattern

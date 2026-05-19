@@ -1,3 +1,4 @@
-This package contains planning and design documents generated from user-provided summaries and pasted article excerpts.
-It does not include source article text except where short paraphrased references are necessary for design decisions.
-Before publishing publicly, review names, examples, and claims for accuracy and ensure no proprietary or private implementation detail is included.
+This package is MIT licensed. See `LICENSE`.
+
+Some planning and design notes were generated from public materials, user-provided summaries, and short paraphrased references used for design decisions.
+Before publishing publicly, review names, examples, and claims for accuracy and ensure no proprietary or private implementation detail is implied.

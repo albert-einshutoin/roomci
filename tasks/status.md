@@ -12,6 +12,7 @@
 | Phase 5 | `done` | Docker and CI packaging | None | `phase5/phase_status.md` |
 | Phase 6 | `done` | Reliability depth and future integrations | None | `phase6/phase_status.md` |
 | Phase 7 | `done` | Production readiness (docs, coverage, CLI, CI) | None | `phase7/phase_status.md` |
+| Phase 8 | `done` | Public release and interview polish | None | `phase8/phase_status.md` |
 
 ## Update Rules
 
@@ -22,4 +23,4 @@
 
 ## Current Recommendation
 
-Phase 7 is complete: 66 tests pass, 85.46% line coverage, `cargo fmt`/`clippy`/`doc` clean, CI workflow runs full quality gates on PRs and main pushes, CLI supports multi-scenario aggregation with `--verbose`/`--quiet`/`--dry-run`, README carries badges + Quick Start + Demo Scenarios, and `schemas/scenario.schema.json` validates every example. Project is interview-ready.
+Phase 8 is complete: license metadata is consistent, README separates passing demos, intentional failure-report demo, and future milestones, unimplemented `roomci serve` references are marked planned/future, README claims are refreshed to 66 tests and 86.15% coverage, NOT A HOTEL-facing wording is framed as public research/external interpretation, and the final local release-readiness gate passed.

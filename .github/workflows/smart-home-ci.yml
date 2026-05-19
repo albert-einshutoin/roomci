@@ -69,46 +69,41 @@ jobs:
             /scenarios/access_permission_drift.yaml \
             /scenarios/commissioning_checklist.yaml
 
-      - name: Run local-first cloud outage scenario
+      - name: Run passing demo scenarios
         run: |
-          docker run --rm \
-            -v $PWD/examples:/scenarios:ro \
-            -v $PWD/reports:/reports \
-            roomci:ci \
-            run /scenarios/local_first_cloud_outage.yaml \
-            --junit /reports/local_first_cloud_outage.xml \
-            --report-md /reports/local_first_cloud_outage.md \
-            --report-json /reports/local_first_cloud_outage.json
+          for scenario in \
+            local_first_cloud_outage.yaml \
+            edge_server_failover.yaml \
+            modbus_floor_heating.yaml \
+            bms_sauna_emergency_alert.yaml \
+            starlink_failover.yaml \
+            comfort_auto_mode.yaml
+          do
+            name="${scenario%.yaml}"
+            docker run --rm \
+              -v $PWD/examples:/scenarios:ro \
+              -v $PWD/reports:/reports \
+              roomci:ci \
+              run "/scenarios/${scenario}" \
+              --junit "/reports/${name}.xml" \
+              --report-md "/reports/${name}.md" \
+              --report-json "/reports/${name}.json"
+          done
 
-      - name: Run BMS emergency alert scenario
+      - name: Run intentional failure-report scenario
         run: |
+          set +e
           docker run --rm \
             -v $PWD/examples:/scenarios:ro \
             -v $PWD/reports:/reports \
             roomci:ci \
-            run /scenarios/bms_sauna_emergency_alert.yaml \
-            --junit /reports/bms_sauna_emergency_alert.xml \
-            --report-md /reports/bms_sauna_emergency_alert.md \
-            --report-json /reports/bms_sauna_emergency_alert.json
-
-      - name: Run reliability depth scenarios
-        run: |
-          docker run --rm \
-            -v $PWD/examples:/scenarios:ro \
-            -v $PWD/reports:/reports \
-            roomci:ci \
-            run /scenarios/starlink_failover.yaml \
-            --junit /reports/starlink_failover.xml \
-            --report-md /reports/starlink_failover.md \
-            --report-json /reports/starlink_failover.json
-          docker run --rm \
-            -v $PWD/examples:/scenarios:ro \
-            -v $PWD/reports:/reports \
-            roomci:ci \
-            run /scenarios/comfort_auto_mode.yaml \
-            --junit /reports/comfort_auto_mode.xml \
-            --report-md /reports/comfort_auto_mode.md \
-            --report-json /reports/comfort_auto_mode.json
+            run /scenarios/dali_scene_partial_failure.yaml \
+            --junit /reports/dali_scene_partial_failure.xml \
+            --report-md /reports/dali_scene_partial_failure.md \
+            --report-json /reports/dali_scene_partial_failure.json
+          status=$?
+          set -e
+          test "$status" -eq 1
 
       - name: Upload roomci reports
         uses: actions/upload-artifact@v4
