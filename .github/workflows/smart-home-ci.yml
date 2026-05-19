@@ -77,7 +77,9 @@ jobs:
             modbus_floor_heating.yaml \
             bms_sauna_emergency_alert.yaml \
             starlink_failover.yaml \
-            comfort_auto_mode.yaml
+            comfort_auto_mode.yaml \
+            access_permission_drift.yaml \
+            commissioning_checklist.yaml
           do
             name="${scenario%.yaml}"
             docker run --rm \
@@ -89,6 +91,13 @@ jobs:
               --report-md "/reports/${name}.md" \
               --report-json "/reports/${name}.json"
           done
+
+      - name: Check service-mode config
+        run: |
+          docker run --rm \
+            -v $PWD/examples:/scenarios:ro \
+            roomci:ci \
+            serve --config /scenarios/local_first_cloud_outage.yaml --check
 
       - name: Run intentional failure-report scenario
         run: |

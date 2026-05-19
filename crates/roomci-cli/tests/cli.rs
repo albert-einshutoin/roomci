@@ -100,6 +100,21 @@ fn unknown_subcommand_exits_with_error() {
 }
 
 #[test]
+fn serve_check_validates_config_without_blocking() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("serve")
+        .arg("--config")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg("--check")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("serve config valid:"));
+}
+
+#[test]
 fn run_aggregates_multiple_scenarios() {
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
         .arg("run")

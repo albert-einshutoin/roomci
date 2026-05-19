@@ -119,6 +119,9 @@ struct RuntimeState {
     comfort_range: Option<(f64, f64)>,
     discomfort_by_target: BTreeMap<String, f64>,
     user_override_count: u32,
+    unexpected_access_users: Vec<String>,
+    commissioning_check_count: usize,
+    commissioning_site: Option<String>,
     timeline: Vec<TimelineEvent>,
 }
 
@@ -247,6 +250,9 @@ impl RuntimeState {
             comfort_range: comfort_range(&scenario.comfort),
             discomfort_by_target: discomfort_by_target(&scenario.sensors),
             user_override_count: 0,
+            unexpected_access_users: unexpected_access_users(&scenario.inputs),
+            commissioning_check_count: commissioning_check_count(&scenario.commissioning),
+            commissioning_site: string_value(&scenario.commissioning, "site"),
             timeline: Vec::new(),
         })
     }
@@ -946,6 +952,20 @@ impl RuntimeState {
                     return self.evaluate_scene_consistency(scene);
                 }
             }
+            if inline_assert
+                .get("access_control_drift")
+                .and_then(|value| value.as_str())
+                == Some("detected")
+            {
+                return self.evaluate_access_control_drift();
+            }
+            if inline_assert
+                .get("commissioning_checklist")
+                .and_then(|value| value.as_str())
+                == Some("generated")
+            {
+                return self.evaluate_commissioning_checklist();
+            }
         }
 
         AssertionResult {
@@ -994,6 +1014,69 @@ impl RuntimeState {
                 None
             } else {
                 Some("Lighting scene did not match intended guest ambience.".to_string())
+            },
+        }
+    }
+
+    fn evaluate_access_control_drift(&self) -> AssertionResult {
+        let passed = !self.unexpected_access_users.is_empty();
+        AssertionResult {
+            name: "access_control_drift".to_string(),
+            assertion_type: "access_control_drift".to_string(),
+            passed,
+            message: if passed {
+                format!(
+                    "detected unexpected access users: {}",
+                    self.unexpected_access_users.join(", ")
+                )
+            } else {
+                "no unexpected access users were detected".to_string()
+            },
+            impact_level: if passed {
+                None
+            } else {
+                Some("high".to_string())
+            },
+            impact_message: if passed {
+                None
+            } else {
+                Some(
+                    "Access-control drift detection did not flag stale unlock permission."
+                        .to_string(),
+                )
+            },
+        }
+    }
+
+    fn evaluate_commissioning_checklist(&self) -> AssertionResult {
+        let passed = self.commissioning_check_count > 0;
+        AssertionResult {
+            name: "commissioning_checklist".to_string(),
+            assertion_type: "commissioning_checklist".to_string(),
+            passed,
+            message: if passed {
+                match &self.commissioning_site {
+                    Some(site) => format!(
+                        "generated {count} commissioning checks for {site}",
+                        count = self.commissioning_check_count
+                    ),
+                    None => format!(
+                        "generated {count} commissioning checks",
+                        count = self.commissioning_check_count
+                    ),
+                }
+            } else {
+                "no commissioning checks were generated".to_string()
+            },
+            impact_level: if passed {
+                None
+            } else {
+                Some("medium".to_string())
+            },
+            impact_message: if passed {
+                None
+            } else {
+                Some("Commissioning checklist generation did not produce field checks.".to_string())
             },
         }
     }
@@ -1075,6 +1158,51 @@ fn yaml_mapping_number(map: &BTreeMap<String, serde_yaml::Value>, key: &str) -> 
             .as_f64()
             .or_else(|| value.as_i64().map(|value| value as f64))
     })
+}
+
+fn string_value(map: &BTreeMap<String, serde_yaml::Value>, key: &str) -> Option<String> {
+    map.get(key)
+        .and_then(|value| value.as_str())
+        .map(str::to_string)
+}
+
+fn unexpected_access_users(inputs: &BTreeMap<String, serde_yaml::Value>) -> Vec<String> {
+    let identity_users = string_sequence(inputs.get("identity_group"));
+    let access_users = string_sequence(inputs.get("access_system_group"));
+    access_users
+        .into_iter()
+        .filter(|user| !identity_users.contains(user))
+        .collect()
+}
+
+fn commissioning_check_count(commissioning: &BTreeMap<String, serde_yaml::Value>) -> usize {
+    let Some(rooms) = commissioning
+        .get("rooms")
+        .and_then(|value| value.as_sequence())
+    else {
+        return 0;
+    };
+    rooms
+        .iter()
+        .filter_map(|room| room.as_mapping())
+        .map(|room| {
+            room.get(serde_yaml::Value::String("devices".to_string()))
+                .and_then(|value| value.as_sequence())
+                .map_or(0, |devices| devices.len())
+        })
+        .sum()
+}
+
+fn string_sequence(value: Option<&serde_yaml::Value>) -> Vec<String> {
+    value
+        .and_then(|value| value.as_sequence())
+        .map(|sequence| {
+            sequence
+                .iter()
+                .filter_map(|value| value.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn comfort_range(comfort: &BTreeMap<String, serde_yaml::Value>) -> Option<(f64, f64)> {
@@ -1427,6 +1555,32 @@ assertions:
             .any(|assertion| assertion.assertion_type == "comfort_metric" && assertion.passed));
         assert!(report.assertions.iter().any(|assertion| {
             assertion.assertion_type == "comfort_user_override" && assertion.passed
+        }));
+    }
+
+    #[test]
+    fn access_permission_drift_passes_when_stale_user_is_detected() {
+        let scenario = load_scenario(fixture("examples/access_permission_drift.yaml")).unwrap();
+
+        let report = run_scenario(&scenario).unwrap();
+
+        assert_eq!(report.result, RunResult::Passed);
+        assert!(report.assertions.iter().any(|assertion| {
+            assertion.assertion_type == "access_control_drift"
+                && assertion.message.contains("retired@example.com")
+        }));
+    }
+
+    #[test]
+    fn commissioning_checklist_generation_passes() {
+        let scenario = load_scenario(fixture("examples/commissioning_checklist.yaml")).unwrap();
+
+        let report = run_scenario(&scenario).unwrap();
+
+        assert_eq!(report.result, RunResult::Passed);
+        assert!(report.assertions.iter().any(|assertion| {
+            assertion.assertion_type == "commissioning_checklist"
+                && assertion.message.contains("2 commissioning checks")
         }));
     }
 }

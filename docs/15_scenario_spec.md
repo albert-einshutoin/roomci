@@ -10,6 +10,8 @@ A scenario should define:
 - devices
 - network
 - MQTT brokers
+- external inputs
+- commissioning metadata
 - operations/BMS rules
 - timeline steps
 - faults
@@ -29,6 +31,8 @@ environment: {}
 network: {}
 mqtt: {}
 devices: []
+inputs: {}
+commissioning: {}
 alerts: []
 faults: []
 steps: []
@@ -79,6 +83,8 @@ Assertions should support:
 - operations notification
 - network reachability
 - comfort metric
+- access-control drift
+- commissioning checklist generation
 - ticket state
 - guest impact
 
@@ -89,6 +95,42 @@ assertions:
   - at: T+20s
     target: guest_experience
     condition: unaffected
+```
+
+Access-control drift assertions compare `inputs.identity_group` with
+`inputs.access_system_group` and pass when the scenario intentionally detects
+stale access users:
+
+```yaml
+inputs:
+  identity_group:
+    - alice@example.com
+  access_system_group:
+    - alice@example.com
+    - retired@example.com
+
+assertions:
+  - at: T
+    assert:
+      access_control_drift: detected
+```
+
+Commissioning checklist assertions count declared room devices and pass when
+field checks can be generated:
+
+```yaml
+commissioning:
+  site: minakami
+  rooms:
+    - id: living
+      devices:
+        - D411S10
+        - floor_heating_01
+
+assertions:
+  - at: T
+    assert:
+      commissioning_checklist: generated
 ```
 
 ## Example: local-first scenario

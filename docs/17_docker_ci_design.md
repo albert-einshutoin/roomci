@@ -24,6 +24,7 @@ ghcr.io/albert-einshutoin/roomci:latest
 The single image includes:
 
 - scenario runner
+- service-mode config checker
 - MQTT behavior simulator
 - edge emulator
 - device mocks
@@ -58,16 +59,13 @@ docker run --rm \
   --junit /reports/roomci.xml
 ```
 
-Future service mode:
+Service-mode config check:
 
 ```bash
-# planned, not implemented in v0.1
 docker run --rm \
-  -p 8080:8080 \
-  -p 1883:1883 \
   -v "$PWD/examples:/scenarios" \
   ghcr.io/albert-einshutoin/roomci:latest \
-  serve --config /scenarios/local_first_cloud_outage.yaml
+  serve --config /scenarios/local_first_cloud_outage.yaml --check
 ```
 
 ## Docker Compose pattern

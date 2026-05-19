@@ -98,7 +98,7 @@ assertions:
 
 ## Access control drift scenario
 
-A related future module can emulate UniFi/Okta style access drift.
+A lightweight module can emulate UniFi/Okta style access drift by comparing identity-group membership with access-system users.
 
 ```yaml
 scenario:
@@ -114,13 +114,15 @@ inputs:
     - retired@example.com
 
 assertions:
-  - type: no_extra_access_users
+  - at: T
+    assert:
+      access_control_drift: detected
 ```
 
 Report:
 
 ```txt
-FAIL access_permission_drift
+PASS access_permission_drift
 
 Unexpected access user:
 - retired@example.com

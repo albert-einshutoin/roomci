@@ -62,6 +62,12 @@ pub struct ScenarioFile {
     #[serde(default)]
     pub comfort: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
+    pub inputs: BTreeMap<String, serde_yaml::Value>,
+    #[serde(default)]
+    pub commissioning: BTreeMap<String, serde_yaml::Value>,
+    #[serde(default)]
+    pub future_milestone: BTreeMap<String, serde_yaml::Value>,
+    #[serde(default)]
     pub edge: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
     pub mqtt: MqttConfig,

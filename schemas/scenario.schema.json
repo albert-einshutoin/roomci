@@ -93,6 +93,14 @@
     "scenes": { "type": "object" },
     "sensors": { "type": "object" },
     "comfort": { "type": "object" },
+    "inputs": {
+      "type": "object",
+      "description": "External data inputs used by higher-level checks such as access-control drift."
+    },
+    "commissioning": {
+      "type": "object",
+      "description": "Site, room, and device declarations used to generate commissioning checks."
+    },
     "alerts": {
       "type": "array",
       "items": {

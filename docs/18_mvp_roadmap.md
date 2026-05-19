@@ -8,7 +8,7 @@ Demonstrate that one smart-home stack can be reproduced in Docker and tested in 
 
 ### Features
 
-- CLI: `roomci run`, `roomci validate`
+- CLI: `roomci run`, `roomci validate`, `roomci serve --check`
 - Scenario YAML parser
 - Virtual time and event timeline
 - Local MQTT retained-state model
@@ -24,7 +24,7 @@ Demonstrate that one smart-home stack can be reproduced in Docker and tested in 
 - Docker Compose example
 - GitHub Actions example
 
-`roomci serve` is a post-v0.1 service-mode idea, not part of the current MVP CLI.
+Long-running `roomci serve` adapters are post-v0.1. The current MVP includes `roomci serve --check` for service-mode configuration validation.
 
 ### Required demos
 

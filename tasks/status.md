@@ -23,4 +23,4 @@
 
 ## Current Recommendation
 
-Phase 8 is complete: license metadata is consistent, README separates passing demos, intentional failure-report demo, and future milestones, unimplemented `roomci serve` references are marked planned/future, README claims are refreshed to 66 tests and 86.15% coverage, NOT A HOTEL-facing wording is framed as public research/external interpretation, and the final local release-readiness gate passed.
+Phase 8 is complete and the follow-up residual work has been addressed: license metadata is consistent, README separates passing demos and the intentional failure-report demo, `access_permission_drift` and `commissioning_checklist` now run as passing scenarios, `roomci serve --check` validates service-mode configuration, README claims are refreshed to 69 tests and 86.57% coverage, NOT A HOTEL-facing wording is framed as public research/external interpretation, and the final local release-readiness gate passed.

@@ -37,13 +37,18 @@ cargo run --release -- run examples/local_first_cloud_outage.yaml \
 cargo run --release -- run \
   examples/local_first_cloud_outage.yaml \
   examples/modbus_floor_heating.yaml \
-  examples/bms_sauna_emergency_alert.yaml
+  examples/bms_sauna_emergency_alert.yaml \
+  examples/access_permission_drift.yaml \
+  examples/commissioning_checklist.yaml
 
 # Dry-run (validate only, do not execute)
 cargo run --release -- run --dry-run examples/comfort_auto_mode.yaml
 
 # Verbose timeline output
 cargo run --release -- run --verbose examples/edge_server_failover.yaml
+
+# Service-mode config check
+cargo run --release -- serve --config examples/local_first_cloud_outage.yaml --check
 
 # Or use the Docker image
 docker build -t roomci:latest .
@@ -61,6 +66,8 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 | `examples/bms_sauna_emergency_alert.yaml` | Sauna over-temperature contact opens; BMS escalates to Slack, phone, and ticket runbook. |
 | `examples/starlink_failover.yaml` | WAN failover to Starlink within the configured budget. |
 | `examples/comfort_auto_mode.yaml` | Discomfort index drives HVAC auto-mode; user override is respected. |
+| `examples/access_permission_drift.yaml` | Detect stale access-system users who no longer exist in the identity group. |
+| `examples/commissioning_checklist.yaml` | Generate field commissioning checks from room and device declarations. |
 
 These scenarios are expected to pass with `roomci run`.
 
@@ -69,15 +76,6 @@ These scenarios are expected to pass with `roomci run`.
 | Scenario | What it shows |
 |---|---|
 | `examples/dali_scene_partial_failure.yaml` | DALI scene activation with one fixture missing; `roomci run` exits non-zero and emits a guest-impact failure report. |
-
-## Future milestone scenarios
-
-| Scenario | Planned capability |
-|---|---|
-| `examples/access_permission_drift.yaml` | Detect access-permission drift across rooms and trigger reconciliation. |
-| `examples/commissioning_checklist.yaml` | Generate field commissioning checklists from room/device failures. |
-
-Future milestone scenarios are schema-valid and useful for roadmap discussion, but they are not advertised as passing runtime demos yet.
 
 ## Reports
 
@@ -102,6 +100,9 @@ roomci run <scenarios...>
 
 roomci validate <scenarios...>
   load and validate one or more scenario files without executing them
+
+roomci serve --config <scenario> --check
+  validate service-mode configuration without starting a long-running process
 ```
 
 Exit codes: `0` (all scenarios passed), `1` (one or more assertions failed), `2` (load, validate, or runtime error).
@@ -116,7 +117,7 @@ Exit codes: `0` (all scenarios passed), `1` (one or more assertions failed), `2`
 - `cargo doc --workspace --no-deps` (`RUSTDOCFLAGS=-D warnings`)
 - `cargo tarpaulin --workspace --fail-under 80`
 
-Current measurements: **66 tests** pass, **86.15%** line coverage.
+Current measurements: **69 tests** pass, **86.57%** line coverage.
 
 ## Core concept
 
@@ -167,7 +168,7 @@ roomci/
     roomci-ops/              BMS / Slack / phone / runbook escalation
     roomci-report/           JSON / Markdown / JUnit renderers
     roomci-scenario/         YAML scenario loader + validator
-  examples/                  6 passing demos, 1 failure-report demo, 2 future milestone scenarios
+  examples/                  8 passing demos and 1 failure-report demo
   schemas/scenario.schema.json   JSON Schema for scenario files
   docs/                      architecture, protocols, scenario spec
   tasks/                     phase-by-phase build log

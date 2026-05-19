@@ -30,6 +30,15 @@ services:
           --junit /reports/comfort_auto_mode.xml \
           --report-md /reports/comfort_auto_mode.md \
           --report-json /reports/comfort_auto_mode.json &&
+        roomci run /scenarios/access_permission_drift.yaml \
+          --junit /reports/access_permission_drift.xml \
+          --report-md /reports/access_permission_drift.md \
+          --report-json /reports/access_permission_drift.json &&
+        roomci run /scenarios/commissioning_checklist.yaml \
+          --junit /reports/commissioning_checklist.xml \
+          --report-md /reports/commissioning_checklist.md \
+          --report-json /reports/commissioning_checklist.json &&
+        roomci serve --config /scenarios/local_first_cloud_outage.yaml --check &&
         set +e &&
         roomci run /scenarios/dali_scene_partial_failure.yaml \
           --junit /reports/dali_scene_partial_failure.xml \

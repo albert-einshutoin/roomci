@@ -42,16 +42,15 @@ roomci run examples/local_first_cloud_outage.yaml
 
 Use this in CI.
 
-### 2. Future service mode
+### 2. Service-mode config check
 
-Would start HTTP/MQTT/adapter endpoints for integration tests. This is not part of the current CLI.
+Validates a scenario as service-mode configuration without starting a long-running process.
 
 ```bash
-# planned, not implemented in v0.1
-roomci serve --config examples/house.yaml
+roomci serve --config examples/local_first_cloud_outage.yaml --check
 ```
 
-Use this future mode for local development or backend/mobile E2E tests once implemented.
+Use this before wiring backend/mobile E2E tests to a long-running adapter process.
 
 ### 3. Compose stack mode
 

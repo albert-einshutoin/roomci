@@ -9,6 +9,8 @@
 //!   `--quiet` suppresses per-scenario detail.
 //! - `roomci validate <scenarios...>` — load and validate one or more scenarios
 //!   without executing them.
+//! - `roomci serve --config <scenario> --check` — validate service-mode config
+//!   without starting a long-running process.
 
 use std::{
     fs,
@@ -65,6 +67,15 @@ enum Command {
         #[arg(required = true)]
         scenarios: Vec<PathBuf>,
     },
+    /// Validate service-mode configuration.
+    Serve {
+        /// Scenario YAML file used as service-mode configuration.
+        #[arg(long)]
+        config: PathBuf,
+        /// Validate service-mode config and exit without blocking.
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 #[derive(Debug, Error)]
@@ -119,7 +130,22 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             }
             Ok(ExitCode::SUCCESS)
         }
+        Command::Serve { config, check } => serve_config(&config, check),
     }
+}
+
+fn serve_config(config: &Path, check: bool) -> Result<ExitCode, CliError> {
+    let scenario_file = load_scenario(config)?;
+    validate_scenario(&scenario_file)?;
+    if check {
+        println!("serve config valid: {}", config.display());
+        return Ok(ExitCode::SUCCESS);
+    }
+    println!(
+        "service mode config valid: {}; long-running adapters are not enabled in this build",
+        config.display()
+    );
+    Ok(ExitCode::SUCCESS)
 }
 
 struct RunOptions {

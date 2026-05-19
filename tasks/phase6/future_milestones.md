@@ -8,13 +8,13 @@ Phase 6 does not make every future integration part of the MVP runtime. It recor
 |---|---|---|
 | WAN / Starlink failover | Backup WAN activation and ops notification | `examples/starlink_failover.yaml` runs |
 | Comfort automation | Discomfort index target and no user override | `examples/comfort_auto_mode.yaml` runs |
-| Commissioning checklist | Generate field-engineer checklist from room/device failures | `examples/commissioning_checklist.yaml` validates |
+| Commissioning checklist | Generate field-engineer checklist from room/device declarations | `examples/commissioning_checklist.yaml` runs |
 
 ## v0.3 — Access and Intercom
 
 | Milestone | Scope | Validation Artifact |
 |---|---|---|
-| Access-control drift | Compare identity source against access-system users | `examples/access_permission_drift.yaml` validates |
+| Access-control drift | Compare identity source against access-system users | `examples/access_permission_drift.yaml` runs |
 | Intercom / relay mock | PIN, relay pulse, staff call, local fallback | Planned scenario schema extension |
 | DoorBird / SIP / DTMF-like profiles | Model vendor-like intercom failure modes | Planned protocol profile |
 

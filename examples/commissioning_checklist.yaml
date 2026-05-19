@@ -1,17 +1,8 @@
 version: "0.1"
 scenario:
   name: commissioning_checklist_generation
-  description: Future milestone placeholder for room/area commissioning checklist generation.
-  tags: [future, commissioning, checklist]
-
-future_milestone:
-  release: v0.2
-  module: commissioning_checklist
-  reason: Turn device maps and scenario failures into field-engineer checklists.
-  expected_capabilities:
-    - group failed assertions by room and protocol
-    - include fixture/register/contact identifiers
-    - emit Markdown checklist for site handoff
+  description: Generate field commissioning checks from room and device declarations.
+  tags: [commissioning, checklist]
 
 commissioning:
   site: minakami
@@ -24,5 +15,4 @@ commissioning:
 assertions:
   - at: T
     assert:
-      future_milestone: commissioning_checklist
-      status: planned
+      commissioning_checklist: generated
