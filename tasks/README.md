@@ -28,6 +28,7 @@ Local-first Smart Home QA & Operations Emulator for CI
 | Phase 13 | Protocol compliance track | Selected protocol subsets are tied to official specifications and verified with standard clients/tools |
 | Phase 14 | Hospitality smart-home QA core coverage | The product boundary is fixed around core QA flows instead of the full reported technology stack |
 | Phase 15 | Evaluator friction removal | The release-candidate evaluation surface is hardened around MQTT/Modbus depth, Docker reproducibility, maintainability, and claim evidence |
+| Phase 16 | Roadmap triage for optional depth | Implied future work is explicitly promoted, deferred, or rejected before new breadth is added |
 
 ## Progress Management
 
@@ -35,6 +36,7 @@ Use:
 
 - `tasks/status.md` for the top-level phase board.
 - `tasks/phase*/phase_status.md` for task-level status, quality gates, blockers, and next action.
+- `tasks/backlog_inventory.md` for the implemented / taskified / newly taskified / out-of-scope backlog split.
 
 Valid statuses:
 

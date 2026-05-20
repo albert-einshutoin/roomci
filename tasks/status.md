@@ -20,6 +20,7 @@
 | Phase 13 | `done` | Official-spec-backed protocol conformance subsets for MQTT and Modbus first, with future protocol profiles tracked honestly | Full certification-grade conformance remains out of scope | `phase13/phase_status.md` |
 | Phase 14 | `done` | Hospitality smart-home QA core coverage: local MQTT, edge, device protocols, network/control faults, BMS/ops, comfort, and safe access/intercom boundaries | NOT A HOTEL private compatibility and full-stack emulation remain out of scope | `phase14/phase_status.md` |
 | Phase 15 | `todo` | Evaluator friction removal: retained subscribe loop, practical Modbus depth, reproducible Docker smoke, serve maintainability, and protocol evidence automation | None | `phase15/phase_status.md` |
+| Phase 16 | `todo` | Roadmap triage for optional depth: future protocols, intercom/relay, network/control-panel faults, BMS hardening, comfort telemetry, SDK samples, observability exports | Phase 15 should run first | `phase16/phase_status.md` |
 
 ## Update Rules
 
@@ -41,3 +42,6 @@ Phases 11-14 are complete. The product now has the integration surface, runtime 
 The final self-review created Phase 15. Next work should remove evaluator friction before adding more protocol breadth.
 
 - **Phase 15** should harden the current release-candidate surface rather than expanding into a full smart-home stack emulator.
+- **Phase 16** records previously implied roadmap items and forces explicit promote/defer/reject decisions before implementation breadth expands.
+
+See `tasks/backlog_inventory.md` for the current split between implemented work, already taskified implementation work, newly taskified roadmap work, and intentional non-goals.
