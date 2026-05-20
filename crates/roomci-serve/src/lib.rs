@@ -78,6 +78,7 @@ struct ServeState {
     injected_faults: Vec<serde_json::Value>,
     external_publish_count: u64,
     run_in_progress: bool,
+    has_completed_run: bool,
 }
 
 fn serve_http(
@@ -93,6 +94,7 @@ fn serve_http(
         injected_faults: Vec::new(),
         external_publish_count: 0,
         run_in_progress: false,
+        has_completed_run: false,
     }));
     let listener =
         TcpListener::bind((host, port)).map_err(|error| ServeError::Runtime(error.to_string()))?;
@@ -262,12 +264,16 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                 Ok(state) => state,
                 Err(error) => return serve_error_response(error),
             };
+            let status = state.health_status();
+            let status_code = if status == "failed" { 503 } else { 200 };
             json_response(
-                200,
+                status_code,
                 &json!({
-                    "status": "ok",
+                    "status": status,
                     "scenario": state.scenario.scenario.name,
                     "result": state.latest_report.result,
+                    "latest_report_id": format!("{}:latest", state.latest_report.scenario_name),
+                    "serve_version": env!("CARGO_PKG_VERSION"),
                 }),
             )
         }
@@ -329,10 +335,11 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
             ),
         },
         ("POST", "/finish") => {
-            let state = match lock_serve_state(&state) {
+            let mut state = match lock_serve_state(&state) {
                 Ok(state) => state,
                 Err(error) => return serve_error_response(error),
             };
+            state.has_completed_run = true;
             json_response(
                 200,
                 &json!({
@@ -373,6 +380,7 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                     state.latest_report = report;
                     state.injected_faults.clear();
                     state.external_publish_count = 0;
+                    state.has_completed_run = true;
                     json_response(200, &json!({ "finished": true, "result": result }))
                 }
                 Err(error) => json_response(
@@ -444,6 +452,21 @@ fn serve_error_response(error: ServeError) -> String {
             500,
             &json!({ "error": "serve_error", "message": error.to_string() }),
         ),
+    }
+}
+
+impl ServeState {
+    fn health_status(&self) -> &'static str {
+        if self.run_in_progress {
+            return "running";
+        }
+        if !self.has_completed_run {
+            return "idle";
+        }
+        match self.latest_report.result {
+            roomci_core::RunResult::Passed => "passed",
+            roomci_core::RunResult::Failed => "failed",
+        }
     }
 }
 
@@ -713,6 +736,7 @@ mod tests {
             injected_faults: Vec::new(),
             external_publish_count: 0,
             run_in_progress: false,
+            has_completed_run: false,
         }))
     }
 
@@ -751,7 +775,7 @@ mod tests {
 
         let health = route_request(&request("GET", "/health", ""), Arc::clone(&state));
         assert!(health.contains("HTTP/1.1 200 OK"));
-        assert!(health.contains("\"status\":\"ok\""));
+        assert!(health.contains("\"status\":\"idle\""));
 
         let scenario = route_request(&request("GET", "/scenario", ""), Arc::clone(&state));
         assert!(scenario.contains("generic_mqtt_retained_state"));
@@ -764,6 +788,44 @@ mod tests {
     }
 
     #[test]
+    fn health_reports_idle_running_passed_and_failed_states() {
+        let state = serve_state();
+
+        let idle = route_request(&request("GET", "/health", ""), Arc::clone(&state));
+        assert!(idle.contains("HTTP/1.1 200 OK"));
+        assert!(idle.contains("\"status\":\"idle\""));
+        assert!(idle.contains("\"serve_version\""));
+
+        {
+            let mut state_guard = state.lock().unwrap();
+            state_guard.run_in_progress = true;
+        }
+        let running = route_request(&request("GET", "/health", ""), Arc::clone(&state));
+        assert!(running.contains("HTTP/1.1 200 OK"));
+        assert!(running.contains("\"status\":\"running\""));
+
+        {
+            let mut state_guard = state.lock().unwrap();
+            state_guard.run_in_progress = false;
+            state_guard.has_completed_run = true;
+        }
+        let passed = route_request(&request("GET", "/health", ""), Arc::clone(&state));
+        assert!(passed.contains("HTTP/1.1 200 OK"));
+        assert!(passed.contains("\"status\":\"passed\""));
+
+        let failed_scenario =
+            load_scenario(fixture("examples/dali_scene_partial_failure.yaml")).unwrap();
+        {
+            let mut state_guard = state.lock().unwrap();
+            state_guard.latest_report = run_scenario(&failed_scenario).unwrap();
+            state_guard.has_completed_run = true;
+        }
+        let failed = route_request(&request("GET", "/health", ""), Arc::clone(&state));
+        assert!(failed.contains("HTTP/1.1 503 Service Unavailable"));
+        assert!(failed.contains("\"status\":\"failed\""));
+    }
+
+    #[test]
     fn slow_http_client_does_not_block_fast_client() {
         let address = start_http_test_server();
         let _slow_client = TcpStream::connect(address).unwrap();
@@ -773,7 +835,7 @@ mod tests {
 
         assert!(started.elapsed() < Duration::from_secs(1));
         assert!(response.contains("HTTP/1.1 200 OK"));
-        assert!(response.contains("\"status\":\"ok\""));
+        assert!(response.contains("\"status\":\"idle\""));
     }
 
     #[test]

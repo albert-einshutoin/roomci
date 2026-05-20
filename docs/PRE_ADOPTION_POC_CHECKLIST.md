@@ -51,6 +51,8 @@ make compose-poc
 make verify
 ```
 
+`GET /health` should report `idle` before the controller finishes the PoC and `passed` after `/finish` for a successful run. A `failed` health response returns HTTP 503 so CI gates fail closed.
+
 ## 5. Confirm Boundaries
 
 `roomci` is a QA contract emulator. It does not claim private-system compatibility, full MQTT broker behavior, production BMS behavior, or replacement of real device commissioning.

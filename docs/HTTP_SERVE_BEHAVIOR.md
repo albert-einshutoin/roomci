@@ -38,3 +38,16 @@ Only one `/run` request can execute at a time. If another `/run` arrives while o
 ```
 
 If the internal serve-state mutex is poisoned, HTTP routes return `HTTP 500` with `error: "serve_state_poisoned"` instead of panicking the listener.
+
+## Health Semantics
+
+`GET /health` returns the serve lifecycle state:
+
+| Status | HTTP | Meaning |
+|---|---:|---|
+| `idle` | 200 | The service is initialized and waiting for an external controller to finish or run the scenario. |
+| `running` | 200 | A `POST /run` request is in flight. |
+| `passed` | 200 | The most recent `/run` or `/finish` completed with a passing report. |
+| `failed` | 503 | The most recent `/run` or `/finish` completed with a failing report. |
+
+The response also includes `scenario`, `result`, `latest_report_id`, and `serve_version`.

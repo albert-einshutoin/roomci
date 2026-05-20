@@ -146,12 +146,16 @@ fn serve_starts_http_runtime_and_exposes_reports() {
 
     let health = http_request(&address, "GET", "/health", "");
     assert!(health.contains("HTTP/1.1 200 OK"));
-    assert!(health.contains("\"status\":\"ok\""));
+    assert!(health.contains("\"status\":\"idle\""));
     assert!(health.contains("generic_mqtt_retained_state"));
 
     let finish = http_request(&address, "POST", "/finish", "");
     assert!(finish.contains("HTTP/1.1 200 OK"));
     assert!(finish.contains("\"finished\":true"));
+
+    let health_after_finish = http_request(&address, "GET", "/health", "");
+    assert!(health_after_finish.contains("HTTP/1.1 200 OK"));
+    assert!(health_after_finish.contains("\"status\":\"passed\""));
 
     let report = http_request(&address, "GET", "/reports/latest.md", "");
     assert!(report.contains("HTTP/1.1 200 OK"));

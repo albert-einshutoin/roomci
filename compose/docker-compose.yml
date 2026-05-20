@@ -16,6 +16,11 @@ services:
       - --allow-non-loopback
     volumes:
       - ../examples:/scenarios:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
 
   external-controller:
     build:
@@ -28,7 +33,8 @@ services:
       ROOMCI_URL: http://roomci-serve:8080
       REPORT_DIR: /reports
     depends_on:
-      - roomci-serve
+      roomci-serve:
+        condition: service_healthy
     volumes:
       - ../examples/controllers:/controllers:ro
       - ../reports:/reports

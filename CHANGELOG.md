@@ -18,6 +18,7 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 - `roomci-cli` is now a thin argument-parsing and scenario-runner binary; serve runtime ownership moved to `roomci-serve`.
 - `roomci serve` now handles HTTP clients independently with read/write timeouts and an in-flight connection cap.
 - `POST /run` no longer holds the serve-state lock while executing a scenario, and poisoned serve state now returns HTTP 500 instead of panicking route handlers.
+- `/health` now reports serve lifecycle status (`idle`, `running`, `passed`, `failed`) and returns HTTP 503 for failed health.
 
 ## [0.12.0] - 2026-05-19
 
