@@ -19,7 +19,7 @@
 | `09_dual_track_positioning_task.md` | `done` | Codex | `docs/DUAL_TRACK_POSITIONING.md`; `docs/PRODUCT_POSITIONING.md`; `docs/README.md` | Industry track and hospitality track are explicit, with bounded copy candidates and overclaim avoidance |
 | `10_evaluation_evidence_pack_task.md` | `done` | Codex | `docs/EVALUATION_EVIDENCE_PACK.md`; `make verify`; PoC pack targets; protocol docs links | Evidence pack lists commands, expected artifacts, scorecards, unsupported features, and next adoption work |
 | `11_adoption_maximization_review_task.md` | `done` | Codex | `adoption_maximization_review.md`; `make compose-poc`; badge URL check; serve-runtime grep checks | Review scored current evaluator readiness and kept Phase 11 open with concrete blockers |
-| `12_mqtt_retained_run_boundary_task.md` | `done` | Codex | `external_mqtt_retained_state` overlay; `drain_external_overlay_into` merges MQTT state; `rendered_report_view` includes preserved state; test `external_mqtt_retained_state_survives_run_boundary` confirms run-boundary preservation | MQTT retained messages published by external clients survive `/run` via overlay, matching BMS/contact evidence model |
+| `12_mqtt_retained_run_boundary_task.md` | `done` | Codex | `external_mqtt_final_state` and `external_mqtt_retained_state` overlays; `drain_external_overlay_into` merges MQTT state; `rendered_report_view` and `/state` include preserved state; tests `external_mqtt_retained_state_is_visible_in_state_before_run`, `external_mqtt_retained_state_survives_run_boundary`, and CLI black-box `external_mqtt_publish_updates_retained_state_through_serve` | MQTT retained messages published by external clients are visible immediately through `/state` and survive `/run`, matching BMS/contact evidence model |
 
 ## Blockers
 
@@ -34,7 +34,7 @@
 | Protocol support matrix exists | `done` | `docs/PROTOCOL_SUPPORT_MATRIX.md` |
 | Adapter contract templates validate | `done` | `cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml`; `cargo test --workspace --all-targets`; unit and CLI tests |
 | Standard MQTT client interoperability tested | `todo` | None yet |
-| External MQTT retained state survives `/run` | `done` | `external_mqtt_retained_state` overlay; test `external_mqtt_retained_state_survives_run_boundary` asserts timeline, `/state`, and `/reports/latest.json` render preserved messages after `/run` |
+| External MQTT retained state survives `/run` | `done` | `external_mqtt_final_state` and `external_mqtt_retained_state` overlays; tests assert `/state` before `/run`, `/state` after `/run`, `/reports/latest.json`, and CLI black-box publish behavior |
 | Second external protocol endpoint works | `done` | `POST /external/bms/contact`; `external_bms_contact_updates_state_and_timeline`; `external_bms_contact_rejects_invalid_payloads`; `external_bms_contact_sanitizes_source_and_message`; `external_events_survive_run_boundary`; BMS webhook PoC controller script asserts each step |
 | Customer PoC packs run from clean checkout | `done` | PoC pack Make targets generate ignored `reports/poc_*` artifacts |
 | hospitality evaluator checklist exists | `done` | `docs/NOT_A_HOTEL_EVALUATOR_GUIDE.md` |
