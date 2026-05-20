@@ -27,6 +27,7 @@ Local-first Smart Home QA & Operations Emulator for CI
 | Phase 12 | Serve runtime hardening and release plumbing | Existing serve endpoints survive evaluator-style concurrency, malformed clients, and public release checks |
 | Phase 13 | Protocol compliance track | Selected protocol subsets are tied to official specifications and verified with standard clients/tools |
 | Phase 14 | Hospitality smart-home QA core coverage | The product boundary is fixed around core QA flows instead of the full reported technology stack |
+| Phase 15 | Evaluator friction removal | The release-candidate evaluation surface is hardened around MQTT/Modbus depth, Docker reproducibility, maintainability, and claim evidence |
 
 ## Progress Management
 

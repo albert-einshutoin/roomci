@@ -19,6 +19,7 @@
 | Phase 12 | `done` | Serve runtime hardening, health semantics, MQTT CONNECT validation, and release plumbing | None | `phase12/phase_status.md` |
 | Phase 13 | `done` | Official-spec-backed protocol conformance subsets for MQTT and Modbus first, with future protocol profiles tracked honestly | Full certification-grade conformance remains out of scope | `phase13/phase_status.md` |
 | Phase 14 | `done` | Hospitality smart-home QA core coverage: local MQTT, edge, device protocols, network/control faults, BMS/ops, comfort, and safe access/intercom boundaries | NOT A HOTEL private compatibility and full-stack emulation remain out of scope | `phase14/phase_status.md` |
+| Phase 15 | `todo` | Evaluator friction removal: retained subscribe loop, practical Modbus depth, reproducible Docker smoke, serve maintainability, and protocol evidence automation | None | `phase15/phase_status.md` |
 
 ## Update Rules
 
@@ -37,4 +38,6 @@ Phases 11-14 are complete. The product now has the integration surface, runtime 
 - **Phase 13** completed official-spec-backed MQTT and Modbus conformance subsets.
 - **Phase 14** completed the hospitality-like core QA boundary and full-stack non-goals.
 
-Next work should come from the final self-review rather than adding more breadth by default.
+The final self-review created Phase 15. Next work should remove evaluator friction before adding more protocol breadth.
+
+- **Phase 15** should harden the current release-candidate surface rather than expanding into a full smart-home stack emulator.
