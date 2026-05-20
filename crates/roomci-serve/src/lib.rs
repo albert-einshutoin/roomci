@@ -1221,6 +1221,66 @@ mod tests {
     }
 
     #[test]
+    fn external_bms_contact_rejects_invalid_payloads() {
+        let state = serve_state();
+
+        // Missing `source` returns a documented 400 with a stable error code.
+        let missing_source = route_request(
+            &request(
+                "POST",
+                "/external/bms/contact",
+                r#"{"state":"on","severity":"critical"}"#,
+            ),
+            Arc::clone(&state),
+        );
+        assert!(missing_source.contains("HTTP/1.1 400 Bad Request"));
+        assert!(missing_source.contains("missing_source"));
+
+        // Missing `state` returns a separate, distinguishable error code so
+        // controllers can branch on the failure shape.
+        let missing_state = route_request(
+            &request(
+                "POST",
+                "/external/bms/contact",
+                r#"{"source":"contact.sauna_emergency_button"}"#,
+            ),
+            Arc::clone(&state),
+        );
+        assert!(missing_state.contains("HTTP/1.1 400 Bad Request"));
+        assert!(missing_state.contains("missing_state"));
+
+        // A non-string `source` is treated the same as missing — the handler
+        // only accepts string source identifiers.
+        let non_string_source = route_request(
+            &request(
+                "POST",
+                "/external/bms/contact",
+                r#"{"source":42,"state":"on"}"#,
+            ),
+            Arc::clone(&state),
+        );
+        assert!(non_string_source.contains("HTTP/1.1 400 Bad Request"));
+        assert!(non_string_source.contains("missing_source"));
+
+        // Malformed JSON is reported with the `invalid_json` error code so
+        // the controller can distinguish parse failures from validation
+        // failures.
+        let bad_json = route_request(
+            &request("POST", "/external/bms/contact", "not-json{"),
+            Arc::clone(&state),
+        );
+        assert!(bad_json.contains("HTTP/1.1 400 Bad Request"));
+        assert!(bad_json.contains("invalid_json"));
+
+        // None of the rejected payloads should have created any observation
+        // state or timeline events.
+        let after_state = route_request(&request("GET", "/state", ""), Arc::clone(&state));
+        assert!(after_state.contains("\"external_observations\":{}"));
+        let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
+        assert!(!timeline.contains("external_bms_contact_observed"));
+    }
+
+    #[test]
     fn poisoned_mutex_returns_500_response() {
         let state = serve_state();
         let poison_state = Arc::clone(&state);
