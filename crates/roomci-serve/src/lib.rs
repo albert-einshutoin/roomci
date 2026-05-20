@@ -26,6 +26,10 @@ const MAX_HTTP_BODY_BYTES: usize = 1024 * 1024;
 const MAX_MQTT_PACKET_BYTES: usize = 1024 * 1024;
 const HTTP_CLIENT_TIMEOUT_SECS: u64 = 2;
 const HTTP_MAX_INFLIGHT_CONNECTIONS: usize = 32;
+const MQTT_PROTOCOL_NAME: &str = "MQTT";
+const MQTT_PROTOCOL_LEVEL_3_1_1: u8 = 4;
+const MQTT_CONNACK_ACCEPTED: u8 = 0x00;
+const MQTT_CONNACK_UNACCEPTABLE_PROTOCOL: u8 = 0x01;
 
 /// Configuration for a `roomci serve` process.
 #[derive(Debug)]
@@ -496,9 +500,17 @@ fn handle_mqtt_client(
         };
         match packet.packet_type {
             1 => {
+                let return_code = if validate_mqtt_connect(&packet.payload) {
+                    MQTT_CONNACK_ACCEPTED
+                } else {
+                    MQTT_CONNACK_UNACCEPTABLE_PROTOCOL
+                };
                 stream
-                    .write_all(&[0x20, 0x02, 0x00, 0x00])
+                    .write_all(&[0x20, 0x02, 0x00, return_code])
                     .map_err(|error| ServeError::Runtime(error.to_string()))?;
+                if return_code != MQTT_CONNACK_ACCEPTED {
+                    return Ok(());
+                }
             }
             3 => {
                 let publish = parse_mqtt_publish(&packet.payload)?;
@@ -513,6 +525,22 @@ fn handle_mqtt_client(
             }
         }
     }
+}
+
+fn validate_mqtt_connect(payload: &[u8]) -> bool {
+    if payload.len() < 2 {
+        return false;
+    }
+    let protocol_name_len = u16::from_be_bytes([payload[0], payload[1]]) as usize;
+    let protocol_name_end = 2 + protocol_name_len;
+    if payload.len() <= protocol_name_end {
+        return false;
+    }
+    let Ok(protocol_name) = std::str::from_utf8(&payload[2..protocol_name_end]) else {
+        return false;
+    };
+    let protocol_level = payload[protocol_name_end];
+    protocol_name == MQTT_PROTOCOL_NAME && protocol_level == MQTT_PROTOCOL_LEVEL_3_1_1
 }
 
 struct MqttPacket {
@@ -1096,6 +1124,46 @@ mod tests {
     }
 
     #[test]
+    fn mqtt_connect_with_legacy_protocol_name_is_rejected() {
+        let connack = mqtt_connack_for(mqtt_connect_packet_with("MQIsdp", 3, "legacy"));
+
+        assert_eq!(
+            connack,
+            [0x20, 0x02, 0x00, MQTT_CONNACK_UNACCEPTABLE_PROTOCOL]
+        );
+    }
+
+    #[test]
+    fn mqtt_connect_with_unsupported_level_is_rejected() {
+        let connack = mqtt_connack_for(mqtt_connect_packet_with("MQTT", 5, "mqtt5"));
+
+        assert_eq!(
+            connack,
+            [0x20, 0x02, 0x00, MQTT_CONNACK_UNACCEPTABLE_PROTOCOL]
+        );
+    }
+
+    #[test]
+    fn mqtt_connect_with_truncated_header_closes_connection() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let state = serve_state();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            assert!(handle_mqtt_client(stream, state).is_err());
+        });
+
+        let mut stream = TcpStream::connect(address).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        stream.write_all(&[0x10, 0x02, 0x00]).unwrap();
+        drop(stream);
+
+        server.join().unwrap();
+    }
+
+    #[test]
     fn mqtt_packet_parser_reports_malformed_inputs() {
         assert!(parse_mqtt_publish(&[]).is_err());
         assert!(parse_mqtt_publish(&[0x00, 0x10, b'a']).is_err());
@@ -1134,10 +1202,18 @@ mod tests {
     }
 
     fn mqtt_connect_packet(client_id: &str) -> Vec<u8> {
+        mqtt_connect_packet_with("MQTT", 0x04, client_id)
+    }
+
+    fn mqtt_connect_packet_with(
+        protocol_name: &str,
+        protocol_level: u8,
+        client_id: &str,
+    ) -> Vec<u8> {
         let mut variable = Vec::new();
-        variable.extend_from_slice(&[0x00, 0x04]);
-        variable.extend_from_slice(b"MQTT");
-        variable.push(0x04);
+        variable.extend_from_slice(&(protocol_name.len() as u16).to_be_bytes());
+        variable.extend_from_slice(protocol_name.as_bytes());
+        variable.push(protocol_level);
         variable.push(0x02);
         variable.extend_from_slice(&60_u16.to_be_bytes());
         variable.extend_from_slice(&(client_id.len() as u16).to_be_bytes());
@@ -1147,6 +1223,24 @@ mod tests {
         encode_mqtt_remaining_length(variable.len(), &mut packet);
         packet.extend(variable);
         packet
+    }
+
+    fn mqtt_connack_for(connect_packet: Vec<u8>) -> [u8; 4] {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let state = serve_state();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            handle_mqtt_client(stream, state).unwrap();
+        });
+
+        let mut stream = TcpStream::connect(address).unwrap();
+        stream.write_all(&connect_packet).unwrap();
+        let mut connack = [0_u8; 4];
+        stream.read_exact(&mut connack).unwrap();
+        drop(stream);
+        server.join().unwrap();
+        connack
     }
 
     fn mqtt_publish_packet(topic: &str, payload: &[u8]) -> Vec<u8> {

@@ -30,6 +30,15 @@ The HTTP observation API used with this MQTT ingress is documented in [`HTTP_SER
 - TLS, ACLs, authentication, clustering, persistence
 - MQTT 5 properties
 
+## CONNECT Validation
+
+The MQTT ingress accepts only:
+
+- protocol name: `MQTT`
+- protocol level: `4` (MQTT 3.1.1)
+
+Unsupported protocol names or levels receive `CONNACK` return code `0x01` (`unacceptable protocol version`) and the TCP connection is closed. For example, MQTT 3.1 `MQIsdp` and MQTT 5 protocol level `5` are rejected.
+
 ## Contract Config
 
 Scenario files can declare MQTT connection contracts:

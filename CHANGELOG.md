@@ -19,6 +19,7 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 - `roomci serve` now handles HTTP clients independently with read/write timeouts and an in-flight connection cap.
 - `POST /run` no longer holds the serve-state lock while executing a scenario, and poisoned serve state now returns HTTP 500 instead of panicking route handlers.
 - `/health` now reports serve lifecycle status (`idle`, `running`, `passed`, `failed`) and returns HTTP 503 for failed health.
+- MQTT `CONNECT` now validates protocol name `MQTT` and protocol level `4`, rejecting unsupported protocol versions with `CONNACK` `0x01`.
 
 ## [0.12.0] - 2026-05-19
 
