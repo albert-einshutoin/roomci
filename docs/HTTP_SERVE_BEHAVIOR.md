@@ -43,6 +43,32 @@ Only one `/run` request can execute at a time. If another `/run` arrives while o
 
 If the internal serve-state mutex is poisoned, HTTP routes return `HTTP 500` with `error: "serve_state_poisoned"` instead of panicking the listener.
 
+### External-observation overlay
+
+`POST /run` replaces `latest_report` with a fresh `RunReport`. To
+prevent timeline events emitted between runs (via `POST /fault`,
+`POST /external/bms/contact`, or an external MQTT publish) from being
+silently clobbered by that replacement, the serve runtime keeps a
+small external-observation overlay:
+
+- `state.external_observation_timeline` — `TimelineEvent`s recorded by
+  external endpoints since the last `/run`. Drained at the next `/run`
+  success boundary, appended to `latest_report.timeline`.
+- `state.external_observations` — BMS observations keyed by sanitized
+  source. Drained at the next `/run` success boundary, merged into
+  `latest_report.final_state` under keys prefixed with
+  `external.bms.`.
+
+The overlay is also visible while it is queued:
+
+- `GET /state` exposes the overlay under the `external_observations`
+  field.
+- `GET /timeline` returns the union of `latest_report.timeline` and
+  the overlay.
+- `GET /reports/latest.json|md|junit.xml` render the same union, so a
+  CI consumer sees external events whether they fetch the JSON or the
+  human-readable Markdown.
+
 ## Health Semantics
 
 `GET /health` returns the serve lifecycle state:
