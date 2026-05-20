@@ -15,6 +15,7 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 - NOT A HOTEL evaluator guide and dual-track positioning docs for industry-wide adoption without private-compatibility overclaims.
 - Customer PoC pack targets and evaluation evidence pack with scorecards, report artifacts, and unsupported-feature disclosure.
 - Integration onboarding and category readiness docs for first-run evaluator experience and competitive positioning.
+- BMS/contact external serve endpoint and controller script for non-MQTT external PoC interactions.
 
 ### Changed
 

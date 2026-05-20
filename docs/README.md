@@ -68,6 +68,7 @@ its own.
 | 17 | [Docker / CI design](17_docker_ci_design.md) | Container layout and GitHub Actions integration |
 | Serve | [HTTP serve MVP plan](HTTP_SERVE_MVP_PLAN.md) | Planned localhost-bound control/report API before MQTT-compatible serve mode |
 | Serve | [HTTP serve behavior](HTTP_SERVE_BEHAVIOR.md) | Current HTTP connection, timeout, and overload behavior |
+| Serve | [External protocol depth](EXTERNAL_PROTOCOL_DEPTH.md) | MQTT subset boundary and BMS/contact external endpoint |
 | PoC | [Pre-adoption PoC checklist](PRE_ADOPTION_POC_CHECKLIST.md) | Integration checklist for external protocol contracts and acceptance criteria |
 | Release | [Release checklist](RELEASE_CHECKLIST.md) | Reproducible gates for CI, Docker, Compose, reports, docs, and coverage |
 | 20 | [Appendix: future integrations](20_appendix_future_integrations.md) | Out-of-scope work and where it would live |

@@ -27,6 +27,10 @@ If a client opens a TCP connection and does not send a complete HTTP request, th
 
 This is a local PoC runtime, not a production public HTTP API. It is designed to support short-lived CI and developer evaluation flows where an external controller calls `/health`, injects faults, calls `/finish`, and downloads reports.
 
+Additional external input endpoint:
+
+- `POST /external/bms/contact` accepts BMS/contact event JSON for operations PoCs. See [`EXTERNAL_PROTOCOL_DEPTH.md`](EXTERNAL_PROTOCOL_DEPTH.md).
+
 ## Run Requests
 
 `POST /run` snapshots the current scenario config, releases the serve-state lock while the scenario executes, and then writes the new report back after execution.

@@ -33,7 +33,7 @@
 | Workspace metadata is publish-ready | `done` | `cargo metadata --format-version 1 --no-deps`; `cargo package --list --allow-dirty` for all current crates including `roomci-serve` |
 | `CHANGELOG.md` exists at repo root | `done` | `grep -c '^## \[' CHANGELOG.md` -> 14 |
 | README badges resolve (or are removed) | `done` | Static `img.shields.io` badge URLs return HTTP 200 |
-| `cargo tarpaulin --workspace --fail-under 80` still passes | `done` | Current workspace: 99 tests; 84.72% line coverage |
+| `cargo tarpaulin --workspace --fail-under 80` still passes | `done` | Current workspace: 100 tests; 84.51% line coverage |
 
 ## Current Recommendation
 

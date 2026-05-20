@@ -11,7 +11,7 @@
 | `01_ci_release_truth_task.md` | `done` | Codex | `.github/workflows/smart-home-ci.yml`; `Makefile`; `docs/RELEASE_CHECKLIST.md`; README quality gates; `make verify` | Public CI/release claims now point to real workflow, local gate, ignored artifacts, and release checklist |
 | `02_protocol_support_matrix_task.md` | `done` | Codex | `docs/PROTOCOL_SUPPORT_MATRIX.md`; `docs/README.md`; README link | Behavior model, serve endpoint, external-client-tested, conformance-subset, and unsupported levels are explicit per domain |
 | `03_adapter_contract_kit_task.md` | `done` | Codex | `adapter-contracts/templates/company_adapter_contract.yaml`; `adapter-contracts/examples/*.yaml`; `docs/ADAPTER_CONTRACT_KIT.md`; `roomci adapter validate`; `validates_adapter_contract_examples`; `adapter_validate_accepts_shipped_contracts` | Companies can fill MQTT, Modbus, BMS, edge, device, auth, and acceptance details and validate them without runtime code edits |
-| `04_external_protocol_depth_task.md` | `todo` | Unassigned | None yet | Add standard MQTT client interoperability and at least one non-MQTT external endpoint |
+| `04_external_protocol_depth_task.md` | `in_progress` | Codex | `POST /external/bms/contact`; `external_bms_contact_updates_state_and_timeline`; `examples/controllers/bms_webhook_poc_controller.sh`; `docs/EXTERNAL_PROTOCOL_DEPTH.md` | Non-MQTT BMS/contact endpoint is implemented; standard MQTT client/library interoperability and retained subscriber replay remain open |
 | `05_customer_poc_packs_task.md` | `done` | Codex | `poc-packs/*.md`; `make poc-generic-mqtt`; `make poc-hospitality`; `make poc-building-automation`; `make poc-bms-ops`; README links | Four one-command PoC packs now identify scenarios, adapter contracts, reports, acceptance checks, and customer-specific replacement inputs |
 | `06_developer_experience_task.md` | `done` | Codex | `docs/INTEGRATION_ONBOARDING.md`; HTTP API table; troubleshooting table; client snippets; README link | New evaluators can pick a PoC pack, validate an adapter, start serve mode, drive HTTP/MQTT, and collect reports without reading Rust code |
 | `07_category_positioning_task.md` | `done` | Codex | `docs/CATEGORY_READINESS.md`; README link; docs index | Category comparison now frames where roomci wins and does not win against real-device staging, brokers, mocks, Home Assistant, cloud emulators, and HIL |
@@ -33,7 +33,7 @@
 | Protocol support matrix exists | `done` | `docs/PROTOCOL_SUPPORT_MATRIX.md` |
 | Adapter contract templates validate | `done` | `cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml`; `cargo test --workspace --all-targets`; unit and CLI tests |
 | Standard MQTT client interoperability tested | `todo` | None yet |
-| Second external protocol endpoint works | `todo` | None yet |
+| Second external protocol endpoint works | `done` | `POST /external/bms/contact`; `external_bms_contact_updates_state_and_timeline`; BMS webhook PoC controller script |
 | Customer PoC packs run from clean checkout | `done` | PoC pack Make targets generate ignored `reports/poc_*` artifacts |
 | NOT A HOTEL evaluator checklist exists | `done` | `docs/NOT_A_HOTEL_EVALUATOR_GUIDE.md` |
 | Generic IoT/SmartHome evaluator checklist exists | `todo` | Covered partially by protocol matrix and adapter kit; dedicated checklist still pending |
@@ -43,4 +43,4 @@
 
 ## Current Recommendation
 
-Tasks 01, 02, 03, 05, 06, 07, 08, 09, and 10 are complete. Next, implement Task 04 external protocol depth, then close Phase 11 with a final adoption review.
+Tasks 01, 02, 03, 05, 06, 07, 08, 09, and 10 are complete. Task 04 has the second external endpoint implemented; next close standard MQTT client/library interoperability and retained subscriber/replay scope, then run a final adoption review.

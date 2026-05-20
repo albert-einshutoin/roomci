@@ -12,8 +12,8 @@ This runs formatting, clippy, tests, docs, coverage, scenario validation, adapte
 
 Current measured baseline:
 
-- 99 workspace tests
-- 84.72% line coverage
+- 100 workspace tests
+- 84.51% line coverage
 - Docker and Compose PoC pass through `make verify`
 
 ## PoC Packs
@@ -40,6 +40,7 @@ Generated `reports/` files are intentionally ignored by git.
 
 - MQTT serve subset: [`MQTT_SERVE_SUBSET.md`](MQTT_SERVE_SUBSET.md)
 - HTTP serve behavior: [`HTTP_SERVE_BEHAVIOR.md`](HTTP_SERVE_BEHAVIOR.md)
+- External protocol depth: [`EXTERNAL_PROTOCOL_DEPTH.md`](EXTERNAL_PROTOCOL_DEPTH.md)
 - Protocol support matrix: [`PROTOCOL_SUPPORT_MATRIX.md`](PROTOCOL_SUPPORT_MATRIX.md)
 - Adapter contract kit: [`ADAPTER_CONTRACT_KIT.md`](ADAPTER_CONTRACT_KIT.md)
 

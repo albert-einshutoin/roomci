@@ -338,6 +338,72 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                 &json!({ "error": "invalid_json", "message": error.to_string() }),
             ),
         },
+        ("POST", "/external/bms/contact") => {
+            match serde_json::from_str::<serde_json::Value>(&request.body) {
+                Ok(contact) => {
+                    let Some(source) = contact.get("source").and_then(|value| value.as_str())
+                    else {
+                        return json_response(
+                            400,
+                            &json!({
+                                "error": "missing_source",
+                                "message": "external BMS contact payload must include string field source"
+                            }),
+                        );
+                    };
+                    let Some(contact_state) = contact.get("state").and_then(|value| value.as_str())
+                    else {
+                        return json_response(
+                            400,
+                            &json!({
+                                "error": "missing_state",
+                                "message": "external BMS contact payload must include string field state"
+                            }),
+                        );
+                    };
+
+                    let mut state = match lock_serve_state(&state) {
+                        Ok(state) => state,
+                        Err(error) => return serve_error_response(error),
+                    };
+                    let state_key = format!("external.bms.{source}");
+                    let mut state_map = BTreeMap::new();
+                    state_map.insert(
+                        "state".to_string(),
+                        serde_json::Value::String(contact_state.to_string()),
+                    );
+                    if let Some(severity) = contact.get("severity").and_then(|value| value.as_str())
+                    {
+                        state_map.insert(
+                            "severity".to_string(),
+                            serde_json::Value::String(severity.to_string()),
+                        );
+                    }
+                    state.latest_report.final_state.insert(state_key, state_map);
+                    let event_index = state.latest_report.timeline.len() + 1;
+                    state.latest_report.timeline.push(TimelineEvent {
+                        at: format!("external#bms{event_index}"),
+                        event_type: "external_bms_contact_observed".to_string(),
+                        target: Some(source.to_string()),
+                        message: format!(
+                            "external BMS/contact event observed: {source}={contact_state}"
+                        ),
+                    });
+                    json_response(
+                        202,
+                        &json!({
+                            "accepted": true,
+                            "source": source,
+                            "state": contact_state
+                        }),
+                    )
+                }
+                Err(error) => json_response(
+                    400,
+                    &json!({ "error": "invalid_json", "message": error.to_string() }),
+                ),
+            }
+        }
         ("POST", "/finish") => {
             let mut state = match lock_serve_state(&state) {
                 Ok(state) => state,
@@ -950,6 +1016,31 @@ mod tests {
             Arc::clone(&state),
         );
         assert!(junit.contains("<testsuite"));
+    }
+
+    #[test]
+    fn external_bms_contact_updates_state_and_timeline() {
+        let state = serve_state();
+
+        let response = route_request(
+            &request(
+                "POST",
+                "/external/bms/contact",
+                r#"{"source":"contact.sauna_emergency_button","state":"on","severity":"critical"}"#,
+            ),
+            Arc::clone(&state),
+        );
+
+        assert!(response.contains("HTTP/1.1 202 Accepted"));
+        assert!(response.contains("\"accepted\":true"));
+
+        let current_state = route_request(&request("GET", "/state", ""), Arc::clone(&state));
+        assert!(current_state.contains("external.bms.contact.sauna_emergency_button"));
+        assert!(current_state.contains("\"severity\":\"critical\""));
+
+        let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
+        assert!(timeline.contains("external_bms_contact_observed"));
+        assert!(timeline.contains("contact.sauna_emergency_button"));
     }
 
     #[test]
