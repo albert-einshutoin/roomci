@@ -44,6 +44,8 @@ pub enum ScenarioError {
     AmbiguousMqttMapping(String),
     #[error("MQTT contract {0} uses unsupported device_id_from_topic strategy {1}")]
     UnsupportedMqttDeviceIdStrategy(String, String),
+    #[error("invalid adapter contract: {0}")]
+    InvalidAdapterContract(String),
     #[error(transparent)]
     DeviceModel(#[from] DeviceModelError),
     #[error(transparent)]
@@ -287,6 +289,131 @@ pub struct ModbusAssertion {
     pub readable_value: Option<f64>,
 }
 
+/// Top-level company adapter contract document.
+///
+/// Adapter contracts capture customer-specific protocol details separately
+/// from the core emulator. They are intentionally stricter than arbitrary YAML
+/// so an evaluator gets actionable feedback before wiring a private spec into
+/// scenarios.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AdapterContract {
+    pub version: String,
+    pub adapter: AdapterMetadata,
+    #[serde(default)]
+    pub site: AdapterSite,
+    #[serde(default)]
+    pub devices: Vec<AdapterDevice>,
+    #[serde(default)]
+    pub mqtt: AdapterMqtt,
+    #[serde(default)]
+    pub modbus: AdapterModbus,
+    #[serde(default)]
+    pub bms: AdapterBms,
+    #[serde(default)]
+    pub edge: AdapterEdge,
+    #[serde(default)]
+    pub auth: BTreeMap<String, serde_yaml::Value>,
+    pub acceptance: AdapterAcceptance,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AdapterMetadata {
+    pub name: String,
+    #[serde(default)]
+    pub domain_pack: Option<String>,
+    #[serde(default)]
+    pub owner: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+pub struct AdapterSite {
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub rooms: Vec<BTreeMap<String, serde_yaml::Value>>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AdapterDevice {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub device_type: String,
+    pub protocol: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+pub struct AdapterMqtt {
+    #[serde(default)]
+    pub contracts: Vec<MqttConnectionContract>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+pub struct AdapterModbus {
+    #[serde(default)]
+    pub devices: Vec<AdapterModbusDevice>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AdapterModbusDevice {
+    pub id: String,
+    #[serde(default)]
+    pub unit_id: Option<u8>,
+    #[serde(default)]
+    pub registers: Vec<AdapterModbusRegister>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AdapterModbusRegister {
+    pub address: u32,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub register_type: String,
+    pub access: String,
+    #[serde(default)]
+    pub scale: Option<f64>,
+    #[serde(default)]
+    pub unit: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+pub struct AdapterBms {
+    #[serde(default)]
+    pub alerts: Vec<AdapterBmsAlert>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AdapterBmsAlert {
+    pub id: String,
+    pub source: String,
+    pub severity: String,
+    #[serde(default)]
+    pub channels: Vec<String>,
+    #[serde(default)]
+    pub ticket_lifecycle: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+pub struct AdapterEdge {
+    #[serde(default)]
+    pub commands: Vec<AdapterEdgeCommand>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AdapterEdgeCommand {
+    pub name: String,
+    pub source: String,
+    pub target: String,
+    pub expected_state: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+pub struct AdapterAcceptance {
+    #[serde(default)]
+    pub criteria: Vec<String>,
+    #[serde(default)]
+    pub report_formats: Vec<String>,
+}
+
 /// Read a scenario YAML file from disk and deserialize it.
 ///
 /// Wraps I/O and YAML parsing errors with the file path so the caller gets
@@ -302,6 +429,110 @@ pub fn load_scenario(path: impl AsRef<Path>) -> Result<ScenarioFile, ScenarioErr
         path: path_display,
         source,
     })
+}
+
+/// Read a company adapter contract YAML file from disk and deserialize it.
+pub fn load_adapter_contract(path: impl AsRef<Path>) -> Result<AdapterContract, ScenarioError> {
+    let path_ref = path.as_ref();
+    let path_display = path_ref.display().to_string();
+    let contents = fs::read_to_string(path_ref).map_err(|source| ScenarioError::Read {
+        path: path_display.clone(),
+        source,
+    })?;
+    serde_yaml::from_str(&contents).map_err(|source| ScenarioError::Parse {
+        path: path_display,
+        source,
+    })
+}
+
+/// Validate a company adapter contract before it is used to map private specs.
+pub fn validate_adapter_contract(contract: &AdapterContract) -> Result<(), ScenarioError> {
+    require_non_empty("version", &contract.version)?;
+    require_non_empty("adapter.name", &contract.adapter.name)?;
+
+    let has_surface = !contract.devices.is_empty()
+        || !contract.mqtt.contracts.is_empty()
+        || !contract.modbus.devices.is_empty()
+        || !contract.bms.alerts.is_empty()
+        || !contract.edge.commands.is_empty();
+    if !has_surface {
+        return Err(ScenarioError::InvalidAdapterContract(
+            "at least one device, MQTT contract, Modbus device, BMS alert, or edge command is required"
+                .to_string(),
+        ));
+    }
+
+    for device in &contract.devices {
+        require_non_empty("devices[].id", &device.id)?;
+        require_non_empty("devices[].type", &device.device_type)?;
+        require_non_empty("devices[].protocol", &device.protocol)?;
+    }
+
+    validate_mqtt_contracts(&contract.mqtt.contracts)?;
+
+    for device in &contract.modbus.devices {
+        require_non_empty("modbus.devices[].id", &device.id)?;
+        if device.registers.is_empty() {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "modbus device {} must declare at least one register",
+                device.id
+            )));
+        }
+        for register in &device.registers {
+            require_non_empty("modbus.registers[].name", &register.name)?;
+            require_non_empty("modbus.registers[].type", &register.register_type)?;
+            match register.access.as_str() {
+                "read" | "write" | "read_write" => {}
+                _ => {
+                    return Err(ScenarioError::InvalidAdapterContract(format!(
+                        "modbus register {} uses unsupported access {}; expected read, write, or read_write",
+                        register.address, register.access
+                    )));
+                }
+            }
+        }
+    }
+
+    for alert in &contract.bms.alerts {
+        require_non_empty("bms.alerts[].id", &alert.id)?;
+        require_non_empty("bms.alerts[].source", &alert.source)?;
+        require_non_empty("bms.alerts[].severity", &alert.severity)?;
+        if alert.channels.is_empty() {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "BMS alert {} must declare at least one notification channel",
+                alert.id
+            )));
+        }
+    }
+
+    for command in &contract.edge.commands {
+        require_non_empty("edge.commands[].name", &command.name)?;
+        require_non_empty("edge.commands[].source", &command.source)?;
+        require_non_empty("edge.commands[].target", &command.target)?;
+        require_non_empty("edge.commands[].expected_state", &command.expected_state)?;
+    }
+
+    if contract.acceptance.criteria.is_empty() {
+        return Err(ScenarioError::InvalidAdapterContract(
+            "acceptance.criteria must declare at least one pass/fail criterion".to_string(),
+        ));
+    }
+    if contract.acceptance.report_formats.is_empty() {
+        return Err(ScenarioError::InvalidAdapterContract(
+            "acceptance.report_formats must declare at least one report format".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn require_non_empty(field: &str, value: &str) -> Result<(), ScenarioError> {
+    if value.trim().is_empty() {
+        return Err(ScenarioError::InvalidAdapterContract(format!(
+            "{field} must not be empty"
+        )));
+    }
+    Ok(())
 }
 
 /// Validate that every step, fault, and assertion in `scenario` references
@@ -698,6 +929,69 @@ assertions:
         .unwrap();
 
         validate_scenario(&scenario).unwrap();
+    }
+
+    #[test]
+    fn validates_adapter_contract_examples() {
+        for path in [
+            "adapter-contracts/templates/company_adapter_contract.yaml",
+            "adapter-contracts/examples/generic_mqtt_edge_device.yaml",
+            "adapter-contracts/examples/hospitality_local_first_room.yaml",
+            "adapter-contracts/examples/building_automation_bms.yaml",
+        ] {
+            let contract = load_adapter_contract(fixture(path)).unwrap();
+            validate_adapter_contract(&contract).unwrap();
+        }
+    }
+
+    #[test]
+    fn rejects_adapter_contract_without_surface() {
+        let contract: AdapterContract = serde_yaml::from_str(
+            r#"
+version: adapter.v1
+adapter:
+  name: empty-contract
+acceptance:
+  criteria: [Run a thing.]
+  report_formats: [json]
+"#,
+        )
+        .unwrap();
+
+        assert!(matches!(
+            validate_adapter_contract(&contract),
+            Err(ScenarioError::InvalidAdapterContract(message))
+                if message.contains("at least one")
+        ));
+    }
+
+    #[test]
+    fn rejects_adapter_contract_with_invalid_modbus_access() {
+        let contract: AdapterContract = serde_yaml::from_str(
+            r#"
+version: adapter.v1
+adapter:
+  name: invalid-modbus-access
+modbus:
+  devices:
+    - id: meter
+      registers:
+        - address: 40001
+          name: energy
+          type: holding
+          access: admin
+acceptance:
+  criteria: [Register map is valid.]
+  report_formats: [json]
+"#,
+        )
+        .unwrap();
+
+        assert!(matches!(
+            validate_adapter_contract(&contract),
+            Err(ScenarioError::InvalidAdapterContract(message))
+                if message.contains("unsupported access")
+        ));
     }
 
     #[test]

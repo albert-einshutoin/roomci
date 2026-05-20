@@ -1,0 +1,46 @@
+version: adapter.v1
+adapter:
+  name: building-automation-bms
+  domain_pack: building-automation
+  owner: roomci
+site:
+  id: building-demo
+  rooms:
+    - id: plant-room
+devices:
+  - id: ahu_01
+    type: air_handler
+    protocol: modbus
+  - id: leak_sensor_01
+    type: contact_input
+    protocol: dry_contact
+modbus:
+  devices:
+    - id: ahu_01
+      unit_id: 3
+      registers:
+        - address: 30001
+          name: supply_air_temperature
+          type: input
+          access: read
+          scale: 0.1
+          unit: celsius
+        - address: 40002
+          name: fan_enable
+          type: holding
+          access: read_write
+          scale: 1
+          unit: boolean
+bms:
+  alerts:
+    - id: leak-detected
+      source: contact.leak_sensor_01
+      severity: critical
+      channels: [bms-dashboard, pager]
+      ticket_lifecycle: [open, assigned, resolved]
+acceptance:
+  criteria:
+    - Read-only Modbus registers reject writes.
+    - Writable Modbus registers update expected state.
+    - Critical contact alert appears in report evidence.
+  report_formats: [json, markdown, junit]

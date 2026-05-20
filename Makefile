@@ -46,6 +46,7 @@ verify:
 	RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps
 	cargo tarpaulin --workspace --engine llvm --fail-under 80
 	cargo run -p roomci-cli -- validate $(ALL_SCENARIOS)
+	cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml
 	cargo run -p roomci-cli -- run $(PASSING_SCENARIOS)
 	@set +e; \
 	cargo run -p roomci-cli -- run examples/dali_scene_partial_failure.yaml; \

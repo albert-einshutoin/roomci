@@ -2,7 +2,7 @@
 
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
-[![Coverage](https://img.shields.io/badge/coverage-85.00%25-green.svg)](#quality-gates)
+[![Coverage](https://img.shields.io/badge/coverage-84.72%25-green.svg)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **MQTT / Edge / Device QA Contract Emulator for CI**
@@ -244,9 +244,15 @@ That command starts `roomci serve` in Docker Compose, runs `examples/controllers
 - `cargo doc --workspace --no-deps` (`RUSTDOCFLAGS=-D warnings`)
 - `cargo tarpaulin --workspace --fail-under 80`
 
-Current measurements: **95 tests** pass, **85.00%** line coverage.
+Current measurements: **99 tests** pass, **84.72%** line coverage.
 
 Use [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) before presenting a release or company evaluation build. Use [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) as the source of truth for behavior-model support versus wire-protocol support.
+
+Company-specific adapter contracts can be validated before runtime work:
+
+```bash
+cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml
+```
 
 ## Core concept
 

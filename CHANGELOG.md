@@ -11,6 +11,7 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 - Phase 11 integration-readiness tasks for adapter contracts, protocol matrix, customer PoC packs, and evaluator evidence.
 - Phase 12 runtime-hardening tasks for `roomci serve`, release metadata, and public-surface truthfulness.
 - `roomci-serve` crate for the long-running HTTP/MQTT PoC runtime.
+- Adapter contract templates, examples, docs, and `roomci adapter validate` for company-specific integration specs.
 
 ### Changed
 

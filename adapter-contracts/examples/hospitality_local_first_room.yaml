@@ -1,0 +1,61 @@
+version: adapter.v1
+adapter:
+  name: hospitality-local-first-room
+  domain_pack: hospitality-smart-home
+  owner: roomci
+site:
+  id: hospitality-demo
+  rooms:
+    - id: villa-living
+devices:
+  - id: living_scene
+    type: light_scene
+    protocol: mqtt
+  - id: floor_heating_01
+    type: floor_heating
+    protocol: modbus
+  - id: sauna_emergency_button
+    type: contact_input
+    protocol: dry_contact
+mqtt:
+  contracts:
+    - name: room_scene_command
+      adapter: mqtt_v3_qos0_subset
+      command_topic: rooms/{device_id}/commands
+      state_topic: rooms/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [scene]
+modbus:
+  devices:
+    - id: floor_heating_01
+      unit_id: 1
+      registers:
+        - address: 40021
+          name: target_temperature
+          type: holding
+          access: read_write
+          scale: 0.1
+          unit: celsius
+bms:
+  alerts:
+    - id: sauna_emergency
+      source: contact.sauna_emergency_button
+      severity: critical
+      channels: [slack, phone]
+      ticket_lifecycle: [open, acknowledged, resolved]
+edge:
+  commands:
+    - name: route-local-scene-command
+      source: ipad-controller
+      target: living_scene
+      expected_state: local_edge_routed
+auth:
+  mode: test-only
+  test_credentials: local-poc-only
+acceptance:
+  criteria:
+    - Local MQTT remains usable during cloud outage.
+    - Floor heating register writes preserve decimal scaling.
+    - Sauna contact creates a critical BMS workflow.
+  report_formats: [json, markdown, junit]

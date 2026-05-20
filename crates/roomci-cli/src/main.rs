@@ -9,6 +9,8 @@
 //!   `--quiet` suppresses per-scenario detail.
 //! - `roomci validate <scenarios...>` — load and validate one or more scenarios
 //!   without executing them.
+//! - `roomci adapter validate <contracts...>` — load and validate one or more
+//!   company adapter contract files without executing scenarios.
 //! - `roomci serve --config <scenario>` — start a localhost-bound HTTP control
 //!   and report API. With `--check`, only validates the service-mode config
 //!   without starting a long-running process.
@@ -22,7 +24,9 @@ use std::{
 use clap::{ArgGroup, Parser, Subcommand};
 use roomci_core::{run_scenario, RunReport, RunResult};
 use roomci_report::{to_json, to_junit, to_markdown};
-use roomci_scenario::{load_scenario, validate_scenario};
+use roomci_scenario::{
+    load_adapter_contract, load_scenario, validate_adapter_contract, validate_scenario,
+};
 use roomci_serve::{run_serve, ServeOptions};
 use thiserror::Error;
 
@@ -69,6 +73,11 @@ enum Command {
         #[arg(required = true)]
         scenarios: Vec<PathBuf>,
     },
+    /// Validate company adapter contract files.
+    Adapter {
+        #[command(subcommand)]
+        command: AdapterCommand,
+    },
     /// Validate service-mode configuration.
     Serve {
         /// Scenario YAML file used as service-mode configuration.
@@ -89,6 +98,15 @@ enum Command {
         /// Allow binding to a non-loopback host.
         #[arg(long)]
         allow_non_loopback: bool,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum AdapterCommand {
+    /// Validate one or more adapter contract YAML files.
+    Validate {
+        #[arg(required = true)]
+        contracts: Vec<PathBuf>,
     },
 }
 
@@ -143,6 +161,16 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
                 let scenario_file = load_scenario(&scenario)?;
                 validate_scenario(&scenario_file)?;
                 println!("valid: {}", scenario.display());
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::Adapter {
+            command: AdapterCommand::Validate { contracts },
+        } => {
+            for contract in contracts {
+                let adapter_contract = load_adapter_contract(&contract)?;
+                validate_adapter_contract(&adapter_contract)?;
+                println!("adapter contract valid: {}", contract.display());
             }
             Ok(ExitCode::SUCCESS)
         }

@@ -1,0 +1,55 @@
+version: adapter.v1
+adapter:
+  name: replace-with-company-or-product
+  domain_pack: generic-iot
+  owner: qa-platform
+site:
+  id: demo-site
+  rooms:
+    - id: room-101
+devices:
+  - id: demo-light
+    type: light
+    protocol: mqtt
+mqtt:
+  contracts:
+    - name: demo_light_command
+      adapter: mqtt_v3_qos0_subset
+      command_topic: demo/{device_id}/command
+      state_topic: demo/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [power]
+modbus:
+  devices:
+    - id: demo-modbus-device
+      unit_id: 1
+      registers:
+        - address: 40001
+          name: setpoint
+          type: holding
+          access: read_write
+          scale: 0.1
+          unit: celsius
+bms:
+  alerts:
+    - id: demo-critical-contact
+      source: contact.demo_emergency
+      severity: critical
+      channels: [slack, phone]
+      ticket_lifecycle: [open, acknowledged, resolved]
+edge:
+  commands:
+    - name: demo-edge-route
+      source: controller
+      target: demo-light
+      expected_state: command_routed
+auth:
+  mode: test-only
+  test_credentials: replace-with-non-production-values
+acceptance:
+  criteria:
+    - MQTT command updates retained state.
+    - Modbus writable register accepts the expected value.
+    - Critical contact creates an acknowledged BMS ticket.
+  report_formats: [json, markdown, junit]

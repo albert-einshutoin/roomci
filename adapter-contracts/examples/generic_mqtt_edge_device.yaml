@@ -1,0 +1,28 @@
+version: adapter.v1
+adapter:
+  name: generic-mqtt-edge-device
+  domain_pack: generic-mqtt
+  owner: roomci
+site:
+  id: generic-lab
+  rooms:
+    - id: lab-1
+devices:
+  - id: plug-01
+    type: relay
+    protocol: mqtt
+mqtt:
+  contracts:
+    - name: relay_power_command
+      adapter: mqtt_v3_qos0_subset
+      command_topic: devices/{device_id}/commands
+      state_topic: devices/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [power]
+acceptance:
+  criteria:
+    - External MQTT client can CONNECT with protocol name MQTT and level 4.
+    - QoS0 PUBLISH to the command topic updates retained state.
+    - HTTP reports expose the retained state update.
+  report_formats: [json, markdown, junit]

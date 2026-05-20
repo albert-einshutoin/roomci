@@ -36,6 +36,36 @@ fn validate_accepts_example_scenarios() {
 }
 
 #[test]
+fn adapter_validate_accepts_shipped_contracts() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("adapter")
+        .arg("validate")
+        .arg(fixture(
+            "adapter-contracts/templates/company_adapter_contract.yaml",
+        ))
+        .arg(fixture(
+            "adapter-contracts/examples/generic_mqtt_edge_device.yaml",
+        ))
+        .arg(fixture(
+            "adapter-contracts/examples/hospitality_local_first_room.yaml",
+        ))
+        .arg(fixture(
+            "adapter-contracts/examples/building_automation_bms.yaml",
+        ))
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("adapter contract valid:"));
+}
+
+#[test]
 fn run_generates_reports_for_latest_local_first_scenario() {
     let tempdir = tempfile::tempdir().unwrap();
     let json = tempdir.path().join("roomci.json");

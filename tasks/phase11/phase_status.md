@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | `01_ci_release_truth_task.md` | `done` | Codex | `.github/workflows/smart-home-ci.yml`; `Makefile`; `docs/RELEASE_CHECKLIST.md`; README quality gates; `make verify` | Public CI/release claims now point to real workflow, local gate, ignored artifacts, and release checklist |
 | `02_protocol_support_matrix_task.md` | `done` | Codex | `docs/PROTOCOL_SUPPORT_MATRIX.md`; `docs/README.md`; README link | Behavior model, serve endpoint, external-client-tested, conformance-subset, and unsupported levels are explicit per domain |
-| `03_adapter_contract_kit_task.md` | `todo` | Unassigned | None yet | Let companies encode private specs as validated contracts without core code edits |
+| `03_adapter_contract_kit_task.md` | `done` | Codex | `adapter-contracts/templates/company_adapter_contract.yaml`; `adapter-contracts/examples/*.yaml`; `docs/ADAPTER_CONTRACT_KIT.md`; `roomci adapter validate`; `validates_adapter_contract_examples`; `adapter_validate_accepts_shipped_contracts` | Companies can fill MQTT, Modbus, BMS, edge, device, auth, and acceptance details and validate them without runtime code edits |
 | `04_external_protocol_depth_task.md` | `todo` | Unassigned | None yet | Add standard MQTT client interoperability and at least one non-MQTT external endpoint |
 | `05_customer_poc_packs_task.md` | `todo` | Unassigned | None yet | Provide runnable PoC packs for generic MQTT, hospitality/local-first, building automation, and BMS |
 | `06_developer_experience_task.md` | `todo` | Unassigned | None yet | Make clean-checkout integration onboarding short and product-like |
@@ -31,7 +31,7 @@
 |---|---|---|
 | Public CI/release claims match repository | `done` | `.github/workflows/smart-home-ci.yml`; `make verify`; `docs/RELEASE_CHECKLIST.md`; README quality gates |
 | Protocol support matrix exists | `done` | `docs/PROTOCOL_SUPPORT_MATRIX.md` |
-| Adapter contract templates validate | `todo` | None yet |
+| Adapter contract templates validate | `done` | `cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml`; `cargo test --workspace --all-targets`; unit and CLI tests |
 | Standard MQTT client interoperability tested | `todo` | None yet |
 | Second external protocol endpoint works | `todo` | None yet |
 | Customer PoC packs run from clean checkout | `todo` | None yet |
@@ -43,4 +43,4 @@
 
 ## Current Recommendation
 
-Task 01 and Task 02 are complete. Next, implement Task 03 (adapter contract kit) so companies can encode private MQTT, Modbus, BMS, edge, and device contracts without editing runtime code. After that, proceed to Task 08 and Task 09 to preserve a strong NOT A HOTEL evaluation path while keeping the broader IoT/SmartHome category positioning honest.
+Tasks 01, 02, and 03 are complete. Next, implement Task 08 and Task 09 to preserve a strong NOT A HOTEL evaluation path while keeping the broader IoT/SmartHome category positioning honest. Then continue to customer PoC packs and evaluator evidence.
