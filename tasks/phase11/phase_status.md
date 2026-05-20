@@ -13,8 +13,8 @@
 | `03_adapter_contract_kit_task.md` | `done` | Codex | `adapter-contracts/templates/company_adapter_contract.yaml`; `adapter-contracts/examples/*.yaml`; `docs/ADAPTER_CONTRACT_KIT.md`; `roomci adapter validate`; `validates_adapter_contract_examples`; `adapter_validate_accepts_shipped_contracts` | Companies can fill MQTT, Modbus, BMS, edge, device, auth, and acceptance details and validate them without runtime code edits |
 | `04_external_protocol_depth_task.md` | `todo` | Unassigned | None yet | Add standard MQTT client interoperability and at least one non-MQTT external endpoint |
 | `05_customer_poc_packs_task.md` | `done` | Codex | `poc-packs/*.md`; `make poc-generic-mqtt`; `make poc-hospitality`; `make poc-building-automation`; `make poc-bms-ops`; README links | Four one-command PoC packs now identify scenarios, adapter contracts, reports, acceptance checks, and customer-specific replacement inputs |
-| `06_developer_experience_task.md` | `todo` | Unassigned | None yet | Make clean-checkout integration onboarding short and product-like |
-| `07_category_positioning_task.md` | `todo` | Unassigned | None yet | Position roomci as a first-choice IoT/SmartHome emulator candidate without overclaiming |
+| `06_developer_experience_task.md` | `done` | Codex | `docs/INTEGRATION_ONBOARDING.md`; HTTP API table; troubleshooting table; client snippets; README link | New evaluators can pick a PoC pack, validate an adapter, start serve mode, drive HTTP/MQTT, and collect reports without reading Rust code |
+| `07_category_positioning_task.md` | `done` | Codex | `docs/CATEGORY_READINESS.md`; README link; docs index | Category comparison now frames where roomci wins and does not win against real-device staging, brokers, mocks, Home Assistant, cloud emulators, and HIL |
 | `08_notahotel_evaluation_path_task.md` | `done` | Codex | `docs/NOT_A_HOTEL_EVALUATOR_GUIDE.md`; `adapter-contracts/examples/hospitality_local_first_room.yaml`; `docs/README.md` | NOT A HOTEL path now states current demos, required private inputs, adapter field mapping, non-claims, and scoring rubric |
 | `09_dual_track_positioning_task.md` | `done` | Codex | `docs/DUAL_TRACK_POSITIONING.md`; `docs/PRODUCT_POSITIONING.md`; `docs/README.md` | Industry track and hospitality track are explicit, with bounded copy candidates and overclaim avoidance |
 | `10_evaluation_evidence_pack_task.md` | `done` | Codex | `docs/EVALUATION_EVIDENCE_PACK.md`; `make verify`; PoC pack targets; protocol docs links | Evidence pack lists commands, expected artifacts, scorecards, unsupported features, and next adoption work |
@@ -43,4 +43,4 @@
 
 ## Current Recommendation
 
-Tasks 01, 02, 03, 05, 08, 09, and 10 are complete. Next, implement Task 06 developer experience and Task 07 category positioning, then continue to external protocol-depth work.
+Tasks 01, 02, 03, 05, 06, 07, 08, 09, and 10 are complete. Next, implement Task 04 external protocol depth, then close Phase 11 with a final adoption review.

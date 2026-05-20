@@ -14,6 +14,7 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 - Adapter contract templates, examples, docs, and `roomci adapter validate` for company-specific integration specs.
 - NOT A HOTEL evaluator guide and dual-track positioning docs for industry-wide adoption without private-compatibility overclaims.
 - Customer PoC pack targets and evaluation evidence pack with scorecards, report artifacts, and unsupported-feature disclosure.
+- Integration onboarding and category readiness docs for first-run evaluator experience and competitive positioning.
 
 ### Changed
 
