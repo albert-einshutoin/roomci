@@ -45,3 +45,5 @@ The final self-review created Phase 15. Next work should remove evaluator fricti
 - **Phase 16** records previously implied roadmap items and forces explicit promote/defer/reject decisions before implementation breadth expands.
 
 See `tasks/backlog_inventory.md` for the current split between implemented work, already taskified implementation work, newly taskified roadmap work, and intentional non-goals.
+
+See `tasks/strategy_alignment.md` for the current strategy mapped to task status.

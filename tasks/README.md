@@ -37,6 +37,7 @@ Use:
 - `tasks/status.md` for the top-level phase board.
 - `tasks/phase*/phase_status.md` for task-level status, quality gates, blockers, and next action.
 - `tasks/backlog_inventory.md` for the implemented / taskified / newly taskified / out-of-scope backlog split.
+- `tasks/strategy_alignment.md` for the current product strategy mapped to phase/task status.
 
 Valid statuses:
 
