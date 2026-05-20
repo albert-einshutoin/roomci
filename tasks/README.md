@@ -25,6 +25,8 @@ Local-first Smart Home QA & Operations Emulator for CI
 | Phase 10 | Pre-adoption PoC productization | External clients can connect to localhost endpoints and produce CI-ready reports |
 | Phase 11 | Integration-ready emulator platform | Company-specific specs can be mapped through contracts, PoC packs, and external protocol endpoints |
 | Phase 12 | Serve runtime hardening and release plumbing | Existing serve endpoints survive evaluator-style concurrency, malformed clients, and public release checks |
+| Phase 13 | Protocol compliance track | Selected protocol subsets are tied to official specifications and verified with standard clients/tools |
+| Phase 14 | Hospitality smart-home QA core coverage | The product boundary is fixed around core QA flows instead of the full reported technology stack |
 
 ## Progress Management
 
