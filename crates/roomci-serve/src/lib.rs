@@ -94,6 +94,11 @@ struct ServeState {
     /// `latest_report.final_state` (with the `external.bms.` prefix) at the
     /// next `/run` boundary.
     external_observations: BTreeMap<String, BTreeMap<String, serde_json::Value>>,
+    /// MQTT retained messages published by external MQTT clients. Keyed by the
+    /// retained topic. Survives across `/run` and is merged into
+    /// `latest_report.retained_messages` at the next `/run` boundary, so
+    /// external MQTT controllers see stable evidence across run boundaries.
+    external_mqtt_retained_state: BTreeMap<String, BTreeMap<String, serde_json::Value>>,
 }
 
 fn serve_http(
@@ -112,6 +117,7 @@ fn serve_http(
         has_completed_run: false,
         external_observation_timeline: Vec::new(),
         external_observations: BTreeMap::new(),
+        external_mqtt_retained_state: BTreeMap::new(),
     }));
     let listener =
         TcpListener::bind((host, port)).map_err(|error| ServeError::Runtime(error.to_string()))?;
@@ -594,6 +600,9 @@ fn rendered_report_view(state: &ServeState) -> RunReport {
         let prefixed = format!("{EXTERNAL_BMS_STATE_PREFIX}{key}");
         report.final_state.insert(prefixed, value.clone());
     }
+    for (topic, payload) in &state.external_mqtt_retained_state {
+        report.retained_messages.insert(topic.clone(), payload.clone());
+    }
     report
 }
 
@@ -608,6 +617,9 @@ fn drain_external_overlay_into(state: &mut ServeState, report: &mut RunReport) {
     for (key, value) in std::mem::take(&mut state.external_observations) {
         let prefixed = format!("{EXTERNAL_BMS_STATE_PREFIX}{key}");
         report.final_state.insert(prefixed, value);
+    }
+    for (topic, payload) in std::mem::take(&mut state.external_mqtt_retained_state) {
+        report.retained_messages.insert(topic, payload);
     }
 }
 
@@ -807,12 +819,7 @@ fn apply_external_mqtt_publish(state: &mut ServeState, publish: MqttPublish) {
     }
 
     state
-        .latest_report
-        .final_state
-        .insert(device_id.clone(), publish.payload.clone());
-    state
-        .latest_report
-        .retained_messages
+        .external_mqtt_retained_state
         .insert(state_topic.clone(), publish.payload);
     state.external_observation_timeline.push(TimelineEvent {
         at: format!("external#{event_index}"),
@@ -920,6 +927,7 @@ mod tests {
             has_completed_run: false,
             external_observation_timeline: Vec::new(),
             external_observations: BTreeMap::new(),
+            external_mqtt_retained_state: BTreeMap::new(),
         }))
     }
 
@@ -1420,6 +1428,57 @@ mod tests {
         assert!(timeline.contains("external_mqtt_retained_state_updated"));
         assert!(timeline.contains("payload missing required fields"));
         assert!(timeline.contains("topic did not match"));
+    }
+
+    #[test]
+    fn external_mqtt_retained_state_survives_run_boundary() {
+        let state = serve_state();
+
+        // Apply an external MQTT publish before /run
+        {
+            let mut state = state.lock().unwrap();
+            apply_external_mqtt_publish(
+                &mut state,
+                MqttPublish {
+                    topic: "fleet/demo/site/lab/device/env_sensor_01/command".to_string(),
+                    payload: BTreeMap::from([
+                        ("online".to_string(), json!(true)),
+                        ("sample_interval_seconds".to_string(), json!(15)),
+                    ]),
+                },
+            );
+            // Before /run, the message is in external_mqtt_retained_state, not latest_report.retained_messages
+            assert_eq!(state.external_mqtt_retained_state.len(), 1);
+        }
+
+        // Call /run
+        let run = route_request(&request("POST", "/run", ""), Arc::clone(&state));
+        assert!(run.contains("HTTP/1.1 200 OK"));
+
+        // After /run, the retained message should appear in /state
+        let state_response = route_request(&request("GET", "/state", ""), Arc::clone(&state));
+        assert!(state_response.contains("fleet/demo/site/lab/device/env_sensor_01/state"));
+        assert!(state_response.contains("\"online\":true"));
+        assert!(state_response.contains("\"sample_interval_seconds\":15"));
+
+        // And in /reports/latest.json
+        let json_report = route_request(
+            &request("GET", "/reports/latest.json", ""),
+            Arc::clone(&state),
+        );
+        assert!(json_report.contains("fleet/demo/site/lab/device/env_sensor_01/state"));
+
+        // Timeline still shows the MQTT event
+        let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
+        assert!(timeline.contains("external_mqtt_retained_state_updated"));
+
+        // After /run, the overlay is drained
+        {
+            let state = state.lock().unwrap();
+            assert_eq!(state.external_mqtt_retained_state.len(), 0);
+            // But the retained message lives in latest_report.retained_messages now
+            assert!(state.latest_report.retained_messages.contains_key("fleet/demo/site/lab/device/env_sensor_01/state"));
+        }
     }
 
     #[test]
