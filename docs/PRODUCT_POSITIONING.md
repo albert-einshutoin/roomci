@@ -69,3 +69,10 @@ scenario -> emulator models -> assertions -> CI reports
 ```
 
 The NOT A HOTEL-facing material should be read as public-research and interview context: a concrete, high-signal domain narrative that demonstrates why this category matters.
+
+For public positioning, keep the two tracks explicit:
+
+- Industry track: IoT / SmartHome / building-automation QA contract emulator for local and CI testing.
+- Hospitality track: local-first hospitality smart-home domain pack that makes NOT A HOTEL-style evaluation credible without claiming private compatibility.
+
+See [`DUAL_TRACK_POSITIONING.md`](DUAL_TRACK_POSITIONING.md) for copy candidates and claim boundaries.
