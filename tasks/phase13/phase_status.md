@@ -2,32 +2,32 @@
 
 ## Phase Status
 
-`todo`
+`done`
 
 ## Task Board
 
 | Task | Status | Owner | Evidence | Notes |
 |---|---|---|---|---|
-| `01_protocol_conformance_registry_task.md` | `todo` | Codex | None yet | Create the spec-reference and subset registry that becomes the source of truth for protocol claims |
-| `02_mqtt_3_1_1_conformance_subset_task.md` | `todo` | Codex | Existing MQTT CONNECT/PUBLISH tests are the starting point | Upgrade current MQTT serve subset into a documented, standard-client-tested conformance subset |
-| `03_mqtt_5_boundary_task.md` | `todo` | Codex | Existing MQTT 5 protocol-level rejection test | Keep MQTT 5 as an explicit unsupported/rejected boundary until a real subset is selected |
-| `04_modbus_tcp_conformance_subset_task.md` | `todo` | Codex | Existing Modbus scenario model only | Add a narrow Modbus TCP endpoint subset backed by Modbus Application Protocol function-code behavior |
-| `05_docker_protocol_smoke_task.md` | `todo` | Codex | Existing `make compose-poc` HTTP controller only | Add Docker/Compose smoke tests using standard MQTT and Modbus clients/tools |
-| `06_future_protocol_profile_matrix_task.md` | `todo` | Codex | Existing future integrations docs | Track BACnet, OPC UA, Zigbee, Thread, KNX, and Matter as future profiles with official references and clear non-goals |
-| `07_protocol_claims_release_gate_task.md` | `todo` | Codex | Existing release checklist and support matrix | Add release checks that prevent protocol-conformance overclaims |
+| `01_protocol_conformance_registry_task.md` | `done` | Codex | `docs/PROTOCOL_CONFORMANCE_REGISTRY.md`; docs index; support matrix link | Spec-reference and subset registry is now the source of truth for protocol claims |
+| `02_mqtt_3_1_1_conformance_subset_task.md` | `done` | Codex | `standard_mqtt_client_publishes_retained_state_through_serve`; `make protocol-smoke-mqtt`; MQTT subset docs | Current MQTT serve subset is standard-client-tested and documented as a narrow conformance subset |
+| `03_mqtt_5_boundary_task.md` | `done` | Codex | `mqtt_connect_with_unsupported_level_is_rejected`; conformance registry MQTT 5 row | MQTT 5 remains an explicit unsupported/rejected boundary |
+| `04_modbus_tcp_conformance_subset_task.md` | `done` | Codex | `--modbus-port`; `docs/MODBUS_TCP_SUBSET.md`; `modbus_tcp_*` tests; `protocol_conformance_smoke.yaml` | Narrow Modbus TCP subset supports MBAP, read holding/input, write single, and exception responses |
+| `05_docker_protocol_smoke_task.md` | `done` | Codex | `make protocol-smoke`; `examples/controllers/protocol_smoke_controller.py`; Compose `protocol-smoke` service | Docker/Compose smoke uses paho-mqtt and pymodbus clients against roomci serve |
+| `06_future_protocol_profile_matrix_task.md` | `done` | Codex | `docs/PROTOCOL_CONFORMANCE_REGISTRY.md`; `docs/HOSPITALITY_STACK_COVERAGE.md` | BACnet, OPC UA, Zigbee, Thread, KNX, and Matter are tracked as future profiles with explicit non-goals |
+| `07_protocol_claims_release_gate_task.md` | `done` | Codex | `docs/RELEASE_CHECKLIST.md`; registry release rule | Release checklist now blocks unsupported conformance claims |
 
 ## Quality Gate Status
 
 | Gate | Status | Evidence |
 |---|---|---|
-| Protocol conformance registry exists | `todo` | None yet |
-| MQTT 3.1.1 subset verified with standard external client | `todo` | Existing hand-written packet and CLI black-box tests are insufficient by themselves |
-| MQTT 5 boundary documented and tested | `review` | Existing protocol-level rejection exists; docs need registry linkage |
-| Modbus TCP subset selected and tested | `todo` | Existing scenario model does not expose Modbus TCP wire endpoint |
-| Docker protocol smoke tests exist | `todo` | `make compose-poc` covers HTTP controller only |
-| Future protocol profiles are tracked without overclaiming | `todo` | BACnet/OPC UA/Matter/etc. appear in docs but not as a structured profile matrix |
-| Release gate blocks unsupported conformance claims | `todo` | None yet |
+| Protocol conformance registry exists | `done` | `docs/PROTOCOL_CONFORMANCE_REGISTRY.md` |
+| MQTT 3.1.1 subset verified with standard external client | `done` | `rumqttc` CLI black-box test; `make protocol-smoke-mqtt` |
+| MQTT 5 boundary documented and tested | `done` | MQTT 5 registry row; protocol-level rejection test |
+| Modbus TCP subset selected and tested | `done` | `docs/MODBUS_TCP_SUBSET.md`; `modbus_tcp_*` tests; pymodbus Compose smoke |
+| Docker protocol smoke tests exist | `done` | `make protocol-smoke`; Compose `protocol-smoke` service |
+| Future protocol profiles are tracked without overclaiming | `done` | Registry future-profile rows; hospitality coverage future-profile tier |
+| Release gate blocks unsupported conformance claims | `done` | Release checklist protocol claim rules |
 
 ## Current Recommendation
 
-Start with Task 01, then Task 02. MQTT is already closest to a real conformance subset and should become the first official-spec-backed proof point. Modbus TCP should be the second implementation target because it is high-value for building automation and more tractable than BACnet, OPC UA, Matter, Zigbee, Thread, or KNX.
+Phase 13 is complete. MQTT 3.1.1 and Modbus TCP now have documented conformance subsets and black-box protocol smoke coverage. Future protocols remain tracked without implementation claims.
