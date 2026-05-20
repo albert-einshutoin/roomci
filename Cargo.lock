@@ -424,6 +424,7 @@ dependencies = [
  "roomci-core",
  "roomci-report",
  "roomci-scenario",
+ "roomci-serve",
  "serde",
  "serde_json",
  "tempfile",
@@ -512,6 +513,18 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "roomci-serve"
+version = "0.1.0"
+dependencies = [
+ "roomci-core",
+ "roomci-report",
+ "roomci-scenario",
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 

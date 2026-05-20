@@ -9,6 +9,7 @@ members = [
   "crates/roomci-ops",
   "crates/roomci-report",
   "crates/roomci-scenario",
+  "crates/roomci-serve",
 ]
 resolver = "2"
 

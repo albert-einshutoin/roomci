@@ -22,7 +22,7 @@ The strict review of Phase 9 + 10 found that the implementation has the right sh
 - `/health` always returns `"status":"ok"` regardless of `latest_report.result`, so an evaluator's controller cannot use it as a real readiness signal.
 - MQTT `CONNECT` is blindly accepted: protocol name and protocol level are never validated, which contradicts the published "MQTT 3.1.1 subset" claim.
 - `crates/roomci-cli/src/main.rs` has grown past 1000 lines, mixing CLI argument parsing, HTTP routing, JSON rendering, and a hand-rolled MQTT wire decoder. This violates the repo coding-style ceiling of 800 lines per file and makes review and unit testing harder than it should be.
-- Release plumbing is incomplete: `Cargo.toml` workspace metadata lacks `description`, `keywords`, `categories`, and `readme`; no `CHANGELOG.md` exists; and the GitHub repository referenced from the README badges still 404s.
+- Release plumbing was incomplete: `Cargo.toml` workspace metadata lacked `description`, `keywords`, `categories`, and `readme`; no `CHANGELOG.md` existed; and the GitHub repository referenced from the README badges returned 404. Task 06 has closed the metadata, changelog, static-badge, and `roomci-serve` package-verification pieces.
 
 None of these are blocking for an internal demo. All of them are visible to an external evaluator who reads the docs and then probes the running service.
 
@@ -34,8 +34,7 @@ None of these are blocking for an internal demo. All of them are visible to an e
 - Execute scenario runs (`/run`) without holding the serve-state mutex across the entire scenario, so other routes remain responsive during execution.
 - Make `/health` reflect the latest run result and the serve-state lifecycle, not a hardcoded `"ok"`.
 - Validate the MQTT `CONNECT` packet (protocol name `MQTT`, protocol level 4 = MQTT 3.1.1) and reject anything else with the documented `CONNACK` return code.
-- Add a workspace `Cargo.toml` metadata block (`description`, `keywords`, `categories`, `readme`) and a `CHANGELOG.md` aligned with the existing phase history.
-- Update README badges and `tasks/status.md` once the GitHub repository is public, so badge URLs resolve.
+- Keep workspace `Cargo.toml` metadata, crate metadata inheritance, `CHANGELOG.md`, README badges, and task status aligned with the actual repository state.
 
 ## Out of Scope
 
@@ -50,9 +49,10 @@ None of these are blocking for an internal demo. All of them are visible to an e
 - `roomci-serve` crate exists, is referenced from `crates/roomci-cli`, and `crates/roomci-cli/src/main.rs` is back under 500 lines.
 - `cargo test --workspace` adds at least one regression test per hardening item (concurrent HTTP requests, slow-client timeout, poisoned mutex 500 response, `/run` non-blocking, `/health` reflecting `latest_report.result`, MQTT `CONNECT` rejection for bad protocol name and level).
 - `cargo tarpaulin --workspace --fail-under 80` still passes after the refactor.
-- `Cargo.toml` exposes `description`, `keywords`, `categories`, and `readme` so the crates are publish-ready.
+- Existing crates expose `description`, `keywords`, `categories`, and `readme` so they are package-metadata ready.
 - `CHANGELOG.md` exists at repo root and references phases 0–12.
-- README badge URLs resolve (either by pushing the repo public or by removing/replacing the badges).
+- README badge URLs resolve.
+- `roomci-serve` package metadata is verified after Task 01 creates that crate.
 - `tasks/status.md` lists Phase 12 with the correct status and links to `phase12/phase_status.md`.
 
 ## Dependencies

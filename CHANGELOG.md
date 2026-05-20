@@ -10,10 +10,12 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 
 - Phase 11 integration-readiness tasks for adapter contracts, protocol matrix, customer PoC packs, and evaluator evidence.
 - Phase 12 runtime-hardening tasks for `roomci serve`, release metadata, and public-surface truthfulness.
+- `roomci-serve` crate for the long-running HTTP/MQTT PoC runtime.
 
 ### Changed
 
 - Public release metadata and README badges are being aligned with verifiable local repository state.
+- `roomci-cli` is now a thin argument-parsing and scenario-runner binary; serve runtime ownership moved to `roomci-serve`.
 
 ## [0.12.0] - 2026-05-19
 

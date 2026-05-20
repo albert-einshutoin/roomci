@@ -16,7 +16,7 @@
 | Phase 9 | `done` | Generic MQTT contract positioning | None | `phase9/phase_status.md` |
 | Phase 10 | `done` | Pre-adoption PoC productization with HTTP serve, black-box controller E2E, MQTT QoS0 ingress, configurable contracts, and PoC docs | None | `phase10/phase_status.md` |
 | Phase 11 | `todo` | Integration-ready emulator platform for company-specific IoT, SmartHome, building-automation, and NOT A HOTEL-style PoCs | Real customer/vendor specs are required only for compatibility claims, not for generic platform progress | `phase11/phase_status.md` |
-| Phase 12 | `todo` | Serve runtime hardening (HTTP concurrency, read timeout, mutex panic safety, `/run` lock scope, `/health` semantics, MQTT CONNECT validation) and release plumbing (workspace Cargo metadata, CHANGELOG, working README badges) | README badge URLs depend on the GitHub repository being pushed public; everything else is unblocked | `phase12/phase_status.md` |
+| Phase 12 | `in_progress` | Serve runtime hardening after completed crate extraction and release plumbing | None | `phase12/phase_status.md` |
 
 ## Update Rules
 
@@ -32,6 +32,6 @@ Phase 10 turned the contract emulator into a pre-adoption PoC product: a localho
 Phase 11 and Phase 12 should run in parallel:
 
 - **Phase 11** expands the external surface so `roomci` becomes integration-ready for real company evaluations — adapter contract kit, protocol support matrix, customer PoC packs, second external protocol surface.
-- **Phase 12** hardens the existing surface the strict review of Phase 9 + 10 flagged — HTTP per-connection concurrency and read timeout, mutex panic safety, `/run` lock scope, `/health` semantics, MQTT CONNECT validation, plus release plumbing (workspace Cargo metadata, CHANGELOG, working README badges).
+- **Phase 12** hardens the existing surface the strict review of Phase 9 + 10 flagged — HTTP per-connection concurrency and read timeout, mutex panic safety, `/run` lock scope, `/health` semantics, and MQTT CONNECT validation. Crate extraction and release plumbing are now complete.
 
 Where the two phases intersect (adapter dispatch), Phase 12 defers to Phase 11's `03_adapter_contract_kit_task.md`. Where Phase 12 lands first (release plumbing, runtime safety), Phase 11 benefits because every Phase 11 deliverable is shipped on a more credible runtime and a more honest public surface.

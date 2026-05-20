@@ -1,5 +1,5 @@
 [package]
-name = "roomci-cli"
+name = "roomci-serve"
 version.workspace = true
 edition.workspace = true
 description.workspace = true
@@ -9,19 +9,10 @@ readme = "../../README.md"
 keywords.workspace = true
 categories.workspace = true
 
-[[bin]]
-name = "roomci"
-path = "src/main.rs"
-
 [dependencies]
-clap.workspace = true
 roomci-core = { path = "../roomci-core" }
 roomci-report = { path = "../roomci-report" }
 roomci-scenario = { path = "../roomci-scenario" }
-roomci-serve = { path = "../roomci-serve" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
