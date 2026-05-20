@@ -24,4 +24,5 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+rumqttc = "0.25.0"
 tempfile.workspace = true

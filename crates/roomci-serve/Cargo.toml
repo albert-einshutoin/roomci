@@ -11,8 +11,10 @@ categories.workspace = true
 
 [dependencies]
 roomci-core = { path = "../roomci-core" }
+roomci-device-model = { path = "../roomci-device-model" }
 roomci-report = { path = "../roomci-report" }
 roomci-scenario = { path = "../roomci-scenario" }
 serde.workspace = true
 serde_json.workspace = true
+serde_yaml.workspace = true
 thiserror.workspace = true

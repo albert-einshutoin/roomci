@@ -1,0 +1,61 @@
+version: "0.1"
+scenario:
+  name: protocol_conformance_smoke
+  description: External MQTT and Modbus TCP clients drive the same roomci serve runtime.
+  tags: [mqtt, modbus, protocol-smoke]
+
+mqtt:
+  local:
+    retained: true
+  contracts:
+    - name: protocol_smoke_device_retained_state
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/demo/site/lab/device/{device_id}/command
+      state_topic: fleet/demo/site/lab/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [online, sample_interval_seconds]
+
+modbus:
+  devices:
+    - id: floor_heating_01
+      unit_id: 1
+      holding_registers:
+        40001:
+          name: target_temperature
+          type: decimal_0_1
+          value: 230
+          unit: celsius
+      input_registers:
+        30001:
+          name: current_temperature
+          type: decimal_0_1
+          value: 228
+          unit: celsius
+
+steps:
+  - at: T
+    mqtt_publish:
+      client: protocol_smoke_device
+      topic: fleet/demo/site/lab/device/env_sensor_01/command
+      payload:
+        online: true
+        sample_interval_seconds: 15
+  - at: T+1s
+    modbus_write:
+      device: floor_heating_01
+      register: 40001
+      value: 245
+
+assertions:
+  - at: T+1s
+    mqtt:
+      topic: fleet/demo/site/lab/device/env_sensor_01/state
+      retained:
+        online: true
+        sample_interval_seconds: 15
+  - at: T+2s
+    modbus:
+      device: floor_heating_01
+      register: 40001
+      readable_value: 24.5

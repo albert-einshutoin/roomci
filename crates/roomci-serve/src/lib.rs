@@ -17,6 +17,7 @@ use std::{
 };
 
 use roomci_core::{run_scenario, RunReport, TimelineEvent};
+use roomci_device_model::{DeviceModelError, ModbusModel};
 use roomci_report::{to_json, to_junit, to_markdown};
 use roomci_scenario::{MqttConnectionContract, ScenarioFile};
 use serde_json::json;
@@ -31,6 +32,9 @@ const MQTT_PROTOCOL_LEVEL_3_1_1: u8 = 4;
 const MQTT_CONNACK_ACCEPTED: u8 = 0x00;
 const MQTT_CONNACK_UNACCEPTABLE_PROTOCOL: u8 = 0x01;
 const EXTERNAL_BMS_STATE_PREFIX: &str = "external.bms.";
+const MODBUS_EXCEPTION_ILLEGAL_FUNCTION: u8 = 0x01;
+const MODBUS_EXCEPTION_ILLEGAL_ADDRESS: u8 = 0x02;
+const MODBUS_EXCEPTION_ILLEGAL_VALUE: u8 = 0x03;
 
 /// Configuration for a `roomci serve` process.
 #[derive(Debug)]
@@ -43,6 +47,8 @@ pub struct ServeOptions {
     pub port: u16,
     /// Optional MQTT PoC ingress port.
     pub mqtt_port: Option<u16>,
+    /// Optional Modbus TCP PoC ingress port.
+    pub modbus_port: Option<u16>,
     /// Allow binding the HTTP and MQTT sockets to a non-loopback host.
     pub allow_non_loopback: bool,
 }
@@ -74,6 +80,7 @@ pub fn run_serve(options: ServeOptions) -> Result<(), ServeError> {
         &options.host,
         options.port,
         options.mqtt_port,
+        options.modbus_port,
     )
 }
 
@@ -103,6 +110,9 @@ struct ServeState {
     /// `latest_report.retained_messages` at the next `/run` boundary, so
     /// external MQTT controllers see stable evidence across run boundaries.
     external_mqtt_retained_state: BTreeMap<String, BTreeMap<String, serde_json::Value>>,
+    modbus: ModbusModel,
+    modbus_units: BTreeMap<u8, String>,
+    external_modbus_registers: BTreeMap<String, BTreeMap<String, serde_json::Value>>,
 }
 
 fn serve_http(
@@ -110,8 +120,11 @@ fn serve_http(
     host: &str,
     port: u16,
     mqtt_port: Option<u16>,
+    modbus_port: Option<u16>,
 ) -> Result<(), ServeError> {
     let latest_report = run_scenario(&scenario)?;
+    let modbus = ModbusModel::from_config(&scenario.modbus);
+    let modbus_units = modbus_unit_map(&scenario);
     let state = Arc::new(Mutex::new(ServeState {
         scenario,
         latest_report,
@@ -123,6 +136,9 @@ fn serve_http(
         external_observations: BTreeMap::new(),
         external_mqtt_final_state: BTreeMap::new(),
         external_mqtt_retained_state: BTreeMap::new(),
+        modbus,
+        modbus_units,
+        external_modbus_registers: BTreeMap::new(),
     }));
     let listener =
         TcpListener::bind((host, port)).map_err(|error| ServeError::Runtime(error.to_string()))?;
@@ -142,6 +158,16 @@ fn serve_http(
         let mqtt_state = Arc::clone(&state);
         thread::spawn(move || serve_mqtt(mqtt_listener, mqtt_address, mqtt_state));
     }
+    if let Some(modbus_port) = modbus_port {
+        let modbus_listener = TcpListener::bind((host, modbus_port))
+            .map_err(|error| ServeError::Runtime(error.to_string()))?;
+        let modbus_address = modbus_listener
+            .local_addr()
+            .map_err(|error| ServeError::Runtime(error.to_string()))?;
+        println!("roomci modbus listening on tcp://{modbus_address}");
+        let modbus_state = Arc::clone(&state);
+        thread::spawn(move || serve_modbus(modbus_listener, modbus_address, modbus_state));
+    }
     std::io::stdout()
         .flush()
         .map_err(|error| ServeError::Runtime(error.to_string()))?;
@@ -149,6 +175,35 @@ fn serve_http(
     serve_http_listener(listener, state);
 
     Ok(())
+}
+
+fn modbus_unit_map(scenario: &ScenarioFile) -> BTreeMap<u8, String> {
+    let mut units = BTreeMap::new();
+    let Some(devices) = scenario
+        .modbus
+        .get("devices")
+        .and_then(|value| value.as_sequence())
+    else {
+        return units;
+    };
+    for device in devices {
+        let Some(mapping) = device.as_mapping() else {
+            continue;
+        };
+        let Some(id) = mapping
+            .get(serde_yaml::Value::String("id".to_string()))
+            .and_then(|value| value.as_str())
+        else {
+            continue;
+        };
+        let unit_id = mapping
+            .get(serde_yaml::Value::String("unit_id".to_string()))
+            .and_then(|value| value.as_i64())
+            .and_then(|value| u8::try_from(value).ok())
+            .unwrap_or_else(|| (units.len() + 1).min(u8::MAX as usize) as u8);
+        units.insert(unit_id, id.to_string());
+    }
+    units
 }
 
 fn serve_http_listener(listener: TcpListener, state: Arc<Mutex<ServeState>>) {
@@ -327,6 +382,7 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                     "injected_faults": state.injected_faults,
                     "external_publish_count": state.external_publish_count,
                     "external_observations": state.external_observations,
+                    "external_modbus_registers": state.external_modbus_registers,
                 }),
             )
         }
@@ -607,6 +663,9 @@ fn rendered_report_view(state: &ServeState) -> RunReport {
         let prefixed = format!("{EXTERNAL_BMS_STATE_PREFIX}{key}");
         report.final_state.insert(prefixed, value.clone());
     }
+    for (key, value) in &state.external_modbus_registers {
+        report.final_state.insert(key.clone(), value.clone());
+    }
     report
 }
 
@@ -648,6 +707,9 @@ fn drain_external_overlay_into(state: &mut ServeState, report: &mut RunReport) {
     for (topic, payload) in std::mem::take(&mut state.external_mqtt_retained_state) {
         report.retained_messages.insert(topic, payload);
     }
+    for (key, value) in std::mem::take(&mut state.external_modbus_registers) {
+        report.final_state.insert(key, value);
+    }
 }
 
 impl ServeState {
@@ -681,6 +743,284 @@ fn serve_mqtt(listener: TcpListener, address: SocketAddr, state: Arc<Mutex<Serve
     }
 }
 
+fn serve_modbus(listener: TcpListener, address: SocketAddr, state: Arc<Mutex<ServeState>>) {
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                let state = Arc::clone(&state);
+                thread::spawn(move || {
+                    if let Err(error) = handle_modbus_client(stream, state) {
+                        eprintln!("modbus request error on {address}: {error}");
+                    }
+                });
+            }
+            Err(error) => eprintln!("modbus accept error on {address}: {error}"),
+        }
+    }
+}
+
+fn handle_modbus_client(
+    mut stream: TcpStream,
+    state: Arc<Mutex<ServeState>>,
+) -> Result<(), ServeError> {
+    loop {
+        let Some(request) = read_modbus_tcp_request(&mut stream)? else {
+            return Ok(());
+        };
+        let response = {
+            let mut state = lock_serve_state(&state)?;
+            apply_modbus_tcp_request(&mut state, request)
+        };
+        stream
+            .write_all(&response)
+            .map_err(|error| ServeError::Runtime(error.to_string()))?;
+    }
+}
+
+struct ModbusTcpRequest {
+    transaction_id: u16,
+    unit_id: u8,
+    function: u8,
+    payload: Vec<u8>,
+}
+
+fn read_modbus_tcp_request(stream: &mut TcpStream) -> Result<Option<ModbusTcpRequest>, ServeError> {
+    let mut header = [0_u8; 7];
+    match stream.read_exact(&mut header) {
+        Ok(()) => {}
+        Err(error) if is_peer_closed(&error) => return Ok(None),
+        Err(error) => return Err(ServeError::Runtime(error.to_string())),
+    }
+    let transaction_id = u16::from_be_bytes([header[0], header[1]]);
+    let protocol_id = u16::from_be_bytes([header[2], header[3]]);
+    if protocol_id != 0 {
+        return Err(ServeError::Runtime(
+            "invalid Modbus protocol id".to_string(),
+        ));
+    }
+    let length = u16::from_be_bytes([header[4], header[5]]) as usize;
+    if length == 0 || length > 260 {
+        return Err(ServeError::Runtime("invalid Modbus TCP length".to_string()));
+    }
+    let unit_id = header[6];
+    let mut pdu = vec![0_u8; length - 1];
+    stream
+        .read_exact(&mut pdu)
+        .map_err(|error| ServeError::Runtime(error.to_string()))?;
+    let Some((&function, payload)) = pdu.split_first() else {
+        return Err(ServeError::Runtime("missing Modbus function".to_string()));
+    };
+    Ok(Some(ModbusTcpRequest {
+        transaction_id,
+        unit_id,
+        function,
+        payload: payload.to_vec(),
+    }))
+}
+
+fn apply_modbus_tcp_request(state: &mut ServeState, request: ModbusTcpRequest) -> Vec<u8> {
+    match request.function {
+        0x03 | 0x04 => apply_modbus_read(state, request),
+        0x06 => apply_modbus_write_single_register(state, request),
+        function => modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            function,
+            MODBUS_EXCEPTION_ILLEGAL_FUNCTION,
+        ),
+    }
+}
+
+fn apply_modbus_read(state: &mut ServeState, request: ModbusTcpRequest) -> Vec<u8> {
+    if request.payload.len() != 4 {
+        return modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            request.function,
+            MODBUS_EXCEPTION_ILLEGAL_VALUE,
+        );
+    }
+    let address = u16::from_be_bytes([request.payload[0], request.payload[1]]) as u32;
+    let quantity = u16::from_be_bytes([request.payload[2], request.payload[3]]);
+    if quantity != 1 {
+        return modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            request.function,
+            MODBUS_EXCEPTION_ILLEGAL_VALUE,
+        );
+    }
+    let Some(device) = state.modbus_units.get(&request.unit_id).cloned() else {
+        return modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            request.function,
+            MODBUS_EXCEPTION_ILLEGAL_ADDRESS,
+        );
+    };
+    let register = normalize_modbus_register(&state.modbus, &device, request.function, address);
+    let Some(value) = state.modbus.value(&device, register).and_then(json_to_u16) else {
+        return modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            request.function,
+            MODBUS_EXCEPTION_ILLEGAL_ADDRESS,
+        );
+    };
+    remember_modbus_register(state, &device, register);
+    modbus_success_response(
+        request.transaction_id,
+        request.unit_id,
+        request.function,
+        &[2, (value >> 8) as u8, value as u8],
+    )
+}
+
+fn apply_modbus_write_single_register(
+    state: &mut ServeState,
+    request: ModbusTcpRequest,
+) -> Vec<u8> {
+    if request.payload.len() != 4 {
+        return modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            request.function,
+            MODBUS_EXCEPTION_ILLEGAL_VALUE,
+        );
+    }
+    let address = u16::from_be_bytes([request.payload[0], request.payload[1]]) as u32;
+    let value = u16::from_be_bytes([request.payload[2], request.payload[3]]);
+    let Some(device) = state.modbus_units.get(&request.unit_id).cloned() else {
+        return modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            request.function,
+            MODBUS_EXCEPTION_ILLEGAL_ADDRESS,
+        );
+    };
+    let register = normalize_modbus_register(&state.modbus, &device, request.function, address);
+    let write_value = serde_yaml::to_value(value as i64).unwrap_or(serde_yaml::Value::Null);
+    match state.modbus.write(&device, register, write_value) {
+        Ok(_) => {
+            remember_modbus_register(state, &device, register);
+            modbus_success_response(
+                request.transaction_id,
+                request.unit_id,
+                request.function,
+                &request.payload,
+            )
+        }
+        Err(DeviceModelError::ReadOnlyModbusRegister { .. }) => modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            request.function,
+            MODBUS_EXCEPTION_ILLEGAL_VALUE,
+        ),
+        Err(
+            DeviceModelError::UnknownModbusDevice(_)
+            | DeviceModelError::UnknownModbusRegister { .. },
+        ) => modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            request.function,
+            MODBUS_EXCEPTION_ILLEGAL_ADDRESS,
+        ),
+        Err(_) => modbus_exception_response(
+            request.transaction_id,
+            request.unit_id,
+            request.function,
+            MODBUS_EXCEPTION_ILLEGAL_VALUE,
+        ),
+    }
+}
+
+fn normalize_modbus_register(
+    modbus: &ModbusModel,
+    device: &str,
+    function: u8,
+    address: u32,
+) -> u32 {
+    if modbus.has_register(device, address) {
+        return address;
+    }
+    let conventional = match function {
+        0x04 => 30001 + address,
+        _ => 40001 + address,
+    };
+    if modbus.has_register(device, conventional) {
+        conventional
+    } else {
+        address
+    }
+}
+
+fn remember_modbus_register(state: &mut ServeState, device: &str, register: u32) {
+    if let Some(value) = state.modbus.value(device, register).cloned() {
+        let mut map = BTreeMap::new();
+        map.insert(
+            "device".to_string(),
+            serde_json::Value::String(device.to_string()),
+        );
+        map.insert(
+            "register".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(register)),
+        );
+        map.insert("value".to_string(), value);
+        if let Some(readable) = state.modbus.readable_value(device, register) {
+            if let Some(number) = serde_json::Number::from_f64(readable) {
+                map.insert(
+                    "readable_value".to_string(),
+                    serde_json::Value::Number(number),
+                );
+            }
+        }
+        state
+            .external_modbus_registers
+            .insert(format!("modbus.{device}.{register}"), map);
+    }
+}
+
+fn json_to_u16(value: &serde_json::Value) -> Option<u16> {
+    if let Some(value) = value.as_u64() {
+        return u16::try_from(value).ok();
+    }
+    if let Some(value) = value.as_i64() {
+        return u16::try_from(value).ok();
+    }
+    value.as_bool().map(u16::from)
+}
+
+fn modbus_success_response(
+    transaction_id: u16,
+    unit_id: u8,
+    function: u8,
+    payload: &[u8],
+) -> Vec<u8> {
+    let mut pdu = Vec::with_capacity(payload.len() + 1);
+    pdu.push(function);
+    pdu.extend_from_slice(payload);
+    modbus_tcp_response(transaction_id, unit_id, &pdu)
+}
+
+fn modbus_exception_response(
+    transaction_id: u16,
+    unit_id: u8,
+    function: u8,
+    exception: u8,
+) -> Vec<u8> {
+    modbus_tcp_response(transaction_id, unit_id, &[function | 0x80, exception])
+}
+
+fn modbus_tcp_response(transaction_id: u16, unit_id: u8, pdu: &[u8]) -> Vec<u8> {
+    let mut response = Vec::with_capacity(7 + pdu.len());
+    response.extend_from_slice(&transaction_id.to_be_bytes());
+    response.extend_from_slice(&0_u16.to_be_bytes());
+    response.extend_from_slice(&((pdu.len() + 1) as u16).to_be_bytes());
+    response.push(unit_id);
+    response.extend_from_slice(pdu);
+    response
+}
+
 fn handle_mqtt_client(
     mut stream: TcpStream,
     state: Arc<Mutex<ServeState>>,
@@ -708,6 +1048,12 @@ fn handle_mqtt_client(
                 let mut state = lock_serve_state(&state)?;
                 apply_external_mqtt_publish(&mut state, publish);
             }
+            12 => {
+                stream
+                    .write_all(&[0xD0, 0x00])
+                    .map_err(|error| ServeError::Runtime(error.to_string()))?;
+            }
+            14 => return Ok(()),
             _ => {
                 return Err(ServeError::Runtime(format!(
                     "unsupported MQTT packet type {}",
@@ -748,7 +1094,7 @@ fn read_mqtt_packet(stream: &mut TcpStream) -> Result<Option<MqttPacket>, ServeE
     let mut fixed = [0_u8; 1];
     match stream.read_exact(&mut fixed) {
         Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
+        Err(error) if is_peer_closed(&error) => return Ok(None),
         Err(error) => return Err(ServeError::Runtime(error.to_string())),
     }
     let remaining = read_mqtt_remaining_length(stream)?;
@@ -765,6 +1111,13 @@ fn read_mqtt_packet(stream: &mut TcpStream) -> Result<Option<MqttPacket>, ServeE
         packet_type: fixed[0] >> 4,
         payload,
     }))
+}
+
+fn is_peer_closed(error: &std::io::Error) -> bool {
+    matches!(
+        error.kind(),
+        std::io::ErrorKind::UnexpectedEof | std::io::ErrorKind::ConnectionReset
+    )
 }
 
 fn read_mqtt_remaining_length(stream: &mut TcpStream) -> Result<usize, ServeError> {
@@ -947,7 +1300,18 @@ mod tests {
 
     fn serve_state() -> Arc<Mutex<ServeState>> {
         let scenario = load_scenario(fixture("examples/generic_mqtt_retained_state.yaml")).unwrap();
+        serve_state_for_scenario(scenario)
+    }
+
+    fn modbus_serve_state() -> Arc<Mutex<ServeState>> {
+        let scenario = load_scenario(fixture("examples/modbus_floor_heating.yaml")).unwrap();
+        serve_state_for_scenario(scenario)
+    }
+
+    fn serve_state_for_scenario(scenario: ScenarioFile) -> Arc<Mutex<ServeState>> {
         let latest_report = run_scenario(&scenario).unwrap();
+        let modbus = ModbusModel::from_config(&scenario.modbus);
+        let modbus_units = modbus_unit_map(&scenario);
         Arc::new(Mutex::new(ServeState {
             scenario,
             latest_report,
@@ -959,6 +1323,9 @@ mod tests {
             external_observations: BTreeMap::new(),
             external_mqtt_final_state: BTreeMap::new(),
             external_mqtt_retained_state: BTreeMap::new(),
+            modbus,
+            modbus_units,
+            external_modbus_registers: BTreeMap::new(),
         }))
     }
 
@@ -983,6 +1350,14 @@ mod tests {
         let address = listener.local_addr().unwrap();
         let state = serve_state();
         thread::spawn(move || serve_http_listener(listener, state));
+        address
+    }
+
+    fn start_modbus_test_server() -> SocketAddr {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let state = modbus_serve_state();
+        thread::spawn(move || serve_modbus(listener, address, state));
         address
     }
 
@@ -1577,6 +1952,80 @@ mod tests {
     }
 
     #[test]
+    fn modbus_tcp_reads_and_writes_register_subset() {
+        let state = modbus_serve_state();
+        let read_holding = modbus_request(1, 1, 0x03, &[0x00, 0x00, 0x00, 0x01]);
+        let response = {
+            let request = parse_modbus_request_for_test(&read_holding);
+            let mut state = state.lock().unwrap();
+            apply_modbus_tcp_request(&mut state, request)
+        };
+        assert_eq!(response, modbus_response(1, 1, 0x03, &[0x02, 0x00, 0xE6]));
+
+        let write = modbus_request(2, 1, 0x06, &[0x00, 0x00, 0x00, 0xF5]);
+        let response = {
+            let request = parse_modbus_request_for_test(&write);
+            let mut state = state.lock().unwrap();
+            apply_modbus_tcp_request(&mut state, request)
+        };
+        assert_eq!(
+            response,
+            modbus_response(2, 1, 0x06, &[0x00, 0x00, 0x00, 0xF5])
+        );
+
+        let current_state = route_request(&request("GET", "/state", ""), Arc::clone(&state));
+        assert!(current_state.contains("modbus.floor_heating_01.40001"));
+        assert!(current_state.contains("\"readable_value\":24.5"));
+    }
+
+    #[test]
+    fn modbus_tcp_returns_exceptions_for_unsupported_and_invalid_requests() {
+        let state = modbus_serve_state();
+        let unsupported = modbus_request(1, 1, 0x10, &[0x00, 0x00]);
+        let response = {
+            let request = parse_modbus_request_for_test(&unsupported);
+            let mut state = state.lock().unwrap();
+            apply_modbus_tcp_request(&mut state, request)
+        };
+        assert_eq!(
+            response,
+            modbus_exception_for_test(1, 1, 0x10, MODBUS_EXCEPTION_ILLEGAL_FUNCTION)
+        );
+
+        let read_missing = modbus_request(2, 1, 0x03, &[0x00, 0x63, 0x00, 0x01]);
+        let response = {
+            let request = parse_modbus_request_for_test(&read_missing);
+            let mut state = state.lock().unwrap();
+            apply_modbus_tcp_request(&mut state, request)
+        };
+        assert_eq!(
+            response,
+            modbus_exception_for_test(2, 1, 0x03, MODBUS_EXCEPTION_ILLEGAL_ADDRESS)
+        );
+
+        let write_read_only = modbus_request(3, 1, 0x06, &[0x75, 0x31, 0x00, 0xE5]);
+        let response = {
+            let request = parse_modbus_request_for_test(&write_read_only);
+            let mut state = state.lock().unwrap();
+            apply_modbus_tcp_request(&mut state, request)
+        };
+        assert_eq!(
+            response,
+            modbus_exception_for_test(3, 1, 0x06, MODBUS_EXCEPTION_ILLEGAL_VALUE)
+        );
+    }
+
+    #[test]
+    fn modbus_tcp_server_handles_standard_mbap_request() {
+        let address = start_modbus_test_server();
+        let response = modbus_tcp_roundtrip(
+            address,
+            &modbus_request(7, 1, 0x03, &[0x00, 0x00, 0x00, 0x01]),
+        );
+        assert_eq!(response, modbus_response(7, 1, 0x03, &[0x02, 0x00, 0xE6]));
+    }
+
+    #[test]
     fn mqtt_client_handler_accepts_connect_and_publish() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let address = listener.local_addr().unwrap();
@@ -1749,5 +2198,57 @@ mod tests {
                 break;
             }
         }
+    }
+
+    fn modbus_request(transaction: u16, unit: u8, function: u8, payload: &[u8]) -> Vec<u8> {
+        let mut request = Vec::with_capacity(8 + payload.len());
+        request.extend_from_slice(&transaction.to_be_bytes());
+        request.extend_from_slice(&0_u16.to_be_bytes());
+        request.extend_from_slice(&((payload.len() + 2) as u16).to_be_bytes());
+        request.push(unit);
+        request.push(function);
+        request.extend_from_slice(payload);
+        request
+    }
+
+    fn modbus_response(transaction: u16, unit: u8, function: u8, payload: &[u8]) -> Vec<u8> {
+        modbus_tcp_response(transaction, unit, &[&[function], payload].concat())
+    }
+
+    fn modbus_exception_for_test(
+        transaction: u16,
+        unit: u8,
+        function: u8,
+        exception: u8,
+    ) -> Vec<u8> {
+        modbus_tcp_response(transaction, unit, &[function | 0x80, exception])
+    }
+
+    fn parse_modbus_request_for_test(bytes: &[u8]) -> ModbusTcpRequest {
+        let transaction_id = u16::from_be_bytes([bytes[0], bytes[1]]);
+        let unit_id = bytes[6];
+        let function = bytes[7];
+        ModbusTcpRequest {
+            transaction_id,
+            unit_id,
+            function,
+            payload: bytes[8..].to_vec(),
+        }
+    }
+
+    fn modbus_tcp_roundtrip(address: SocketAddr, request: &[u8]) -> Vec<u8> {
+        let mut stream = TcpStream::connect(address).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        stream.write_all(request).unwrap();
+        let mut header = [0_u8; 7];
+        stream.read_exact(&mut header).unwrap();
+        let length = u16::from_be_bytes([header[4], header[5]]) as usize;
+        let mut pdu = vec![0_u8; length - 1];
+        stream.read_exact(&mut pdu).unwrap();
+        let mut response = header.to_vec();
+        response.extend(pdu);
+        response
     }
 }

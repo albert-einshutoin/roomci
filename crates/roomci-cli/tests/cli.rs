@@ -6,6 +6,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use rumqttc::{Client, MqttOptions, QoS};
+
 fn fixture(path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -317,6 +319,66 @@ fn external_mqtt_publish_updates_retained_state_through_serve() {
     assert!(report.contains("\"sample_interval_seconds\""));
     assert!(report.contains("15"));
 
+    child.kill().unwrap();
+    child.wait().unwrap();
+}
+
+#[test]
+fn standard_mqtt_client_publishes_retained_state_through_serve() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("serve")
+        .arg("--config")
+        .arg(fixture("examples/generic_mqtt_retained_state.yaml"))
+        .arg("--port")
+        .arg("0")
+        .arg("--mqtt-port")
+        .arg("0")
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let stdout = child.stdout.take().unwrap();
+    let mut stdout = BufReader::new(stdout);
+    let mut http_line = String::new();
+    let mut endpoints_line = String::new();
+    let mut mqtt_line = String::new();
+    stdout.read_line(&mut http_line).unwrap();
+    stdout.read_line(&mut endpoints_line).unwrap();
+    stdout.read_line(&mut mqtt_line).unwrap();
+    let http_address = http_line
+        .trim()
+        .strip_prefix("roomci serve listening on http://")
+        .expect("serve should print HTTP listening address")
+        .to_string();
+    let mqtt_address = mqtt_line
+        .trim()
+        .strip_prefix("roomci mqtt listening on mqtt://")
+        .expect("serve should print MQTT listening address")
+        .to_string();
+    let (mqtt_host, mqtt_port) = mqtt_address
+        .rsplit_once(':')
+        .map(|(host, port)| (host.to_string(), port.parse::<u16>().unwrap()))
+        .expect("MQTT address should include host:port");
+
+    let mut options = MqttOptions::new("roomci-rumqttc-client", mqtt_host, mqtt_port);
+    options.set_keep_alive(Duration::from_secs(5));
+    let (client, mut connection) = Client::new(options, 10);
+    let connection_thread = std::thread::spawn(move || for _event in connection.iter().take(3) {});
+    client
+        .publish(
+            "fleet/demo/site/lab/device/env_sensor_01/command",
+            QoS::AtMostOnce,
+            false,
+            r#"{"online":true,"sample_interval_seconds":20}"#,
+        )
+        .unwrap();
+    std::thread::sleep(Duration::from_millis(150));
+
+    let state = http_request(&http_address, "GET", "/state", "");
+    assert!(state.contains("fleet/demo/site/lab/device/env_sensor_01/state"));
+    assert!(state.contains("\"sample_interval_seconds\":20"));
+
+    let _ = connection_thread.join();
     child.kill().unwrap();
     child.wait().unwrap();
 }

@@ -95,6 +95,9 @@ enum Command {
         /// Optional embedded MQTT PoC port. Supports CONNECT + QoS0 PUBLISH.
         #[arg(long)]
         mqtt_port: Option<u16>,
+        /// Optional embedded Modbus TCP PoC port.
+        #[arg(long)]
+        modbus_port: Option<u16>,
         /// Allow binding to a non-loopback host.
         #[arg(long)]
         allow_non_loopback: bool,
@@ -180,8 +183,17 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             host,
             port,
             mqtt_port,
+            modbus_port,
             allow_non_loopback,
-        } => serve_config(&config, check, &host, port, mqtt_port, allow_non_loopback),
+        } => serve_config(
+            &config,
+            check,
+            &host,
+            port,
+            mqtt_port,
+            modbus_port,
+            allow_non_loopback,
+        ),
     }
 }
 
@@ -191,6 +203,7 @@ fn serve_config(
     host: &str,
     port: u16,
     mqtt_port: Option<u16>,
+    modbus_port: Option<u16>,
     allow_non_loopback: bool,
 ) -> Result<ExitCode, CliError> {
     let scenario = load_scenario(config)?;
@@ -204,6 +217,7 @@ fn serve_config(
         host: host.to_string(),
         port,
         mqtt_port,
+        modbus_port,
         allow_non_loopback,
     })
     .map_err(|error| CliError::Serve(error.to_string()))?;

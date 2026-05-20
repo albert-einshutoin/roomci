@@ -11,6 +11,8 @@ The HTTP observation API used with this MQTT ingress is documented in [`HTTP_SER
 - MQTT 3.1.1 `CONNECT`
 - `CONNACK` success response
 - QoS 0 `PUBLISH`
+- `PINGREQ` / `PINGRESP`
+- `DISCONNECT`
 - UTF-8 topic names
 - JSON object payloads
 - one `{device_id}` placeholder in configured command/state topic mappings
