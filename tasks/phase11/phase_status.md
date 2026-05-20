@@ -8,8 +8,8 @@
 
 | Task | Status | Owner | Evidence | Notes |
 |---|---|---|---|---|
-| `01_ci_release_truth_task.md` | `todo` | Unassigned | None yet | Align public quality claims, CI workflow files, README badges, and release gates |
-| `02_protocol_support_matrix_task.md` | `todo` | Unassigned | None yet | Make behavior model vs wire compatibility explicit for every protocol/domain |
+| `01_ci_release_truth_task.md` | `done` | Codex | `.github/workflows/smart-home-ci.yml`; `Makefile`; `docs/RELEASE_CHECKLIST.md`; README quality gates; `make verify` | Public CI/release claims now point to real workflow, local gate, ignored artifacts, and release checklist |
+| `02_protocol_support_matrix_task.md` | `done` | Codex | `docs/PROTOCOL_SUPPORT_MATRIX.md`; `docs/README.md`; README link | Behavior model, serve endpoint, external-client-tested, conformance-subset, and unsupported levels are explicit per domain |
 | `03_adapter_contract_kit_task.md` | `todo` | Unassigned | None yet | Let companies encode private specs as validated contracts without core code edits |
 | `04_external_protocol_depth_task.md` | `todo` | Unassigned | None yet | Add standard MQTT client interoperability and at least one non-MQTT external endpoint |
 | `05_customer_poc_packs_task.md` | `todo` | Unassigned | None yet | Provide runnable PoC packs for generic MQTT, hospitality/local-first, building automation, and BMS |
@@ -29,8 +29,8 @@
 
 | Gate | Status | Evidence |
 |---|---|---|
-| Public CI/release claims match repository | `todo` | None yet |
-| Protocol support matrix exists | `todo` | None yet |
+| Public CI/release claims match repository | `done` | `.github/workflows/smart-home-ci.yml`; `make verify`; `docs/RELEASE_CHECKLIST.md`; README quality gates |
+| Protocol support matrix exists | `done` | `docs/PROTOCOL_SUPPORT_MATRIX.md` |
 | Adapter contract templates validate | `todo` | None yet |
 | Standard MQTT client interoperability tested | `todo` | None yet |
 | Second external protocol endpoint works | `todo` | None yet |
@@ -43,4 +43,4 @@
 
 ## Current Recommendation
 
-Start with Task 01 and Task 02 before new protocol work. The product cannot credibly compete as a first-choice emulator if README/CI claims are inconsistent or if protocol support levels are ambiguous. Then implement Task 08 and Task 09 before broad public copy changes, so the industry-wide narrative continues to maximize NOT A HOTEL relevance. The Task 11 adoption review recommends closing public badge truthfulness, protocol support matrix, NOT A HOTEL evaluator guide, adapter contract kit, Phase 12 runtime hardening, and evidence pack before asking for serious company evaluation.
+Task 01 and Task 02 are complete. Next, implement Task 03 (adapter contract kit) so companies can encode private MQTT, Modbus, BMS, edge, and device contracts without editing runtime code. After that, proceed to Task 08 and Task 09 to preserve a strong NOT A HOTEL evaluation path while keeping the broader IoT/SmartHome category positioning honest.

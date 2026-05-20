@@ -13,6 +13,7 @@ its own.
 | Domains | [Domain packs](DOMAIN_PACKS.md) | Core emulator modules and reusable domain packs |
 | MQTT | [Generic MQTT contracts](GENERIC_MQTT_CONTRACTS.md) | Generic MQTT command/state examples and current supported subset |
 | MQTT serve | [MQTT serve subset](MQTT_SERVE_SUBSET.md) | Minimal MQTT 3.1.1 CONNECT + QoS0 PUBLISH ingress for PoC tests |
+| Protocols | [Protocol support matrix](PROTOCOL_SUPPORT_MATRIX.md) | Source of truth for behavior models, serve endpoints, tested external surfaces, and non-goals |
 | 19 | [Interview positioning](19_interview_positioning.md) | NOT A HOTEL casual-interview narrative and demo scenarios |
 | Demo | [Interview demo](INTERVIEW_DEMO.md) | Three-minute pitch, ten-minute walkthrough, expected questions |
 | Principles | [Design principles](DESIGN_PRINCIPLES.md) | Product philosophy and scope boundaries |
@@ -62,6 +63,7 @@ its own.
 | Serve | [HTTP serve MVP plan](HTTP_SERVE_MVP_PLAN.md) | Planned localhost-bound control/report API before MQTT-compatible serve mode |
 | Serve | [HTTP serve behavior](HTTP_SERVE_BEHAVIOR.md) | Current HTTP connection, timeout, and overload behavior |
 | PoC | [Pre-adoption PoC checklist](PRE_ADOPTION_POC_CHECKLIST.md) | Integration checklist for external protocol contracts and acceptance criteria |
+| Release | [Release checklist](RELEASE_CHECKLIST.md) | Reproducible gates for CI, Docker, Compose, reports, docs, and coverage |
 | 20 | [Appendix: future integrations](20_appendix_future_integrations.md) | Out-of-scope work and where it would live |
 
 For the API-level reference, run `cargo doc --no-deps --open` from the repo

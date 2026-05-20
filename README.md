@@ -246,6 +246,8 @@ That command starts `roomci serve` in Docker Compose, runs `examples/controllers
 
 Current measurements: **95 tests** pass, **85.00%** line coverage.
 
+Use [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) before presenting a release or company evaluation build. Use [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) as the source of truth for behavior-model support versus wire-protocol support.
+
 ## Core concept
 
 The reusable core is a QA contract emulator:
