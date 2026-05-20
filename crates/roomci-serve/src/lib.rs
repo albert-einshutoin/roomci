@@ -30,6 +30,7 @@ const MQTT_PROTOCOL_NAME: &str = "MQTT";
 const MQTT_PROTOCOL_LEVEL_3_1_1: u8 = 4;
 const MQTT_CONNACK_ACCEPTED: u8 = 0x00;
 const MQTT_CONNACK_UNACCEPTABLE_PROTOCOL: u8 = 0x01;
+const EXTERNAL_BMS_STATE_PREFIX: &str = "external.bms.";
 
 /// Configuration for a `roomci serve` process.
 #[derive(Debug)]
@@ -83,6 +84,16 @@ struct ServeState {
     external_publish_count: u64,
     run_in_progress: bool,
     has_completed_run: bool,
+    /// External-observation timeline events queued for the *next* `/run`
+    /// boundary. Persists across `/run` so that events observed during a run
+    /// are still visible in `/timeline` and the rendered reports rather than
+    /// silently clobbered when `latest_report` is replaced.
+    external_observation_timeline: Vec<TimelineEvent>,
+    /// BMS / contact observations posted to `/external/bms/contact`. Keyed by
+    /// the sanitized `source` field. Survives across `/run` and is merged into
+    /// `latest_report.final_state` (with the `external.bms.` prefix) at the
+    /// next `/run` boundary.
+    external_observations: BTreeMap<String, BTreeMap<String, serde_json::Value>>,
 }
 
 fn serve_http(
@@ -99,6 +110,8 @@ fn serve_http(
         external_publish_count: 0,
         run_in_progress: false,
         has_completed_run: false,
+        external_observation_timeline: Vec::new(),
+        external_observations: BTreeMap::new(),
     }));
     let listener =
         TcpListener::bind((host, port)).map_err(|error| ServeError::Runtime(error.to_string()))?;
@@ -302,6 +315,7 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                     "retained_messages": state.latest_report.retained_messages,
                     "injected_faults": state.injected_faults,
                     "external_publish_count": state.external_publish_count,
+                    "external_observations": state.external_observations,
                 }),
             )
         }
@@ -310,7 +324,8 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                 Ok(state) => state,
                 Err(error) => return serve_error_response(error),
             };
-            json_response(200, &state.latest_report.timeline)
+            let rendered = rendered_report_view(&state);
+            json_response(200, &rendered.timeline)
         }
         ("POST", "/fault") => match serde_json::from_str::<serde_json::Value>(&request.body) {
             Ok(fault) => {
@@ -322,14 +337,15 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                 let fault_index = state.injected_faults.len();
                 let fault_summary = serde_json::to_string(&fault)
                     .unwrap_or_else(|_| "unrenderable fault".to_string());
-                state.latest_report.timeline.push(TimelineEvent {
+                let safe_summary = sanitize_external_message_value(&fault_summary);
+                state.external_observation_timeline.push(TimelineEvent {
                     at: format!("external#fault{fault_index}"),
                     event_type: "external_fault_injected".to_string(),
                     target: fault
                         .get("target")
                         .and_then(|value| value.as_str())
-                        .map(str::to_string),
-                    message: format!("external fault accepted: {fault_summary}"),
+                        .map(sanitize_external_message_value),
+                    message: format!("external fault accepted: {safe_summary}"),
                 });
                 json_response(202, &json!({ "accepted": true, "fault": fault }))
             }
@@ -366,35 +382,40 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                         Ok(state) => state,
                         Err(error) => return serve_error_response(error),
                     };
-                    let state_key = format!("external.bms.{source}");
+                    let sanitized_source = sanitize_external_key(source);
+                    let sanitized_state = sanitize_external_key(contact_state);
                     let mut state_map = BTreeMap::new();
                     state_map.insert(
                         "state".to_string(),
-                        serde_json::Value::String(contact_state.to_string()),
+                        serde_json::Value::String(sanitized_state.clone()),
                     );
                     if let Some(severity) = contact.get("severity").and_then(|value| value.as_str())
                     {
                         state_map.insert(
                             "severity".to_string(),
-                            serde_json::Value::String(severity.to_string()),
+                            serde_json::Value::String(sanitize_external_key(severity)),
                         );
                     }
-                    state.latest_report.final_state.insert(state_key, state_map);
-                    let event_index = state.latest_report.timeline.len() + 1;
-                    state.latest_report.timeline.push(TimelineEvent {
+                    state
+                        .external_observations
+                        .insert(sanitized_source.clone(), state_map);
+                    let event_index = state.external_observation_timeline.len() + 1;
+                    let safe_source = sanitize_external_message_value(source);
+                    let safe_state = sanitize_external_message_value(contact_state);
+                    state.external_observation_timeline.push(TimelineEvent {
                         at: format!("external#bms{event_index}"),
                         event_type: "external_bms_contact_observed".to_string(),
-                        target: Some(source.to_string()),
+                        target: Some(sanitized_source.clone()),
                         message: format!(
-                            "external BMS/contact event observed: {source}={contact_state}"
+                            "external BMS/contact event observed: {safe_source}={safe_state}"
                         ),
                     });
                     json_response(
                         202,
                         &json!({
                             "accepted": true,
-                            "source": source,
-                            "state": contact_state
+                            "source": sanitized_source,
+                            "state": sanitized_state
                         }),
                     )
                 }
@@ -445,8 +466,9 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
             };
             state.run_in_progress = false;
             match run_result {
-                Ok(report) => {
+                Ok(mut report) => {
                     let result = report.result;
+                    drain_external_overlay_into(&mut state, &mut report);
                     state.latest_report = report;
                     state.injected_faults.clear();
                     state.external_publish_count = 0;
@@ -464,7 +486,8 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                 Ok(state) => state,
                 Err(error) => return serve_error_response(error),
             };
-            match to_json(&state.latest_report) {
+            let rendered = rendered_report_view(&state);
+            match to_json(&rendered) {
                 Ok(report) => raw_response(200, "application/json", &report),
                 Err(error) => json_response(
                     500,
@@ -477,22 +500,16 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
                 Ok(state) => state,
                 Err(error) => return serve_error_response(error),
             };
-            raw_response(
-                200,
-                "text/markdown; charset=utf-8",
-                &to_markdown(&state.latest_report),
-            )
+            let rendered = rendered_report_view(&state);
+            raw_response(200, "text/markdown; charset=utf-8", &to_markdown(&rendered))
         }
         ("GET", "/reports/latest.junit.xml") => {
             let state = match lock_serve_state(&state) {
                 Ok(state) => state,
                 Err(error) => return serve_error_response(error),
             };
-            raw_response(
-                200,
-                "application/xml; charset=utf-8",
-                &to_junit(&state.latest_report),
-            )
+            let rendered = rendered_report_view(&state);
+            raw_response(200, "application/xml; charset=utf-8", &to_junit(&rendered))
         }
         _ => json_response(
             404,
@@ -522,6 +539,75 @@ fn serve_error_response(error: ServeError) -> String {
             500,
             &json!({ "error": "serve_error", "message": error.to_string() }),
         ),
+    }
+}
+
+/// Sanitize an external-input key so it can be used in `final_state`,
+/// `external_observations`, or timeline messages without breaking downstream
+/// renderers. Allows alphanumerics, `.`, `_`, `-`, `:`, `/`. Replaces every
+/// other character with `_`, and falls back to `unknown` if the result is
+/// empty.
+fn sanitize_external_key(raw: &str) -> String {
+    let cleaned: String = raw
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-' | ':' | '/')
+            {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if cleaned.is_empty() {
+        "unknown".to_string()
+    } else {
+        cleaned
+    }
+}
+
+/// Sanitize a free-form external-input string for safe inclusion in timeline
+/// messages and rendered Markdown reports. Strips control characters
+/// (newlines, carriage returns, tabs, etc.) so a malicious or malformed input
+/// cannot inject report structure.
+fn sanitize_external_message_value(raw: &str) -> String {
+    raw.chars()
+        .map(|character| {
+            if character.is_control() {
+                ' '
+            } else {
+                character
+            }
+        })
+        .collect()
+}
+
+/// Build a view of `latest_report` that includes external observations queued
+/// since the last `/run`. The returned report is what `/timeline` and
+/// `/reports/latest.*` render.
+fn rendered_report_view(state: &ServeState) -> RunReport {
+    let mut report = state.latest_report.clone();
+    report
+        .timeline
+        .extend(state.external_observation_timeline.iter().cloned());
+    for (key, value) in &state.external_observations {
+        let prefixed = format!("{EXTERNAL_BMS_STATE_PREFIX}{key}");
+        report.final_state.insert(prefixed, value.clone());
+    }
+    report
+}
+
+/// Merge any external-observation overlay state into a freshly produced
+/// `RunReport` and drain the overlay. Called at the `/run` success boundary so
+/// that events observed before / during the run are preserved across the
+/// `latest_report` replacement.
+fn drain_external_overlay_into(state: &mut ServeState, report: &mut RunReport) {
+    report
+        .timeline
+        .append(&mut state.external_observation_timeline);
+    for (key, value) in std::mem::take(&mut state.external_observations) {
+        let prefixed = format!("{EXTERNAL_BMS_STATE_PREFIX}{key}");
+        report.final_state.insert(prefixed, value);
     }
 }
 
@@ -690,10 +776,10 @@ fn apply_external_mqtt_publish(state: &mut ServeState, publish: MqttPublish) {
         .find_map(|contract| match_contract(contract, &publish.topic));
 
     let Some((contract, device_id, state_topic)) = matched_contract else {
-        state.latest_report.timeline.push(TimelineEvent {
+        state.external_observation_timeline.push(TimelineEvent {
             at: format!("external#{event_index}"),
             event_type: "external_mqtt_publish_rejected".to_string(),
-            target: Some(publish.topic),
+            target: Some(sanitize_external_message_value(&publish.topic)),
             message: "topic did not match any configured MQTT contract".to_string(),
         });
         return;
@@ -707,13 +793,13 @@ fn apply_external_mqtt_publish(state: &mut ServeState, publish: MqttPublish) {
         .cloned()
         .collect::<Vec<_>>();
     if !missing_fields.is_empty() {
-        state.latest_report.timeline.push(TimelineEvent {
+        state.external_observation_timeline.push(TimelineEvent {
             at: format!("external#{event_index}"),
             event_type: "external_mqtt_publish_rejected".to_string(),
-            target: Some(publish.topic),
+            target: Some(sanitize_external_message_value(&publish.topic)),
             message: format!(
                 "payload missing required fields for {}: {}",
-                contract.name,
+                sanitize_external_message_value(&contract.name),
                 missing_fields.join(", ")
             ),
         });
@@ -728,13 +814,14 @@ fn apply_external_mqtt_publish(state: &mut ServeState, publish: MqttPublish) {
         .latest_report
         .retained_messages
         .insert(state_topic.clone(), publish.payload);
-    state.latest_report.timeline.push(TimelineEvent {
+    state.external_observation_timeline.push(TimelineEvent {
         at: format!("external#{event_index}"),
         event_type: "external_mqtt_retained_state_updated".to_string(),
-        target: Some(device_id),
+        target: Some(sanitize_external_message_value(&device_id)),
         message: format!(
             "external MQTT publish matched {} and updated retained state at {}",
-            contract.name, state_topic
+            sanitize_external_message_value(&contract.name),
+            sanitize_external_message_value(&state_topic)
         ),
     });
 }
@@ -831,6 +918,8 @@ mod tests {
             external_publish_count: 0,
             run_in_progress: false,
             has_completed_run: false,
+            external_observation_timeline: Vec::new(),
+            external_observations: BTreeMap::new(),
         }))
     }
 
@@ -1035,12 +1124,100 @@ mod tests {
         assert!(response.contains("\"accepted\":true"));
 
         let current_state = route_request(&request("GET", "/state", ""), Arc::clone(&state));
-        assert!(current_state.contains("external.bms.contact.sauna_emergency_button"));
+        // The observation lives in its own `external_observations` bucket so
+        // it does not pollute device-state in `final_state`.
+        assert!(current_state.contains("\"external_observations\""));
+        assert!(current_state.contains("contact.sauna_emergency_button"));
         assert!(current_state.contains("\"severity\":\"critical\""));
 
         let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
         assert!(timeline.contains("external_bms_contact_observed"));
         assert!(timeline.contains("contact.sauna_emergency_button"));
+    }
+
+    #[test]
+    fn external_events_survive_run_boundary() {
+        let state = serve_state();
+
+        let bms = route_request(
+            &request(
+                "POST",
+                "/external/bms/contact",
+                r#"{"source":"contact.sauna_emergency_button","state":"on","severity":"critical"}"#,
+            ),
+            Arc::clone(&state),
+        );
+        assert!(bms.contains("HTTP/1.1 202 Accepted"));
+
+        let fault = route_request(
+            &request(
+                "POST",
+                "/fault",
+                r#"{"target":"mqtt.local","type":"offline"}"#,
+            ),
+            Arc::clone(&state),
+        );
+        assert!(fault.contains("HTTP/1.1 202 Accepted"));
+
+        let run = route_request(&request("POST", "/run", ""), Arc::clone(&state));
+        assert!(run.contains("HTTP/1.1 200 OK"));
+
+        // After /run, the rendered report (latest.md, latest.json, /timeline)
+        // must still include the BMS and fault observations that were
+        // recorded before the run started.
+        let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
+        assert!(timeline.contains("external_bms_contact_observed"));
+        assert!(timeline.contains("external_fault_injected"));
+
+        // BMS observation is merged into final_state with the documented
+        // prefix. The JSON report serializes final_state, so the prefix-merged
+        // key must be visible to a CI report consumer.
+        let json_report = route_request(
+            &request("GET", "/reports/latest.json", ""),
+            Arc::clone(&state),
+        );
+        assert!(json_report.contains("external.bms.contact.sauna_emergency_button"));
+
+        // Markdown rendering renders the timeline, so the BMS event's
+        // sanitized target still appears in latest.md even though
+        // `final_state` is not rendered there.
+        let markdown = route_request(
+            &request("GET", "/reports/latest.md", ""),
+            Arc::clone(&state),
+        );
+        assert!(markdown.contains("external_bms_contact_observed"));
+        assert!(markdown.contains("contact.sauna_emergency_button"));
+
+        // After /run, the overlays are drained so a follow-up /state no
+        // longer reports them under external_observations.
+        let after_state = route_request(&request("GET", "/state", ""), Arc::clone(&state));
+        assert!(after_state.contains("\"external_observations\":{}"));
+        // But the prefix-merged observation lives in final_state now.
+        assert!(after_state.contains("external.bms.contact.sauna_emergency_button"));
+    }
+
+    #[test]
+    fn external_bms_contact_sanitizes_source_and_message() {
+        let state = serve_state();
+
+        let response = route_request(
+            &request(
+                "POST",
+                "/external/bms/contact",
+                "{\"source\":\"weird;value\\ninjected\",\"state\":\"on\\rmore\"}",
+            ),
+            Arc::clone(&state),
+        );
+        assert!(response.contains("HTTP/1.1 202 Accepted"));
+        // Response uses sanitized source/state values.
+        assert!(response.contains("\"source\":\"weird_value_injected\""));
+        assert!(response.contains("\"state\":\"on_more\""));
+
+        let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
+        // Newline and carriage return are replaced with spaces in messages so
+        // Markdown rendering cannot be hijacked by an external client.
+        assert!(!timeline.contains("\\n"));
+        assert!(!timeline.contains("\\r"));
     }
 
     #[test]
