@@ -10,7 +10,7 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, MutexGuard,
     },
     thread,
     time::Duration,
@@ -77,6 +77,7 @@ struct ServeState {
     latest_report: RunReport,
     injected_faults: Vec<serde_json::Value>,
     external_publish_count: u64,
+    run_in_progress: bool,
 }
 
 fn serve_http(
@@ -91,6 +92,7 @@ fn serve_http(
         latest_report,
         injected_faults: Vec::new(),
         external_publish_count: 0,
+        run_in_progress: false,
     }));
     let listener =
         TcpListener::bind((host, port)).map_err(|error| ServeError::Runtime(error.to_string()))?;
@@ -256,7 +258,10 @@ fn read_http_request(stream: &mut TcpStream) -> Result<HttpRequest, ServeError> 
 fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String {
     match (request.method.as_str(), request.path_without_query()) {
         ("GET", "/health") => {
-            let state = state.lock().expect("serve state mutex poisoned");
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
             json_response(
                 200,
                 &json!({
@@ -267,11 +272,17 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
             )
         }
         ("GET", "/scenario") => {
-            let state = state.lock().expect("serve state mutex poisoned");
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
             json_response(200, &state.scenario)
         }
         ("GET", "/state") => {
-            let state = state.lock().expect("serve state mutex poisoned");
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
             json_response(
                 200,
                 &json!({
@@ -285,12 +296,18 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
             )
         }
         ("GET", "/timeline") => {
-            let state = state.lock().expect("serve state mutex poisoned");
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
             json_response(200, &state.latest_report.timeline)
         }
         ("POST", "/fault") => match serde_json::from_str::<serde_json::Value>(&request.body) {
             Ok(fault) => {
-                let mut state = state.lock().expect("serve state mutex poisoned");
+                let mut state = match lock_serve_state(&state) {
+                    Ok(state) => state,
+                    Err(error) => return serve_error_response(error),
+                };
                 state.injected_faults.push(fault.clone());
                 let fault_index = state.injected_faults.len();
                 let fault_summary = serde_json::to_string(&fault)
@@ -312,7 +329,10 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
             ),
         },
         ("POST", "/finish") => {
-            let state = state.lock().expect("serve state mutex poisoned");
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
             json_response(
                 200,
                 &json!({
@@ -323,8 +343,31 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
             )
         }
         ("POST", "/run") => {
-            let mut state = state.lock().expect("serve state mutex poisoned");
-            match run_scenario(&state.scenario) {
+            let scenario = {
+                let mut state = match lock_serve_state(&state) {
+                    Ok(state) => state,
+                    Err(error) => return serve_error_response(error),
+                };
+                if state.run_in_progress {
+                    return json_response(
+                        409,
+                        &json!({
+                            "error": "run_in_progress",
+                            "message": "a scenario run is already in progress"
+                        }),
+                    );
+                }
+                state.run_in_progress = true;
+                state.scenario.clone()
+            };
+
+            let run_result = run_scenario(&scenario);
+            let mut state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
+            state.run_in_progress = false;
+            match run_result {
                 Ok(report) => {
                     let result = report.result;
                     state.latest_report = report;
@@ -339,7 +382,10 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
             }
         }
         ("GET", "/reports/latest") | ("GET", "/reports/latest.json") => {
-            let state = state.lock().expect("serve state mutex poisoned");
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
             match to_json(&state.latest_report) {
                 Ok(report) => raw_response(200, "application/json", &report),
                 Err(error) => json_response(
@@ -349,7 +395,10 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
             }
         }
         ("GET", "/reports/latest.md") => {
-            let state = state.lock().expect("serve state mutex poisoned");
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
             raw_response(
                 200,
                 "text/markdown; charset=utf-8",
@@ -357,7 +406,10 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
             )
         }
         ("GET", "/reports/latest.junit.xml") => {
-            let state = state.lock().expect("serve state mutex poisoned");
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
             raw_response(
                 200,
                 "application/xml; charset=utf-8",
@@ -367,6 +419,30 @@ fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>) -> String
         _ => json_response(
             404,
             &json!({ "error": "not_found", "message": "unknown endpoint" }),
+        ),
+    }
+}
+
+fn lock_serve_state(
+    state: &Arc<Mutex<ServeState>>,
+) -> Result<MutexGuard<'_, ServeState>, ServeError> {
+    state
+        .lock()
+        .map_err(|_| ServeError::Runtime("serve_state_poisoned".to_string()))
+}
+
+fn serve_error_response(error: ServeError) -> String {
+    match error {
+        ServeError::Runtime(message) if message == "serve_state_poisoned" => json_response(
+            500,
+            &json!({
+                "error": "serve_state_poisoned",
+                "message": "serve state mutex was poisoned"
+            }),
+        ),
+        error => json_response(
+            500,
+            &json!({ "error": "serve_error", "message": error.to_string() }),
         ),
     }
 }
@@ -403,7 +479,7 @@ fn handle_mqtt_client(
             }
             3 => {
                 let publish = parse_mqtt_publish(&packet.payload)?;
-                let mut state = state.lock().expect("serve state mutex poisoned");
+                let mut state = lock_serve_state(&state)?;
                 apply_external_mqtt_publish(&mut state, publish);
             }
             _ => {
@@ -592,6 +668,7 @@ fn raw_response(status: u16, content_type: &str, body: &str) -> String {
         200 => "OK",
         202 => "Accepted",
         400 => "Bad Request",
+        409 => "Conflict",
         404 => "Not Found",
         500 => "Internal Server Error",
         503 => "Service Unavailable",
@@ -635,6 +712,7 @@ mod tests {
             latest_report,
             injected_faults: Vec::new(),
             external_publish_count: 0,
+            run_in_progress: false,
         }))
     }
 
@@ -782,6 +860,48 @@ mod tests {
             Arc::clone(&state),
         );
         assert!(junit.contains("<testsuite"));
+    }
+
+    #[test]
+    fn poisoned_mutex_returns_500_response() {
+        let state = serve_state();
+        let poison_state = Arc::clone(&state);
+        let _ = std::panic::catch_unwind(move || {
+            let _guard = poison_state.lock().unwrap();
+            panic!("test-only poison");
+        });
+
+        let response = route_request(&request("GET", "/health", ""), Arc::clone(&state));
+        assert!(response.contains("HTTP/1.1 500 Internal Server Error"));
+        assert!(response.contains("serve_state_poisoned"));
+
+        let second_response = route_request(&request("GET", "/state", ""), Arc::clone(&state));
+        assert!(second_response.contains("HTTP/1.1 500 Internal Server Error"));
+        assert!(second_response.contains("serve_state_poisoned"));
+    }
+
+    #[test]
+    fn second_run_while_first_in_flight_returns_409() {
+        let state = serve_state();
+        {
+            let mut state_guard = state.lock().unwrap();
+            state_guard.run_in_progress = true;
+        }
+
+        let response = route_request(&request("POST", "/run", ""), Arc::clone(&state));
+
+        assert!(response.contains("HTTP/1.1 409 Conflict"));
+        assert!(response.contains("run_in_progress"));
+    }
+
+    #[test]
+    fn run_clears_in_progress_flag_after_success() {
+        let state = serve_state();
+
+        let response = route_request(&request("POST", "/run", ""), Arc::clone(&state));
+
+        assert!(response.contains("HTTP/1.1 200 OK"));
+        assert!(!state.lock().unwrap().run_in_progress);
     }
 
     #[test]

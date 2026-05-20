@@ -26,3 +26,15 @@ If a client opens a TCP connection and does not send a complete HTTP request, th
 ## Scope
 
 This is a local PoC runtime, not a production public HTTP API. It is designed to support short-lived CI and developer evaluation flows where an external controller calls `/health`, injects faults, calls `/finish`, and downloads reports.
+
+## Run Requests
+
+`POST /run` snapshots the current scenario config, releases the serve-state lock while the scenario executes, and then writes the new report back after execution.
+
+Only one `/run` request can execute at a time. If another `/run` arrives while one is active, `roomci` returns `HTTP 409` with:
+
+```json
+{"error":"run_in_progress","message":"a scenario run is already in progress"}
+```
+
+If the internal serve-state mutex is poisoned, HTTP routes return `HTTP 500` with `error: "serve_state_poisoned"` instead of panicking the listener.
