@@ -6,6 +6,7 @@ This pack gives evaluators command-level evidence instead of pitch language.
 
 ```bash
 make verify
+make protocol-smoke
 ```
 
 This runs formatting, clippy, tests, docs, coverage, scenario validation, adapter contract validation, Docker image build, Docker scenario execution, Compose scenario smoke, and the external-controller Compose PoC.
@@ -15,6 +16,7 @@ Current measured baseline:
 - 100 workspace tests
 - 84.51% line coverage
 - Docker and Compose PoC pass through `make verify`
+- MQTT and Modbus protocol smoke pass through `make protocol-smoke`
 
 ## PoC Packs
 

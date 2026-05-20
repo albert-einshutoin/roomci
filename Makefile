@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -54,6 +54,7 @@ verify:
 	set -e; \
 	test "$$status" -eq 1
 	cargo run -p roomci-cli -- serve --config examples/local_first_cloud_outage.yaml --check
+	cargo run -p roomci-cli -- serve --config examples/protocol_conformance_smoke.yaml --check
 	docker build -t roomci:verify .
 	docker run --rm -v "$$PWD/examples:/scenarios:ro" roomci:verify run \
 		/scenarios/local_first_cloud_outage.yaml \
@@ -70,6 +71,7 @@ verify:
 	docker compose -f compose/docker-compose.yml run --rm scenario-smoke
 	docker compose -f compose/docker-compose.yml build roomci-serve external-controller
 	docker compose -f compose/docker-compose.yml run --rm external-controller
+	docker compose -f compose/docker-compose.yml run --rm protocol-smoke
 	docker compose -f compose/docker-compose.yml down
 
 docker-demo:
@@ -89,6 +91,17 @@ docker-demo:
 compose-poc:
 	docker compose -f compose/docker-compose.yml build roomci-serve external-controller
 	docker compose -f compose/docker-compose.yml run --rm external-controller
+	docker compose -f compose/docker-compose.yml down
+
+protocol-smoke: protocol-smoke-mqtt protocol-smoke-modbus
+
+protocol-smoke-mqtt:
+	cargo test -p roomci-cli --test cli standard_mqtt_client_publishes_retained_state_through_serve
+
+protocol-smoke-modbus:
+	cargo test -p roomci-serve --lib modbus_tcp
+	docker compose -f compose/docker-compose.yml build roomci-serve
+	docker compose -f compose/docker-compose.yml run --rm protocol-smoke
 	docker compose -f compose/docker-compose.yml down
 
 poc-generic-mqtt:

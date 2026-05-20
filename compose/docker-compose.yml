@@ -6,13 +6,15 @@ services:
     command:
       - serve
       - --config
-      - /scenarios/generic_mqtt_retained_state.yaml
+      - /scenarios/protocol_conformance_smoke.yaml
       - --host
       - 0.0.0.0
       - --port
       - "8080"
       - --mqtt-port
       - "1883"
+      - --modbus-port
+      - "5020"
       - --allow-non-loopback
     volumes:
       - ../examples:/scenarios:ro
@@ -38,6 +40,25 @@ services:
     volumes:
       - ../examples/controllers:/controllers:ro
       - ../reports:/reports
+
+  protocol-smoke:
+    image: python:3.12-slim
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        pip install --no-cache-dir paho-mqtt==1.6.1 pymodbus==3.6.9 >/tmp/protocol-smoke-pip.log &&
+        python /controllers/protocol_smoke_controller.py
+    environment:
+      ROOMCI_URL: http://roomci-serve:8080
+      MQTT_HOST: roomci-serve
+      MQTT_PORT: "1883"
+      MODBUS_HOST: roomci-serve
+      MODBUS_PORT: "5020"
+    depends_on:
+      roomci-serve:
+        condition: service_healthy
+    volumes:
+      - ../examples/controllers:/controllers:ro
 
   scenario-smoke:
     build:
