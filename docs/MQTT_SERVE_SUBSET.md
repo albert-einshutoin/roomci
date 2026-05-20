@@ -4,6 +4,8 @@
 
 This is not a production broker and not a conformance suite. It exists so an external controller can publish command payloads over a real MQTT-shaped TCP endpoint while `roomci` records retained-state behavior through the existing HTTP state/report API.
 
+The HTTP observation API used with this MQTT ingress is documented in [`HTTP_SERVE_BEHAVIOR.md`](HTTP_SERVE_BEHAVIOR.md).
+
 ## Supported
 
 - MQTT 3.1.1 `CONNECT`

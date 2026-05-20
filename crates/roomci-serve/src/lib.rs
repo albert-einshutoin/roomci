@@ -8,8 +8,12 @@ use std::{
     collections::BTreeMap,
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex,
+    },
     thread,
+    time::Duration,
 };
 
 use roomci_core::{run_scenario, RunReport, TimelineEvent};
@@ -20,6 +24,8 @@ use thiserror::Error;
 
 const MAX_HTTP_BODY_BYTES: usize = 1024 * 1024;
 const MAX_MQTT_PACKET_BYTES: usize = 1024 * 1024;
+const HTTP_CLIENT_TIMEOUT_SECS: u64 = 2;
+const HTTP_MAX_INFLIGHT_CONNECTIONS: usize = 32;
 
 /// Configuration for a `roomci serve` process.
 #[derive(Debug)]
@@ -108,18 +114,43 @@ fn serve_http(
         .flush()
         .map_err(|error| ServeError::Runtime(error.to_string()))?;
 
+    serve_http_listener(listener, state);
+
+    Ok(())
+}
+
+fn serve_http_listener(listener: TcpListener, state: Arc<Mutex<ServeState>>) {
+    let inflight = Arc::new(AtomicUsize::new(0));
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => {
-                if let Err(error) = handle_connection(stream, Arc::clone(&state)) {
-                    eprintln!("serve request error: {error}");
+            Ok(mut stream) => {
+                let current = inflight.fetch_add(1, Ordering::SeqCst);
+                if current >= HTTP_MAX_INFLIGHT_CONNECTIONS {
+                    inflight.fetch_sub(1, Ordering::SeqCst);
+                    let response = raw_response(
+                        503,
+                        "application/json",
+                        r#"{"error":"too_many_connections"}"#,
+                    );
+                    if let Err(error) = stream.write_all(response.as_bytes()) {
+                        eprintln!("serve overload response error: {error}");
+                    }
+                    continue;
                 }
+                let state = Arc::clone(&state);
+                let inflight = Arc::clone(&inflight);
+                thread::spawn(move || {
+                    let _guard = InflightGuard { inflight };
+                    if let Err(error) = configure_http_stream(&stream)
+                        .and_then(|()| handle_connection(stream, state))
+                    {
+                        eprintln!("serve request error: {error}");
+                    }
+                });
             }
             Err(error) => eprintln!("serve accept error: {error}"),
         }
     }
-
-    Ok(())
 }
 
 fn handle_connection(
@@ -130,6 +161,26 @@ fn handle_connection(
     let response = route_request(&request, state);
     stream
         .write_all(response.as_bytes())
+        .map_err(|error| ServeError::Runtime(error.to_string()))
+}
+
+struct InflightGuard {
+    inflight: Arc<AtomicUsize>,
+}
+
+impl Drop for InflightGuard {
+    fn drop(&mut self) {
+        self.inflight.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
+fn configure_http_stream(stream: &TcpStream) -> Result<(), ServeError> {
+    let timeout = Some(Duration::from_secs(HTTP_CLIENT_TIMEOUT_SECS));
+    stream
+        .set_read_timeout(timeout)
+        .map_err(|error| ServeError::Runtime(error.to_string()))?;
+    stream
+        .set_write_timeout(timeout)
         .map_err(|error| ServeError::Runtime(error.to_string()))
 }
 
@@ -543,6 +594,7 @@ fn raw_response(status: u16, content_type: &str, body: &str) -> String {
         400 => "Bad Request",
         404 => "Not Found",
         500 => "Internal Server Error",
+        503 => "Service Unavailable",
         _ => "OK",
     };
     format!(
@@ -562,7 +614,10 @@ fn is_loopback_host(host: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+    use std::{
+        path::PathBuf,
+        time::{Duration, Instant},
+    };
 
     use roomci_scenario::load_scenario;
 
@@ -591,6 +646,27 @@ mod tests {
         }
     }
 
+    fn start_http_test_server() -> SocketAddr {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let state = serve_state();
+        thread::spawn(move || serve_http_listener(listener, state));
+        address
+    }
+
+    fn http_get(address: SocketAddr, path: &str) -> String {
+        let mut stream = TcpStream::connect(address).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        stream
+            .write_all(format!("GET {path} HTTP/1.1\r\nHost: localhost\r\n\r\n").as_bytes())
+            .unwrap();
+        let mut response = String::new();
+        stream.read_to_string(&mut response).unwrap();
+        response
+    }
+
     #[test]
     fn http_router_serves_core_observation_endpoints() {
         let state = serve_state();
@@ -607,6 +683,61 @@ mod tests {
 
         let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
         assert!(timeline.contains("mqtt_publish"));
+    }
+
+    #[test]
+    fn slow_http_client_does_not_block_fast_client() {
+        let address = start_http_test_server();
+        let _slow_client = TcpStream::connect(address).unwrap();
+
+        let started = Instant::now();
+        let response = http_get(address, "/health");
+
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert!(response.contains("HTTP/1.1 200 OK"));
+        assert!(response.contains("\"status\":\"ok\""));
+    }
+
+    #[test]
+    fn concurrent_health_requests_do_not_serialize() {
+        let address = start_http_test_server();
+        let started = Instant::now();
+        let clients = (0..3)
+            .map(|_| thread::spawn(move || http_get(address, "/health")))
+            .collect::<Vec<_>>();
+
+        let responses = clients
+            .into_iter()
+            .map(|client| client.join().unwrap())
+            .collect::<Vec<_>>();
+
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert!(responses
+            .iter()
+            .all(|response| response.contains("HTTP/1.1 200 OK")));
+    }
+
+    #[test]
+    fn raw_response_renders_service_unavailable() {
+        let response = raw_response(503, "application/json", r#"{"error":"x"}"#);
+
+        assert!(response.starts_with("HTTP/1.1 503 Service Unavailable"));
+    }
+
+    #[test]
+    fn slow_http_client_is_closed_by_read_timeout() {
+        let address = start_http_test_server();
+        let mut slow_client = TcpStream::connect(address).unwrap();
+        slow_client
+            .set_read_timeout(Some(Duration::from_secs(HTTP_CLIENT_TIMEOUT_SECS + 3)))
+            .unwrap();
+
+        let started = Instant::now();
+        let mut buffer = [0_u8; 1];
+        let read = slow_client.read(&mut buffer);
+
+        assert!(started.elapsed() < Duration::from_secs(HTTP_CLIENT_TIMEOUT_SECS + 3));
+        assert!(matches!(read, Ok(0) | Err(_)));
     }
 
     #[test]
