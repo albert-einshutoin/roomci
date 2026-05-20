@@ -55,6 +55,7 @@ Guest impact: Lighting scene did not match intended guest ambience.
 ```
 
 For the full interview walkthrough, see [`docs/INTERVIEW_DEMO.md`](docs/INTERVIEW_DEMO.md). For product positioning, see [`docs/PRODUCT_POSITIONING.md`](docs/PRODUCT_POSITIONING.md), [`docs/DOMAIN_PACKS.md`](docs/DOMAIN_PACKS.md), and [`docs/GENERIC_MQTT_CONTRACTS.md`](docs/GENERIC_MQTT_CONTRACTS.md).
+For the product boundary, see [`docs/HOSPITALITY_STACK_COVERAGE.md`](docs/HOSPITALITY_STACK_COVERAGE.md) and [`docs/CORE_QA_JOURNEY.md`](docs/CORE_QA_JOURNEY.md).
 
 For evaluator onboarding, use [`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md), [`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md), and [`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md).
 
@@ -260,6 +261,7 @@ Evaluator PoC packs are available as one-command targets:
 
 ```bash
 make poc-generic-mqtt
+make poc-core-qa
 make poc-hospitality
 make poc-building-automation
 make poc-bms-ops

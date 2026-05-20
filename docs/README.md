@@ -14,6 +14,8 @@ its own.
 | MQTT | [Generic MQTT contracts](GENERIC_MQTT_CONTRACTS.md) | Generic MQTT command/state examples and current supported subset |
 | MQTT serve | [MQTT serve subset](MQTT_SERVE_SUBSET.md) | Minimal MQTT 3.1.1 CONNECT + QoS0 PUBLISH ingress for PoC tests |
 | Protocols | [Protocol support matrix](PROTOCOL_SUPPORT_MATRIX.md) | Source of truth for behavior models, serve endpoints, tested external surfaces, and non-goals |
+| Coverage | [Hospitality stack coverage](HOSPITALITY_STACK_COVERAGE.md) | What roomci covers, mocks, defers, or rejects from a hospitality smart-home stack |
+| Journey | [Core QA journey](CORE_QA_JOURNEY.md) | End-to-end local MQTT, edge, device, fault, BMS, comfort, and evidence path |
 | Adapters | [Adapter contract kit](ADAPTER_CONTRACT_KIT.md) | Templates, examples, and validation for company-specific protocol contracts |
 | Evidence | [Evaluation evidence pack](EVALUATION_EVIDENCE_PACK.md) | Commands, PoC packs, scorecards, report artifacts, and unsupported-feature disclosure |
 | Onboarding | [Integration onboarding](INTEGRATION_ONBOARDING.md) | 15-minute path, HTTP API, troubleshooting, and client snippets |

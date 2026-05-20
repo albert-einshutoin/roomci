@@ -18,7 +18,7 @@
 | Phase 11 | `in_progress` | External protocol depth after completed PoC/evidence/onboarding/positioning work | Real customer/vendor specs are required only for compatibility claims, not for generic platform progress | `phase11/phase_status.md` |
 | Phase 12 | `done` | Serve runtime hardening, health semantics, MQTT CONNECT validation, and release plumbing | None | `phase12/phase_status.md` |
 | Phase 13 | `todo` | Official-spec-backed protocol conformance subsets for MQTT and Modbus first, with future protocol profiles tracked honestly | Full certification-grade conformance remains out of scope | `phase13/phase_status.md` |
-| Phase 14 | `todo` | Hospitality smart-home QA core coverage: local MQTT, edge, device protocols, network/control faults, BMS/ops, comfort, and safe access/intercom boundaries | NOT A HOTEL private compatibility and full-stack emulation remain out of scope | `phase14/phase_status.md` |
+| Phase 14 | `done` | Hospitality smart-home QA core coverage: local MQTT, edge, device protocols, network/control faults, BMS/ops, comfort, and safe access/intercom boundaries | NOT A HOTEL private compatibility and full-stack emulation remain out of scope | `phase14/phase_status.md` |
 
 ## Update Rules
 

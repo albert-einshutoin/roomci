@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc poc-generic-mqtt poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -95,6 +95,10 @@ poc-generic-mqtt:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/generic_mqtt_edge_device.yaml
 	cargo run -p roomci-cli -- run examples/generic_mqtt_retained_state.yaml --report-json reports/poc_generic_mqtt_retained_state.json --report-md reports/poc_generic_mqtt_retained_state.md --junit reports/poc_generic_mqtt_retained_state.xml
 	cargo run -p roomci-cli -- run examples/generic_mqtt_duplicate_delivery.yaml --report-json reports/poc_generic_mqtt_duplicate_delivery.json --report-md reports/poc_generic_mqtt_duplicate_delivery.md --junit reports/poc_generic_mqtt_duplicate_delivery.xml
+
+poc-core-qa:
+	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/hospitality_local_first_room.yaml adapter-contracts/examples/building_automation_bms.yaml
+	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml examples/modbus_floor_heating.yaml examples/bms_sauna_emergency_alert.yaml examples/starlink_failover.yaml examples/comfort_auto_mode.yaml examples/access_permission_drift.yaml examples/commissioning_checklist.yaml --report-json reports/poc_core_qa.json --report-md reports/poc_core_qa.md --junit reports/poc_core_qa.xml
 
 poc-hospitality:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/hospitality_local_first_room.yaml
