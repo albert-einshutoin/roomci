@@ -2,7 +2,7 @@
 
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
-[![Coverage](https://img.shields.io/badge/coverage-84.47%25-green.svg)](#quality-gates)
+[![Coverage](https://img.shields.io/badge/coverage-85.00%25-green.svg)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **MQTT / Edge / Device QA Contract Emulator for CI**
@@ -244,7 +244,7 @@ That command starts `roomci serve` in Docker Compose, runs `examples/controllers
 - `cargo doc --workspace --no-deps` (`RUSTDOCFLAGS=-D warnings`)
 - `cargo tarpaulin --workspace --fail-under 80`
 
-Current measurements: **84 tests** pass, **84.47%** line coverage.
+Current measurements: **95 tests** pass, **85.00%** line coverage.
 
 ## Core concept
 
