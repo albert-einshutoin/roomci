@@ -18,6 +18,8 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 | Docker image | `docker build -t roomci:verify .` | Image builds from repository files |
 | Docker scenario run | `docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:verify run /scenarios/local_first_cloud_outage.yaml` | Containerized scenario passes |
 | Compose PoC | `make compose-poc` | External controller drives `roomci serve` over HTTP and writes reports |
+| MQTT protocol smoke | `make protocol-smoke-mqtt` | Standard MQTT client/library path publishes to `roomci serve` and observes state through HTTP reports |
+| Modbus protocol smoke | `make protocol-smoke-modbus` | Modbus TCP client path reads/writes selected registers and observes state through HTTP reports |
 | Full local CI approximation | `make verify` | Runs the same practical gate set as CI, including Docker and Compose checks |
 
 ## Generated Artifacts
@@ -32,3 +34,5 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 - README test count and coverage must match the latest successful `cargo test --workspace --all-targets` and `cargo tarpaulin --workspace --engine llvm --fail-under 80` run.
 - Do not claim private customer compatibility without that organization's actual topic schemas, register maps, auth assumptions, BMS contracts, and acceptance criteria.
 - Use [`PROTOCOL_SUPPORT_MATRIX.md`](PROTOCOL_SUPPORT_MATRIX.md) as the source of truth when describing behavior-model support versus wire-protocol support.
+- Use [`PROTOCOL_CONFORMANCE_REGISTRY.md`](PROTOCOL_CONFORMANCE_REGISTRY.md) as the source of truth for protocol specification references, conformance subset claims, verification commands, and explicit rejections.
+- Do not use "compatible", "conformant", "supports", or "implements" for a protocol unless the claim maps to a registry row and a verification command.

@@ -57,6 +57,8 @@ See [`HTTP_SERVE_BEHAVIOR.md`](HTTP_SERVE_BEHAVIOR.md) for timeout, overload, he
 | MQTT publish is ignored | Topic does not match `mqtt.contracts[].command_topic` | Update the adapter/scenario topic template and `{device_id}` placeholder |
 | MQTT publish is rejected | JSON payload is malformed or missing required fields | Match `payload.required_fields` in the adapter contract |
 | `CONNACK` returns `0x01` | MQTT client is not protocol name `MQTT`, level `4` | Use MQTT 3.1.1 for current serve subset |
+| Modbus request returns exception `0x02` | Unit id or register address is not in the scenario map | Update `modbus.devices[].unit_id` and register addresses |
+| Modbus write returns exception `0x03` | Register is read-only or value/quantity is outside the subset | Write only configured holding registers with one value |
 | `/health` returns HTTP 503 | Latest report failed | Read `/reports/latest.md` and `/timeline` for failure evidence |
 | Docker/Compose fails | Docker daemon, image build, or port issue | Run `docker build -t roomci:verify .`, then `make compose-poc` |
 | Report seems too narrow | Scenario has too few assertions | Add acceptance criteria to adapter contract and map them to scenario assertions |

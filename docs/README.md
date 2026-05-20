@@ -13,7 +13,9 @@ its own.
 | Domains | [Domain packs](DOMAIN_PACKS.md) | Core emulator modules and reusable domain packs |
 | MQTT | [Generic MQTT contracts](GENERIC_MQTT_CONTRACTS.md) | Generic MQTT command/state examples and current supported subset |
 | MQTT serve | [MQTT serve subset](MQTT_SERVE_SUBSET.md) | Minimal MQTT 3.1.1 CONNECT + QoS0 PUBLISH ingress for PoC tests |
+| Modbus serve | [Modbus TCP subset](MODBUS_TCP_SUBSET.md) | Minimal Modbus TCP read/write endpoint for PoC tests |
 | Protocols | [Protocol support matrix](PROTOCOL_SUPPORT_MATRIX.md) | Source of truth for behavior models, serve endpoints, tested external surfaces, and non-goals |
+| Protocols | [Protocol conformance registry](PROTOCOL_CONFORMANCE_REGISTRY.md) | Official references, implemented subsets, black-box verification commands, and explicit rejections |
 | Coverage | [Hospitality stack coverage](HOSPITALITY_STACK_COVERAGE.md) | What roomci covers, mocks, defers, or rejects from a hospitality smart-home stack |
 | Journey | [Core QA journey](CORE_QA_JOURNEY.md) | End-to-end local MQTT, edge, device, fault, BMS, comfort, and evidence path |
 | Adapters | [Adapter contract kit](ADAPTER_CONTRACT_KIT.md) | Templates, examples, and validation for company-specific protocol contracts |
@@ -68,6 +70,7 @@ its own.
 | Serve | [HTTP serve behavior](HTTP_SERVE_BEHAVIOR.md) | Current HTTP connection, timeout, and overload behavior |
 | Serve | [External protocol depth](EXTERNAL_PROTOCOL_DEPTH.md) | MQTT subset boundary and BMS/contact external endpoint |
 | PoC | [Pre-adoption PoC checklist](PRE_ADOPTION_POC_CHECKLIST.md) | Integration checklist for external protocol contracts and acceptance criteria |
+| PoC | [Generic SmartHome evaluator checklist](GENERIC_SMARTHOME_EVALUATOR_CHECKLIST.md) | Evaluation checklist for generic IoT, SmartHome, edge-device, and building-automation teams |
 | Release | [Release checklist](RELEASE_CHECKLIST.md) | Reproducible gates for CI, Docker, Compose, reports, docs, and coverage |
 | 20 | [Appendix: future integrations](20_appendix_future_integrations.md) | Out-of-scope work and where it would live |
 

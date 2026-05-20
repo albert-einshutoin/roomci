@@ -55,7 +55,7 @@ Guest impact: Lighting scene did not match intended guest ambience.
 ```
 
 For the full interview walkthrough, see [`docs/INTERVIEW_DEMO.md`](docs/INTERVIEW_DEMO.md). For product positioning, see [`docs/PRODUCT_POSITIONING.md`](docs/PRODUCT_POSITIONING.md), [`docs/DOMAIN_PACKS.md`](docs/DOMAIN_PACKS.md), and [`docs/GENERIC_MQTT_CONTRACTS.md`](docs/GENERIC_MQTT_CONTRACTS.md).
-For the product boundary, see [`docs/HOSPITALITY_STACK_COVERAGE.md`](docs/HOSPITALITY_STACK_COVERAGE.md) and [`docs/CORE_QA_JOURNEY.md`](docs/CORE_QA_JOURNEY.md).
+For the product boundary, see [`docs/HOSPITALITY_STACK_COVERAGE.md`](docs/HOSPITALITY_STACK_COVERAGE.md) and [`docs/CORE_QA_JOURNEY.md`](docs/CORE_QA_JOURNEY.md). For protocol subset claims, see [`docs/PROTOCOL_CONFORMANCE_REGISTRY.md`](docs/PROTOCOL_CONFORMANCE_REGISTRY.md).
 
 For evaluator onboarding, use [`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md), [`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md), and [`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md).
 
@@ -228,6 +228,8 @@ mqtt:
 ```
 
 The supported subset is documented in [`docs/MQTT_SERVE_SUBSET.md`](docs/MQTT_SERVE_SUBSET.md). The integration checklist is in [`docs/PRE_ADOPTION_POC_CHECKLIST.md`](docs/PRE_ADOPTION_POC_CHECKLIST.md).
+
+`roomci serve --modbus-port <port>` enables a minimal Modbus TCP subset for external PoC clients. It supports MBAP, read holding/input register, write single register, and documented exception responses. The supported subset is documented in [`docs/MODBUS_TCP_SUBSET.md`](docs/MODBUS_TCP_SUBSET.md).
 
 The black-box PoC path is:
 

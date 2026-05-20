@@ -1,0 +1,42 @@
+# Generic IoT / SmartHome Evaluator Checklist
+
+Use this checklist when evaluating `roomci` for a non-hospitality smart-home, IoT, edge-device, or building-automation team.
+
+## What To Bring
+
+- MQTT command/state topic templates.
+- MQTT payload schema and required fields.
+- Modbus unit ids, register addresses, access mode, scale, and units.
+- Device identity and room/site naming conventions.
+- BMS/webhook event contract if operations flows are in scope.
+- Network or edge-failover assumptions.
+- Pass/fail acceptance criteria and required report artifacts.
+
+## What To Run First
+
+```bash
+make poc-generic-mqtt
+make poc-building-automation
+make protocol-smoke
+```
+
+## What To Inspect
+
+- `docs/PROTOCOL_SUPPORT_MATRIX.md`
+- `docs/PROTOCOL_CONFORMANCE_REGISTRY.md`
+- `adapter-contracts/templates/company_adapter_contract.yaml`
+- generated reports under `reports/`
+
+## Fit Scorecard
+
+| Dimension | Good Fit Signal | Not a Fit Signal |
+|---|---|---|
+| MQTT command/state QA | Topics and payloads can be mapped into contracts | You need a production broker replacement |
+| Building automation QA | Register maps and alert flows can be represented | You need electrical commissioning certification |
+| Local/CI workflow | Docker/Compose evidence is useful | Only real-device HIL is acceptable |
+| Operations evidence | Reports and mocked escalation are enough for pre-adoption QA | Real Slack/phone/ticket side effects are required by default |
+| Protocol depth | Narrow conformance subsets are acceptable | Full protocol certification is required |
+
+## Boundary
+
+`roomci` is a QA contract emulator. It is not a cloud platform emulator, production BMS, protocol certification suite, or physical device replacement.
