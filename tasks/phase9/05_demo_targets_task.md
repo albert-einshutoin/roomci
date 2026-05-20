@@ -2,7 +2,7 @@
 
 ## Objective
 
-Make demos explicit for both NOT A HOTEL-facing and generic MQTT-facing audiences.
+Make demos explicit for both hospitality-focused and generic MQTT-facing audiences.
 
 ## Acceptance Criteria
 

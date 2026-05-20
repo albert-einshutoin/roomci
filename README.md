@@ -24,7 +24,7 @@ It is designed as a **LocalStack-like emulator**, but for MQTT/edge/device QA:
 
 MQTT and edge-device quality is not only whether one command works. It is whether state synchronization, retained messages, local-first control, edge failover, device-adapter behavior, and operations escalation survive realistic failure modes.
 
-Hospitality smart home is the strongest included domain pack because failures affect guest experience directly: cloud outages, lighting scene drift, access-permission drift, comfort automation, and BMS escalation. `roomci` keeps that NOT A HOTEL-facing depth while framing it as one domain-specific application of a reusable QA contract emulator.
+Hospitality smart home is the strongest included domain pack because failures affect guest experience directly: cloud outages, lighting scene drift, access-permission drift, comfort automation, and BMS escalation. `roomci` models this domain-specific depth while framing it as one application of a reusable QA contract emulator.
 
 `roomci` turns those failure modes into repeatable scenarios that can run locally, in Docker, or in CI.
 
@@ -64,7 +64,7 @@ For evaluator onboarding, use [`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATIO
 # Full curated demo
 make demo
 
-# Hospitality / NOT A HOTEL-facing domain demo
+# Hospitality smart-home domain demo
 make demo-hospitality
 
 # Generic MQTT contract demo
@@ -125,7 +125,7 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 | Demo | Audience | Command |
 |---|---|---|
 | Curated full demo | General product review | `make demo` |
-| Hospitality domain pack | NOT A HOTEL-facing interview walkthrough | `make demo-hospitality` |
+| Hospitality domain pack | Hospitality and smart-home engineering teams | `make demo-hospitality` |
 | Generic MQTT contracts | MQTT / edge-device platform teams | `make demo-generic-mqtt` |
 | Serve-mode PoC | Teams validating external-controller integration shape | `make compose-poc` |
 
@@ -337,6 +337,6 @@ roomci/
 
 ## Positioning
 
-> I analyzed public NOT A HOTEL smart-home hiring pages, videos, and engineering articles. The public materials suggest their smart-home work is not just IoT device control; it is a local-first, MQTT-driven, edge-server-based, building-automation and operations platform. I designed `roomci` as a Docker-friendly QA contract emulator with hospitality smart home as the strongest domain pack, while keeping the reusable core applicable to generic MQTT, edge-device, BMS, and building-automation teams.
+`roomci` is positioned as a reusable MQTT/edge/building-automation QA contract emulator. The strongest shipped domain pack is hospitality smart home: a local-first, MQTT-driven, edge-server-based system that combines device control, building-automation protocols, field commissioning, BMS operations, and network reliability into a cohesive stay-experience model.
 
-NOT A HOTEL compatibility is not claimed. A real integration would require their actual MQTT topics, payload schemas, device/register maps, BMS/webhook contracts, authentication model, and acceptance criteria.
+The product does not depend on any specific company's private implementation. A real integration would require your team's actual MQTT topics, payload schemas, device/register maps, BMS/webhook contracts, authentication model, and acceptance criteria.

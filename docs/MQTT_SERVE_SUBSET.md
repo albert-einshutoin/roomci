@@ -72,4 +72,4 @@ To adapt this PoC to a real customer or vendor, the integrator must provide:
 - Modbus register maps, if Modbus is involved
 - BMS webhook/API contracts, if operations flows are involved
 
-NOT A HOTEL compatibility is not claimed without their actual integration contract.
+Any organization's compatibility is not claimed without their actual integration contract.

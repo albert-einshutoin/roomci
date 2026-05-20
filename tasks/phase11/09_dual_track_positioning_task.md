@@ -2,14 +2,14 @@
 
 ## Goal
 
-Create public positioning that maximizes evaluation from both the broader IoT/SmartHome market and NOT A HOTEL-style hospitality smart-home teams.
+Create public positioning that maximizes evaluation from both the broader IoT/SmartHome market and hospitality-focused hospitality smart-home teams.
 
 ## Positioning Rule
 
 The product should use two connected tracks:
 
 - **Industry track:** `roomci` is a contract-first local/CI emulator for IoT, SmartHome, edge-device, and building-automation QA.
-- **Hospitality track:** `roomci` includes a strong local-first hospitality domain pack that demonstrates the same reliability problems a company like NOT A HOTEL needs to control.
+- **Hospitality track:** `roomci` includes a strong local-first hospitality domain pack that demonstrates the same reliability problems a company like hospitality needs to control.
 
 The hospitality track should prove domain insight. The industry track should prove product scope.
 
@@ -21,7 +21,7 @@ The hospitality track should prove domain insight. The industry track should pro
   - strongest domain pack: hospitality local-first smart home
   - evaluator path: bring specs, run PoC, collect evidence
 - Add website/README copy candidates that avoid:
-  - "we reproduced NOT A HOTEL"
+  - "we reproduced hospitality team"
   - "drop-in compatibility"
   - "production BMS"
   - "full MQTT/Modbus conformance"
@@ -30,11 +30,11 @@ The hospitality track should prove domain insight. The industry track should pro
   - unknown private specs are expected
   - external services can connect to local endpoints
   - reports are useful to software, field, and operations teams
-- Add a short narrative for why industry-wide positioning increases, rather than dilutes, NOT A HOTEL relevance.
+- Add a short narrative for why industry-wide positioning increases, rather than dilutes, hospitality relevance.
 
 ## Acceptance Criteria
 
 - The first-read product story does not look like a narrow interview demo.
-- NOT A HOTEL still sees a clear path from current demo to serious internal evaluation.
-- Generic IoT/SmartHome companies can understand the product without knowing NOT A HOTEL.
+- hospitality still sees a clear path from current demo to serious internal evaluation.
+- Generic IoT/SmartHome companies can understand the product without knowing hospitality team.
 - Claims are ambitious but bounded by the protocol support matrix.

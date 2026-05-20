@@ -10,7 +10,7 @@ The target product claim after this phase is:
 Bring your protocol contracts, topic/register/webhook specs, and acceptance criteria; roomci turns them into a local emulator, fault harness, and CI evidence pack without requiring your production hardware or site network.
 ```
 
-For NOT A HOTEL specifically, the goal is not to guess private implementation details. The goal is to make every unknown an explicit adapter/configuration input so their actual MQTT, Modbus, BMS, edge, and operations contracts can be mapped quickly if they choose to evaluate it.
+For hospitality specifically, the goal is not to guess private implementation details. The goal is to make every unknown an explicit adapter/configuration input so their actual MQTT, Modbus, BMS, edge, and operations contracts can be mapped quickly if they choose to evaluate it.
 
 ## Strategic Positioning
 
@@ -28,9 +28,9 @@ The product should be strongest where real systems have unclear or company-speci
 The product should maximize evaluation through a dual-track strategy:
 
 - The first track is industry-wide: `roomci` is a contract-first local/CI emulator for IoT, SmartHome, edge-device, and building-automation QA.
-- The second track is hospitality-specific: `roomci` keeps a strong NOT A HOTEL-style local-first smart-home path that demonstrates domain insight without claiming private compatibility.
+- The second track is hospitality-specific: `roomci` keeps a strong hospitality-focused local-first smart-home path that demonstrates domain insight without claiming private compatibility.
 
-These tracks should reinforce each other. Industry-wide positioning makes `roomci` look like a real product rather than a narrow interview demo. The hospitality path keeps the product relevant to NOT A HOTEL by showing concrete workflows around local control, edge reliability, Modbus-style equipment, BMS operations, WAN failure, and commissioning evidence.
+These tracks should reinforce each other. Industry-wide positioning makes `roomci` look like a real product rather than a narrow interview demo. The hospitality path keeps the product relevant to hospitality by showing concrete workflows around local control, edge reliability, Modbus-style equipment, BMS operations, WAN failure, and commissioning evidence.
 
 ## What Is Missing Today
 
@@ -54,19 +54,19 @@ These tracks should reinforce each other. Industry-wide positioning makes `roomc
   - production non-goals
 - Add customer-style PoC packs:
   - generic smart-home controller
-  - hospitality/NOT A HOTEL-style local-first home
+  - hospitality/hospitality-focused local-first home
   - generic building automation/BMS
   - generic MQTT edge-device fleet
 - Add docs that explain exactly what a company must provide to evaluate `roomci`.
 - Add comparison/positioning docs so `roomci` is credible as a first-choice emulator for IoT and SmartHome QA.
-- Add NOT A HOTEL-style evaluator docs that show exactly how their real specs would map into generic adapter contracts.
+- Add hospitality-focused evaluator docs that show exactly how their real specs would map into generic adapter contracts.
 - Add dual-track positioning so broad market relevance does not dilute hospitality smart-home relevance.
-- Add evaluation scorecards and evidence packs for both generic companies and NOT A HOTEL-style evaluators.
+- Add evaluation scorecards and evidence packs for both generic companies and hospitality-focused evaluators.
 - Add public release gates that prove docs, CI, Docker, Compose, reports, and examples are reproducible from a clean checkout.
 
 ## Out of Scope
 
-- Claiming compatibility with NOT A HOTEL private systems without their actual contracts.
+- Claiming compatibility with hospitality private systems without their actual contracts.
 - Production replacement for MQTT brokers, BMS products, PLCs, or smart-home controllers.
 - Full protocol conformance for every protocol in one phase.
 - Real calls to customer cloud, Slack, phone, SIP, access-control, device, or BMS systems by default.
@@ -76,9 +76,9 @@ These tracks should reinforce each other. Industry-wide positioning makes `roomc
 
 - A new integrator can start from a template, fill in company-specific protocol details, and run a local PoC without changing Rust core code.
 - `roomci serve` exposes at least two externally drivable protocol surfaces, not just HTTP plus minimal MQTT.
-- The docs clearly show what NOT A HOTEL would need to provide for a serious evaluation.
+- The docs clearly show what hospitality would need to provide for a serious evaluation.
 - The docs clearly show what any other IoT/SmartHome company would need to provide for a serious evaluation.
-- The docs explain why industry-wide positioning increases NOT A HOTEL relevance instead of weakening it.
-- Evaluation evidence lets both generic companies and NOT A HOTEL-style teams score product fit without trusting pitch language.
+- The docs explain why industry-wide positioning increases hospitality relevance instead of weakening it.
+- Evaluation evidence lets both generic companies and hospitality-focused teams score product fit without trusting pitch language.
 - A clean-checkout verification command proves CLI, Docker, Compose, docs, and reports.
 - Public positioning avoids overclaiming while making the product category ambition explicit.

@@ -15,5 +15,5 @@ Make external integration contracts configurable so vendor-specific topic struct
 
 ## Notes
 
-- This is the layer that makes the product useful before private NOT A HOTEL protocol details are known.
+- This is the layer that makes the product useful before private hospitality protocol details are known.
 - Keep the first version small; avoid building a general-purpose transformation language unless required.

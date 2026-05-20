@@ -17,9 +17,9 @@
   - Docker image build
   - Compose black-box PoC
   - adapter-template validation
-- Public docs include an evaluator checklist for NOT A HOTEL and for a generic IoT/SmartHome company.
-- Dual-track positioning explains why industry-wide scope strengthens, rather than weakens, NOT A HOTEL relevance.
-- Evaluation evidence pack includes separate scorecards for NOT A HOTEL-style hospitality, generic MQTT/IoT, building automation/BMS, and CI/platform engineering.
+- Public docs include an evaluator checklist for hospitality and for a generic IoT/SmartHome company.
+- Dual-track positioning explains why industry-wide scope strengthens, rather than weakens, hospitality relevance.
+- Evaluation evidence pack includes separate scorecards for hospitality-focused hospitality, generic MQTT/IoT, building automation/BMS, and CI/platform engineering.
 - Adoption maximization review scores Not A Hotel relevance, generic market relevance, protocol credibility, first-run experience, and PoC handoff readiness.
 - Release-readiness check confirms README claims match actual files and commands.
 
@@ -30,4 +30,4 @@ Phase 11 is done when a company can evaluate `roomci` by supplying its own proto
 It is also done only when the product can credibly serve both paths:
 
 - broad IoT/SmartHome/building-automation emulator evaluation
-- NOT A HOTEL-style hospitality smart-home evaluation without private compatibility overclaiming
+- hospitality-focused hospitality smart-home evaluation without private compatibility overclaiming

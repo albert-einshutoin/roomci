@@ -12,7 +12,7 @@ roomci can add Matter-like or Aliro-like profiles once the local-first QA core i
 
 ## Home Assistant discovery
 
-Home Assistant MQTT Discovery-like support can make demos more familiar to smart-home developers, but NOT A HOTEL-specific materials point more strongly toward local MQTT, Modbus, DALI, BMS, and network operations.
+Home Assistant MQTT Discovery-like support can make demos more familiar to smart-home developers, but hospitality and building-automation evaluators generally prioritize local MQTT, Modbus, DALI, BMS, and network operations over generic Home Assistant conventions.
 
 ## AWS IoT Core-like bridge
 

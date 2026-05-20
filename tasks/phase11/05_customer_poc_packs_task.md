@@ -8,7 +8,7 @@ Provide ready-to-run PoC packs that make `roomci` feel useful to different compa
 
 - Add PoC packs for:
   - generic MQTT edge-device fleet
-  - hospitality/NOT A HOTEL-style local-first room
+  - hospitality/hospitality-focused local-first room
   - building automation with Modbus and contact I/O
   - BMS/operations escalation
 - Each pack should include:
@@ -25,4 +25,4 @@ Provide ready-to-run PoC packs that make `roomci` feel useful to different compa
 - An evaluator can run each pack with one command.
 - Each pack identifies required company-specific inputs.
 - Each pack produces JSON, Markdown, and JUnit evidence.
-- NOT A HOTEL-style pack avoids claiming private compatibility while showing exactly where their contracts would plug in.
+- hospitality-focused pack avoids claiming private compatibility while showing exactly where their contracts would plug in.

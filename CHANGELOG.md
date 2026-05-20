@@ -12,7 +12,7 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 - Phase 12 runtime-hardening tasks for `roomci serve`, release metadata, and public-surface truthfulness.
 - `roomci-serve` crate for the long-running HTTP/MQTT PoC runtime.
 - Adapter contract templates, examples, docs, and `roomci adapter validate` for company-specific integration specs.
-- NOT A HOTEL evaluator guide and dual-track positioning docs for industry-wide adoption without private-compatibility overclaims.
+- Hospitality evaluator guide and dual-track positioning docs for industry-wide adoption without private-compatibility overclaims.
 - Customer PoC pack targets and evaluation evidence pack with scorecards, report artifacts, and unsupported-feature disclosure.
 - Integration onboarding and category readiness docs for first-run evaluator experience and competitive positioning.
 - BMS/contact external serve endpoint and controller script for non-MQTT external PoC interactions.
@@ -36,7 +36,7 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 
 ### Added
 
-- Integration-ready emulator platform plan for company-specific IoT, SmartHome, building-automation, and NOT A HOTEL-style PoCs.
+- Integration-ready emulator platform plan for company-specific IoT, SmartHome, building-automation, and hospitality-focused PoCs.
 - Adoption maximization review with evaluator-readiness scores and concrete blockers.
 
 ## [0.10.0] - 2026-05-19
@@ -66,7 +66,7 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 
 ### Changed
 
-- README and NOT A HOTEL-facing docs were reframed around public research and external interpretation.
+- README and hospitality-focused docs were reframed around public research and industry-wide patterns.
 
 ## [0.7.0] - 2026-05-19
 

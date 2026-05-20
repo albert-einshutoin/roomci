@@ -24,7 +24,7 @@ Evaluation is maximized when the product shows reproducible proof:
   - protocol features covered
   - unsupported features disclosed
 - Add evaluator scorecards for:
-  - NOT A HOTEL-style hospitality smart home
+  - hospitality-focused hospitality smart home
   - generic IoT/MQTT edge-device fleet
   - building automation / Modbus / BMS
   - CI/platform engineering
@@ -39,6 +39,6 @@ Evaluation is maximized when the product shows reproducible proof:
 ## Acceptance Criteria
 
 - An evaluator can inspect one evidence pack and understand current product maturity.
-- NOT A HOTEL-specific evaluation is measurable without claiming private compatibility.
+- hospitality team-specific evaluation is measurable without claiming private compatibility.
 - Generic company evaluation is measurable without hospitality context.
 - Evidence pack remains tied to actual commands and artifacts, not static marketing claims.

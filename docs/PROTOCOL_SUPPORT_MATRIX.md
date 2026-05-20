@@ -28,7 +28,7 @@ Support levels:
 
 `roomci` can be used for generic company evaluation when the company maps its private contracts into scenarios and adapter definitions. It should not be described as compatible with a specific company environment until that company supplies its real protocol contracts.
 
-For NOT A HOTEL specifically, the missing inputs are the actual MQTT topics and payloads, Modbus/register maps, BMS or webhook contracts, auth/TLS model, device identity model, and acceptance criteria. The current value is a strong NOT A HOTEL-style evaluation path, not a claim of private-system compatibility.
+For any organization, the missing inputs are the actual MQTT topics and payloads, Modbus/register maps, BMS or webhook contracts, auth/TLS model, device identity model, and acceptance criteria. The current value is a strong foundation for integrating your own contracts, not a claim of private-system compatibility.
 
 ## Roadmap Use
 

@@ -2,11 +2,11 @@
 
 ## Goal
 
-Run a strict adoption review before declaring Phase 11 complete, focused on whether `roomci` is likely to be shortlisted by both NOT A HOTEL and broader IoT/SmartHome teams.
+Run a strict adoption review before declaring Phase 11 complete, focused on whether `roomci` is likely to be shortlisted by both hospitality and broader IoT/SmartHome teams.
 
 ## Review Questions
 
-- Would a NOT A HOTEL engineer see domain understanding without feeling private compatibility is being overclaimed?
+- Would a hospitality engineer see domain understanding without feeling private compatibility is being overclaimed?
 - Would a generic IoT/SmartHome engineer understand how to map their own specs?
 - Is the first-run path fast enough to evaluate without a meeting?
 - Are protocol limitations visible before they become surprises?

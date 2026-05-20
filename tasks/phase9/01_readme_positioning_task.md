@@ -7,11 +7,11 @@ Update the README so the product is framed as a generic QA contract emulator, wi
 ## Acceptance Criteria
 
 - README opening describes `roomci` as a Docker-friendly QA contract emulator for MQTT-based edge, smart-home, and building-automation systems.
-- NOT A HOTEL appears as public-research / interview context, not as the only target market.
+- hospitality appears as public-research / interview context, not as the only target market.
 - README uses the words "QA contract emulator" and "behavioral emulator" clearly.
 - README avoids "MQTT broker replacement", "protocol conformance suite", and "production controller" claims.
 - The strongest demo path remains easy to find.
 
 ## Notes
 
-This task should maximize NOT A HOTEL interview value while making the product legible to other MQTT/edge/building-automation companies.
+This task should maximize hospitality interview value while making the product legible to other MQTT/edge/building-automation companies.

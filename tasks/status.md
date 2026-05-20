@@ -27,11 +27,11 @@
 
 ## Current Recommendation
 
-Phase 10 turned the contract emulator into a pre-adoption PoC product: a localhost-bound service that external clients can connect to, drive, observe, and collect CI-ready reports from without requiring private NOT A HOTEL protocol details.
+Phase 10 turned the contract emulator into a pre-adoption PoC product: a localhost-bound service that external clients can connect to, drive, observe, and collect CI-ready reports from without requiring private hospitality evaluator protocol details.
 
 Phase 12 is complete. Phase 11 is now the only remaining active productization track:
 
 - **Phase 11** expands the external surface so `roomci` becomes integration-ready for real company evaluations — adapter contract kit, protocol support matrix, customer PoC packs, second external protocol surface.
-- **Next priority:** Phase 11 Task 04 external protocol depth, then final adoption review.
+- **Next priority:** Phase 11 Task 12 MQTT retained-state run-boundary preservation, then the remaining Task 04 MQTT interoperability/replay scope.
 
 Where Phase 12 landed first (release plumbing, runtime safety), Phase 11 benefits because every Phase 11 deliverable is shipped on a more credible runtime and a more honest public surface.

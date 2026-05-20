@@ -21,7 +21,7 @@ Current measured baseline:
 | Pack | Command | Report Artifacts |
 |---|---|---|
 | Generic MQTT edge-device fleet | `make poc-generic-mqtt` | `reports/poc_generic_mqtt_*.{json,md,xml}` |
-| Hospitality / NOT A HOTEL-style local-first room | `make poc-hospitality` | `reports/poc_hospitality_*.{json,md,xml}` |
+| Hospitality smart home local-first room | `make poc-hospitality` | `reports/poc_hospitality_*.{json,md,xml}` |
 | Building automation / BMS | `make poc-building-automation` | `reports/poc_building_*.{json,md,xml}` |
 | BMS / operations escalation | `make poc-bms-ops` | `reports/poc_bms_ops_*.{json,md,xml}` |
 
@@ -31,7 +31,7 @@ Generated `reports/` files are intentionally ignored by git.
 
 | Evaluation Lens | Current Fit | Required Customer Inputs | Integration Effort | Missing Depth | Go / No-go Criteria |
 |---|---:|---|---|---|---|
-| NOT A HOTEL-style hospitality smart home | 78/100 | MQTT topics/payloads, edge behavior, Modbus maps, BMS contracts, auth/network assumptions, acceptance criteria | Medium | Private compatibility, real auth/TLS, richer external endpoints | Go if adapter fields map cleanly to their specs and reports are useful to smart-home QA |
+| Hospitality smart-home local-first | 78/100 | MQTT topics/payloads, edge behavior, Modbus maps, BMS contracts, auth/network assumptions, acceptance criteria | Medium | Private compatibility, real auth/TLS, richer external endpoints | Go if adapter fields map cleanly to your specs and reports are useful to smart-home QA |
 | Generic IoT/MQTT edge-device fleet | 76/100 | Topic templates, required payload fields, device identity, retained/QoS expectations | Low-medium | Full broker semantics, QoS1/QoS2 wire ACKs, MQTT 5 | Go if contract-level QoS0 testing is enough for CI preflight |
 | Building automation / Modbus / BMS | 68/100 | Register maps, scaling, access modes, contact mappings, BMS workflow | Medium | Modbus TCP serve endpoint, vendor-specific devices, production BMS integration | Go for behavioral CI checks; no-go for protocol conformance certification |
 | CI/platform engineering | 82/100 | Container policy, report ingestion needs, CI runtime budget | Low | Hosted artifacts, release automation, packaged binaries | Go if `make verify` and JUnit reports fit the platform workflow |
@@ -50,7 +50,7 @@ Generated `reports/` files are intentionally ignored by git.
 - Full MQTT 5, QoS1/QoS2 wire semantics, TLS, ACLs, persistence, clustering.
 - Full Modbus TCP server.
 - Full DALI, KNX, BACnet, Matter, SIP, or BMS implementation.
-- Drop-in compatibility with NOT A HOTEL or any private customer environment.
+- Drop-in compatibility with any private customer environment without their supplied contracts.
 
 ## Next Adoption Work
 

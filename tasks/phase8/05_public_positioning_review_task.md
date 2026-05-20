@@ -2,13 +2,13 @@
 
 ## Objective
 
-Make the NOT A HOTEL-facing narrative strong without overclaiming private knowledge or production compatibility.
+Make the hospitality-focused narrative strong without overclaiming private knowledge or production compatibility.
 
 ## Acceptance Criteria
 
 - Review README, `docs/19_interview_positioning.md`, and `docs/01_notahotel_research_synthesis.md` for claims that imply private/internal knowledge.
 - Keep language framed around public research, assumptions, and inspiration.
-- Avoid saying the project reproduces NOT A HOTEL's internal system.
+- Avoid saying the project reproduces hospitality team's internal system.
 - Clearly state that protocol behavior is modeled for QA, not full KNX/DALI/BACnet/Modbus compatibility.
 - Keep the strongest interview message: reproduce smart-home field failures before guests experience them.
 

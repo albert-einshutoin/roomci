@@ -10,7 +10,7 @@ Current adoption score:
 
 ```txt
 Overall evaluator readiness: 67 / 100
-NOT A HOTEL-style relevance: 78 / 100
+hospitality-focused relevance: 78 / 100
 Generic IoT/SmartHome relevance: 70 / 100
 External PoC readiness: 64 / 100
 Runtime confidence: 52 / 100
@@ -46,7 +46,7 @@ Commands/evidence:
 | Dimension | Score | Assessment |
 |---|---:|---|
 | Category clarity | 76 | The product reads as a contract-first local/CI emulator, not only a Not A Hotel demo. |
-| NOT A HOTEL relevance | 78 | Hospitality/local-first scenarios map well to local MQTT, edge, Modbus-like equipment, BMS/ops, WAN failover, and commissioning concerns. |
+| hospitality relevance | 78 | Hospitality/local-first scenarios map well to local MQTT, edge, Modbus-like equipment, BMS/ops, WAN failover, and commissioning concerns. |
 | Generic IoT/SmartHome relevance | 70 | Generic MQTT examples exist, but adapter contracts and protocol support matrix are still missing. |
 | Protocol credibility | 58 | MQTT serve mode is useful but minimal; Modbus/BMS are still scenario models, not externally drivable endpoints. |
 | First-run experience | 72 | README, Make targets, Docker, Compose, and reports are clear; public badge 404 and missing adapter guide reduce trust. |
@@ -66,7 +66,7 @@ The serve runtime is functionally useful, but it is not yet robust enough to lea
 
 ### P1 — Not A Hotel relevance is strong but needs a dedicated evaluator path
 
-The hospitality domain pack demonstrates useful understanding without claiming private compatibility. To maximize evaluation, the repo still needs a NOT A HOTEL-style guide that maps unknown private specs to generic contract inputs and explains exactly what they would need to provide.
+The hospitality domain pack demonstrates useful understanding without claiming private compatibility. To maximize evaluation, the repo still needs a hospitality-focused guide that maps unknown private specs to generic contract inputs and explains exactly what they would need to provide.
 
 ### P1 — Generic industry positioning needs adapter proof
 
@@ -103,7 +103,7 @@ That stronger claim becomes defensible after Phase 11 Tasks 01-10 and Phase 12 T
 1. Fix or remove broken public badges and confirm public CI visibility.
 2. Add protocol support matrix.
 3. Add adapter contract kit.
-4. Add NOT A HOTEL evaluator guide.
+4. Add hospitality evaluator guide.
 5. Add evidence pack and evaluator scorecards.
 6. Harden `roomci serve` runtime through Phase 12.
 7. Add one non-MQTT externally drivable protocol endpoint.
@@ -112,7 +112,7 @@ That stronger claim becomes defensible after Phase 11 Tasks 01-10 and Phase 12 T
 
 1. Phase 12 Task 06 or equivalent badge/release truthfulness fix.
 2. Phase 11 Task 02 protocol support matrix.
-3. Phase 11 Task 08 NOT A HOTEL evaluation path.
+3. Phase 11 Task 08 hospitality evaluation path.
 4. Phase 11 Task 09 dual-track positioning.
 5. Phase 11 Task 03 adapter contract kit.
 6. Phase 12 Task 01-05 runtime hardening.

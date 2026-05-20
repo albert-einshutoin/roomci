@@ -57,4 +57,4 @@ make verify
 
 `roomci` is a QA contract emulator. It does not claim private-system compatibility, full MQTT broker behavior, production BMS behavior, or replacement of real device commissioning.
 
-For NOT A HOTEL specifically, compatibility requires their actual MQTT topics, payload schemas, device/register maps, BMS contracts, auth/TLS assumptions, and acceptance criteria.
+For any organization, real integration requires their actual MQTT topics, payload schemas, device/register maps, BMS contracts, auth/TLS assumptions, and acceptance criteria.

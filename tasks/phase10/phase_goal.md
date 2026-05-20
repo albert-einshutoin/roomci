@@ -10,7 +10,7 @@ The target product claim after this phase is:
 Bring your MQTT topics, Modbus register map, and BMS webhook contract; roomci provides the local emulator, fault scheduler, observability timeline, and CI-ready reports.
 ```
 
-This phase must not claim NOT A HOTEL compatibility. Instead, it should make `roomci` ready to adapt once a real integration contract is provided.
+This phase must not claim hospitality compatibility. Instead, it should make `roomci` ready to adapt once a real integration contract is provided.
 
 ## In Scope
 
@@ -26,7 +26,7 @@ This phase must not claim NOT A HOTEL compatibility. Instead, it should make `ro
 
 - Full MQTT broker conformance.
 - Full Modbus, DALI, KNX, BACnet, Matter, SIP, or PBX conformance.
-- NOT A HOTEL private protocol compatibility.
+- hospitality private protocol compatibility.
 - Real Slack, phone, cloud, SIP, device, or BMS calls.
 - Production-grade access control, tenant isolation, or public network exposure.
 

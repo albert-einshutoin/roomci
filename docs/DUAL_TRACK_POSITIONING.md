@@ -44,15 +44,15 @@ This track proves domain insight: local MQTT, edge failover, Modbus-style equipm
 
 Good copy:
 
-- "Hospitality local-first scenarios show the kind of reliability work a NOT A HOTEL-style smart-home team needs to make repeatable."
-- "The demo is not a private implementation clone; it is a contract-first path toward a serious PoC once real specs are supplied."
+- "Hospitality local-first scenarios show the kind of reliability work a modern hospitality engineering team needs to make repeatable."
+- "The domain pack is a contract-first path toward integration testing once your team's real MQTT topics, device maps, and acceptance criteria are supplied."
 - "Hospitality is the sharpest domain pack, not the entire product."
 
 Avoid:
 
-- "We reproduced NOT A HOTEL."
-- "Compatible with NOT A HOTEL systems."
-- "Ready to connect to production rooms."
+- "We reproduced any specific hotel system."
+- "Compatible with production systems out of the box."
+- "Ready to connect to live production rooms without your specs."
 
 ## Why The Two Tracks Reinforce Each Other
 
@@ -63,7 +63,7 @@ The hospitality track prevents the product from looking generic. It demonstrates
 Together, the positioning is:
 
 ```txt
-roomci is a contract-first emulator for IoT and SmartHome QA, with a strong hospitality local-first domain pack that makes NOT A HOTEL-style evaluation credible without overclaiming compatibility.
+roomci is a contract-first emulator for IoT and SmartHome QA, with a strong hospitality local-first domain pack that demonstrates modern smart-home reliability patterns without overclaiming platform compatibility.
 ```
 
 ## First-read README Candidate

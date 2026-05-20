@@ -32,10 +32,10 @@ make poc-hospitality
 
 ## Replace With Real Spec
 
-- Real NOT A HOTEL MQTT topics and payload schemas.
+- Your organization's actual MQTT topics and payload schemas.
 - Real edge command/state transitions.
 - Real device/register maps and scaling rules.
 - Real BMS/webhook contracts.
 - Auth, network, and acceptance criteria.
 
-This pack is NOT A HOTEL-style. It does not claim private NOT A HOTEL compatibility.
+This pack is a hospitality smart-home domain example. It does not claim compatibility with any specific organization's private system.

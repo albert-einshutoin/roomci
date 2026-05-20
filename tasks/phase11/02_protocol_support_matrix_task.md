@@ -36,6 +36,6 @@ IoT and SmartHome companies often have company-specific MQTT topics, Modbus maps
 ## Acceptance Criteria
 
 - A reader can tell the difference between behavior modeling and wire-protocol compatibility.
-- NOT A HOTEL compatibility is framed as requiring their real contracts.
+- hospitality compatibility is framed as requiring their real contracts.
 - Generic company evaluation is framed as filling in adapters/specs, not waiting for private knowledge.
 - The matrix becomes the source of truth for future protocol roadmap decisions.

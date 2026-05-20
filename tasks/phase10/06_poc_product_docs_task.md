@@ -18,7 +18,7 @@ Update product docs so `roomci` reads as a pre-adoption PoC tool rather than onl
   - auth/TLS/network assumptions
   - pass/fail acceptance criteria
 - Docs explicitly state current protocol subset and non-goals.
-- NOT A HOTEL-facing wording says compatibility requires their actual integration contract.
+- hospitality-focused wording says compatibility requires their actual integration contract.
 - Quick Start includes a serve-mode E2E command.
 
 ## Notes

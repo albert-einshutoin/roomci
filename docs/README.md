@@ -15,20 +15,16 @@ its own.
 | MQTT serve | [MQTT serve subset](MQTT_SERVE_SUBSET.md) | Minimal MQTT 3.1.1 CONNECT + QoS0 PUBLISH ingress for PoC tests |
 | Protocols | [Protocol support matrix](PROTOCOL_SUPPORT_MATRIX.md) | Source of truth for behavior models, serve endpoints, tested external surfaces, and non-goals |
 | Adapters | [Adapter contract kit](ADAPTER_CONTRACT_KIT.md) | Templates, examples, and validation for company-specific protocol contracts |
-| Evaluation | [NOT A HOTEL evaluator guide](NOT_A_HOTEL_EVALUATOR_GUIDE.md) | Hospitality evaluation path, required private inputs, and scoring rubric |
 | Evidence | [Evaluation evidence pack](EVALUATION_EVIDENCE_PACK.md) | Commands, PoC packs, scorecards, report artifacts, and unsupported-feature disclosure |
 | Onboarding | [Integration onboarding](INTEGRATION_ONBOARDING.md) | 15-minute path, HTTP API, troubleshooting, and client snippets |
 | Category | [Category readiness](CATEGORY_READINESS.md) | Comparison against real-device staging, brokers, mocks, Home Assistant, cloud emulators, and HIL |
 | Positioning | [Dual-track positioning](DUAL_TRACK_POSITIONING.md) | Industry-wide product story plus hospitality domain-pack story |
-| 19 | [Interview positioning](19_interview_positioning.md) | NOT A HOTEL casual-interview narrative and demo scenarios |
-| Demo | [Interview demo](INTERVIEW_DEMO.md) | Three-minute pitch, ten-minute walkthrough, expected questions |
 | Principles | [Design principles](DESIGN_PRINCIPLES.md) | Product philosophy and scope boundaries |
 
 ## Product
 
 | # | Document | What it covers |
 |---|---|---|
-| 01 | [NOT A HOTEL research synthesis](01_notahotel_research_synthesis.md) | Public-source product, ops, and tech context that shapes the scenarios |
 | 02 | [Product requirements](02_product_requirements.md) | Personas, jobs-to-be-done, and success metrics for the QA emulator |
 | 18 | [MVP roadmap](18_mvp_roadmap.md) | Phase plan from Phase 0 (contract) through Phase 7 (production readiness) |
 

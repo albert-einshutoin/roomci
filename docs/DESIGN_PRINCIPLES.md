@@ -30,7 +30,7 @@ The cloud can fail without breaking the stay experience if local control, local 
 
 ## Do Not Claim Internal Compatibility
 
-`roomci` is inspired by public NOT A HOTEL materials and smart-home operations patterns. It must not claim access to or compatibility with private internal systems.
+`roomci` models common hospitality smart-home and building-automation patterns. It must not claim access to or compatibility with any organization's private internal systems.
 
 ## Small External Engine
 

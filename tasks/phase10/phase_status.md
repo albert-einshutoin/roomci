@@ -13,7 +13,7 @@
 | `03_external_mqtt_poc_task.md` | `done` | Codex | `external_mqtt_publish_updates_retained_state_through_serve`; `--mqtt-port` MQTT 3.1.1 CONNECT + QoS0 PUBLISH subset | External client can publish retained-state updates through a real MQTT-shaped TCP endpoint |
 | `04_connection_contract_config_task.md` | `done` | Codex | `mqtt.contracts` schema; validation rejects unsupported adapters, missing/ambiguous mappings, and unsupported extraction strategy | Topic mappings, device-id extraction, and required payload fields are configurable |
 | `05_external_controller_e2e_task.md` | `done` | Codex | `external_http_controller_script_drives_serve_black_box`; `make compose-poc`; `make verify` | Added separate HTTP controller script and Docker Compose E2E |
-| `06_poc_product_docs_task.md` | `done` | Codex | `README.md`; `docs/MQTT_SERVE_SUBSET.md`; `docs/PRE_ADOPTION_POC_CHECKLIST.md` | Documents scenario vs serve modes, protocol boundaries, required vendor inputs, and NOT A HOTEL compatibility boundary |
+| `06_poc_product_docs_task.md` | `done` | Codex | `README.md`; `docs/MQTT_SERVE_SUBSET.md`; `docs/PRE_ADOPTION_POC_CHECKLIST.md` | Documents scenario vs serve modes, protocol boundaries, required vendor inputs, and hospitality compatibility boundary |
 
 ## Blockers
 

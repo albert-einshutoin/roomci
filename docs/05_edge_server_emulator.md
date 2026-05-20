@@ -100,7 +100,7 @@ GET  /edge/events
 
 ## Lua hook future
 
-Because NOT A HOTEL's smart-home stack includes Lua, a future version can support Lua hooks for control logic.
+A future version can support Lua hooks for control logic in hospitality or building-automation platforms that use Lua automation engines.
 
 Example:
 

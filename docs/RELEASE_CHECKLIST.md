@@ -30,5 +30,5 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 
 - README badges must point to real repository gates or static local-truth claims.
 - README test count and coverage must match the latest successful `cargo test --workspace --all-targets` and `cargo tarpaulin --workspace --engine llvm --fail-under 80` run.
-- Do not claim private customer compatibility, including NOT A HOTEL compatibility, without their actual topic schemas, register maps, auth assumptions, BMS contracts, and acceptance criteria.
+- Do not claim private customer compatibility without that organization's actual topic schemas, register maps, auth assumptions, BMS contracts, and acceptance criteria.
 - Use [`PROTOCOL_SUPPORT_MATRIX.md`](PROTOCOL_SUPPORT_MATRIX.md) as the source of truth when describing behavior-model support versus wire-protocol support.
