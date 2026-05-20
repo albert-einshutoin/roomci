@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc poc-generic-mqtt poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -90,6 +90,29 @@ compose-poc:
 	docker compose -f compose/docker-compose.yml build roomci-serve external-controller
 	docker compose -f compose/docker-compose.yml run --rm external-controller
 	docker compose -f compose/docker-compose.yml down
+
+poc-generic-mqtt:
+	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/generic_mqtt_edge_device.yaml
+	cargo run -p roomci-cli -- run examples/generic_mqtt_retained_state.yaml --report-json reports/poc_generic_mqtt_retained_state.json --report-md reports/poc_generic_mqtt_retained_state.md --junit reports/poc_generic_mqtt_retained_state.xml
+	cargo run -p roomci-cli -- run examples/generic_mqtt_duplicate_delivery.yaml --report-json reports/poc_generic_mqtt_duplicate_delivery.json --report-md reports/poc_generic_mqtt_duplicate_delivery.md --junit reports/poc_generic_mqtt_duplicate_delivery.xml
+
+poc-hospitality:
+	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/hospitality_local_first_room.yaml
+	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml --report-json reports/poc_hospitality_local_first.json --report-md reports/poc_hospitality_local_first.md --junit reports/poc_hospitality_local_first.xml
+	cargo run -p roomci-cli -- run examples/edge_server_failover.yaml --report-json reports/poc_hospitality_edge_failover.json --report-md reports/poc_hospitality_edge_failover.md --junit reports/poc_hospitality_edge_failover.xml
+	cargo run -p roomci-cli -- run examples/modbus_floor_heating.yaml --report-json reports/poc_hospitality_modbus.json --report-md reports/poc_hospitality_modbus.md --junit reports/poc_hospitality_modbus.xml
+	cargo run -p roomci-cli -- run examples/bms_sauna_emergency_alert.yaml --report-json reports/poc_hospitality_bms.json --report-md reports/poc_hospitality_bms.md --junit reports/poc_hospitality_bms.xml
+	cargo run -p roomci-cli -- run examples/commissioning_checklist.yaml --report-json reports/poc_hospitality_commissioning.json --report-md reports/poc_hospitality_commissioning.md --junit reports/poc_hospitality_commissioning.xml
+
+poc-building-automation:
+	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/building_automation_bms.yaml
+	cargo run -p roomci-cli -- run examples/modbus_floor_heating.yaml --report-json reports/poc_building_modbus.json --report-md reports/poc_building_modbus.md --junit reports/poc_building_modbus.xml
+	cargo run -p roomci-cli -- run examples/bms_sauna_emergency_alert.yaml --report-json reports/poc_building_bms_contact.json --report-md reports/poc_building_bms_contact.md --junit reports/poc_building_bms_contact.xml
+
+poc-bms-ops:
+	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/building_automation_bms.yaml adapter-contracts/examples/hospitality_local_first_room.yaml
+	cargo run -p roomci-cli -- run examples/bms_sauna_emergency_alert.yaml --report-json reports/poc_bms_ops_alert.json --report-md reports/poc_bms_ops_alert.md --junit reports/poc_bms_ops_alert.xml
+	cargo run -p roomci-cli -- run examples/access_permission_drift.yaml --report-json reports/poc_bms_ops_access_drift.json --report-md reports/poc_bms_ops_access_drift.md --junit reports/poc_bms_ops_access_drift.xml
 
 clean-reports:
 	rm -f reports/*.json reports/*.md reports/*.xml

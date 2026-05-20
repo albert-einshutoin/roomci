@@ -15,7 +15,7 @@
 | Phase 8 | `done` | Public release and interview polish | None | `phase8/phase_status.md` |
 | Phase 9 | `done` | Generic MQTT contract positioning | None | `phase9/phase_status.md` |
 | Phase 10 | `done` | Pre-adoption PoC productization with HTTP serve, black-box controller E2E, MQTT QoS0 ingress, configurable contracts, and PoC docs | None | `phase10/phase_status.md` |
-| Phase 11 | `in_progress` | Customer PoC packs and evaluator evidence after adapter contract kit and dual-track positioning | Real customer/vendor specs are required only for compatibility claims, not for generic platform progress | `phase11/phase_status.md` |
+| Phase 11 | `in_progress` | Developer experience, category positioning, and external protocol depth after PoC/evidence packs | Real customer/vendor specs are required only for compatibility claims, not for generic platform progress | `phase11/phase_status.md` |
 | Phase 12 | `done` | Serve runtime hardening, health semantics, MQTT CONNECT validation, and release plumbing | None | `phase12/phase_status.md` |
 
 ## Update Rules
@@ -32,6 +32,6 @@ Phase 10 turned the contract emulator into a pre-adoption PoC product: a localho
 Phase 12 is complete. Phase 11 is now the only remaining active productization track:
 
 - **Phase 11** expands the external surface so `roomci` becomes integration-ready for real company evaluations — adapter contract kit, protocol support matrix, customer PoC packs, second external protocol surface.
-- **Next priority:** Phase 11 Task 05 customer PoC packs and Task 10 evaluation evidence pack, then protocol-depth work.
+- **Next priority:** Phase 11 Task 06 developer experience and Task 07 category positioning, then Task 04 external protocol depth.
 
 Where Phase 12 landed first (release plumbing, runtime safety), Phase 11 benefits because every Phase 11 deliverable is shipped on a more credible runtime and a more honest public surface.

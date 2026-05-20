@@ -254,6 +254,15 @@ Company-specific adapter contracts can be validated before runtime work:
 cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml
 ```
 
+Evaluator PoC packs are available as one-command targets:
+
+```bash
+make poc-generic-mqtt
+make poc-hospitality
+make poc-building-automation
+make poc-bms-ops
+```
+
 ## Core concept
 
 The reusable core is a QA contract emulator:
