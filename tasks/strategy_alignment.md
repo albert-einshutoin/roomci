@@ -31,7 +31,7 @@ This file maps the current product strategy to task status.
 | Device identity | `done` | Adapter contracts and MQTT placeholder mapping. |
 | Keep NOT A HOTEL-specific language inside the hospitality domain pack/evaluator path | `done` | Phase 8, Phase 9, Phase 11, Phase 14. Core positioning is Smart Home / Building Automation QA Contract Emulator. |
 | Ship multiple domain packs | `done` | Generic MQTT edge, hospitality smart home, building automation, and BMS ops PoC packs exist in Phase 11. |
-| Verify with standard clients and black-box Docker smoke | `done`, with reproducibility hardening `todo` | Phase 13 standard MQTT/Modbus smoke; Phase 15 Task 03 replaces runtime package install with a pinned smoke image. |
+| Verify with standard clients and black-box Docker smoke | `done` | Phase 13 standard MQTT/Modbus smoke; Phase 15 Task 03 replaced runtime package install with a pinned protocol-smoke image build. |
 
 ## Things We Should Not Do
 

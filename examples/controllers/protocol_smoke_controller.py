@@ -51,13 +51,13 @@ def drive_modbus():
         raise RuntimeError("failed to connect to Modbus TCP endpoint")
     try:
         holding = client.read_holding_registers(0, 1, slave=1)
-        if holding.isError() or holding.registers[0] != 230:
+        if holding.isError() or holding.registers[0] != 245:
             raise RuntimeError(f"unexpected holding register response: {holding!r}")
-        write = client.write_register(0, 245, slave=1)
+        write = client.write_register(0, 250, slave=1)
         if write.isError():
             raise RuntimeError(f"unexpected write response: {write!r}")
         updated = client.read_holding_registers(0, 1, slave=1)
-        if updated.isError() or updated.registers[0] != 245:
+        if updated.isError() or updated.registers[0] != 250:
             raise RuntimeError(f"unexpected updated register response: {updated!r}")
     finally:
         client.close()
@@ -72,7 +72,7 @@ def assert_roomci_state():
         mqtt_payload = retained.get("fleet/demo/site/lab/device/env_sensor_01/state", {})
         if (
             mqtt_payload.get("sample_interval_seconds") == 30
-            and modbus.get("modbus.floor_heating_01.40001", {}).get("readable_value") == 24.5
+            and modbus.get("modbus.floor_heating_01.40001", {}).get("readable_value") == 25.0
         ):
             return
         time.sleep(0.25)

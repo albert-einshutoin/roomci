@@ -123,7 +123,8 @@ fn serve_http(
     modbus_port: Option<u16>,
 ) -> Result<(), ServeError> {
     let latest_report = run_scenario(&scenario)?;
-    let modbus = ModbusModel::from_config(&scenario.modbus);
+    let mut modbus = ModbusModel::from_config(&scenario.modbus);
+    apply_scenario_modbus_steps(&scenario, &mut modbus);
     let modbus_units = modbus_unit_map(&scenario);
     let state = Arc::new(Mutex::new(ServeState {
         scenario,
@@ -204,6 +205,20 @@ fn modbus_unit_map(scenario: &ScenarioFile) -> BTreeMap<u8, String> {
         units.insert(unit_id, id.to_string());
     }
     units
+}
+
+fn apply_scenario_modbus_steps(scenario: &ScenarioFile, modbus: &mut ModbusModel) {
+    for step in &scenario.steps {
+        let Some(write) = &step.modbus_write else {
+            continue;
+        };
+        if modbus
+            .write(&write.device, write.register, write.value.clone())
+            .is_err()
+        {
+            continue;
+        }
+    }
 }
 
 fn serve_http_listener(listener: TcpListener, state: Arc<Mutex<ServeState>>) {
@@ -335,8 +350,15 @@ fn read_http_request(stream: &mut TcpStream) -> Result<HttpRequest, ServeError> 
         }
         buffer.extend_from_slice(&chunk[..read]);
     }
+    if buffer.len() < header_end + content_length {
+        return Err(ServeError::Runtime(format!(
+            "incomplete request body: expected {content_length} bytes, got {}",
+            buffer.len().saturating_sub(header_end)
+        )));
+    }
 
-    let body = String::from_utf8_lossy(&buffer[header_end..]).to_string();
+    let body =
+        String::from_utf8_lossy(&buffer[header_end..header_end + content_length]).to_string();
     Ok(HttpRequest { method, path, body })
 }
 
@@ -1310,7 +1332,8 @@ mod tests {
 
     fn serve_state_for_scenario(scenario: ScenarioFile) -> Arc<Mutex<ServeState>> {
         let latest_report = run_scenario(&scenario).unwrap();
-        let modbus = ModbusModel::from_config(&scenario.modbus);
+        let mut modbus = ModbusModel::from_config(&scenario.modbus);
+        apply_scenario_modbus_steps(&scenario, &mut modbus);
         let modbus_units = modbus_unit_map(&scenario);
         Arc::new(Mutex::new(ServeState {
             scenario,
@@ -1960,9 +1983,9 @@ mod tests {
             let mut state = state.lock().unwrap();
             apply_modbus_tcp_request(&mut state, request)
         };
-        assert_eq!(response, modbus_response(1, 1, 0x03, &[0x02, 0x00, 0xE6]));
+        assert_eq!(response, modbus_response(1, 1, 0x03, &[0x02, 0x00, 0xF5]));
 
-        let write = modbus_request(2, 1, 0x06, &[0x00, 0x00, 0x00, 0xF5]);
+        let write = modbus_request(2, 1, 0x06, &[0x00, 0x00, 0x00, 0xFA]);
         let response = {
             let request = parse_modbus_request_for_test(&write);
             let mut state = state.lock().unwrap();
@@ -1970,12 +1993,12 @@ mod tests {
         };
         assert_eq!(
             response,
-            modbus_response(2, 1, 0x06, &[0x00, 0x00, 0x00, 0xF5])
+            modbus_response(2, 1, 0x06, &[0x00, 0x00, 0x00, 0xFA])
         );
 
         let current_state = route_request(&request("GET", "/state", ""), Arc::clone(&state));
         assert!(current_state.contains("modbus.floor_heating_01.40001"));
-        assert!(current_state.contains("\"readable_value\":24.5"));
+        assert!(current_state.contains("\"readable_value\":25.0"));
     }
 
     #[test]
@@ -2022,7 +2045,7 @@ mod tests {
             address,
             &modbus_request(7, 1, 0x03, &[0x00, 0x00, 0x00, 0x01]),
         );
-        assert_eq!(response, modbus_response(7, 1, 0x03, &[0x02, 0x00, 0xE6]));
+        assert_eq!(response, modbus_response(7, 1, 0x03, &[0x02, 0x00, 0xF5]));
     }
 
     #[test]
@@ -2129,6 +2152,34 @@ mod tests {
         });
         let (mut stream, _) = listener.accept().unwrap();
         assert!(read_mqtt_packet(&mut stream).is_err());
+        client.join().unwrap();
+    }
+
+    #[test]
+    fn http_request_rejects_short_body_and_ignores_extra_bytes() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let client = thread::spawn(move || {
+            let mut stream = TcpStream::connect(address).unwrap();
+            stream
+                .write_all(b"POST /fault HTTP/1.1\r\nContent-Length: 9\r\n\r\n{}")
+                .unwrap();
+        });
+        let (mut stream, _) = listener.accept().unwrap();
+        assert!(read_http_request(&mut stream).is_err());
+        client.join().unwrap();
+
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let client = thread::spawn(move || {
+            let mut stream = TcpStream::connect(address).unwrap();
+            stream
+                .write_all(b"POST /fault HTTP/1.1\r\nContent-Length: 2\r\n\r\n{}EXTRA")
+                .unwrap();
+        });
+        let (mut stream, _) = listener.accept().unwrap();
+        let request = read_http_request(&mut stream).unwrap();
+        assert_eq!(request.body, "{}");
         client.join().unwrap();
     }
 

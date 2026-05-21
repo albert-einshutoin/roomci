@@ -69,7 +69,7 @@ verify:
 		/scenarios/generic_mqtt_duplicate_delivery.yaml
 	docker compose -f compose/docker-compose.yml build scenario-smoke
 	docker compose -f compose/docker-compose.yml run --rm scenario-smoke
-	docker compose -f compose/docker-compose.yml build roomci-serve external-controller
+	docker compose -f compose/docker-compose.yml build roomci-serve external-controller protocol-smoke
 	docker compose -f compose/docker-compose.yml run --rm external-controller
 	docker compose -f compose/docker-compose.yml run --rm protocol-smoke
 	docker compose -f compose/docker-compose.yml down
@@ -100,7 +100,7 @@ protocol-smoke-mqtt:
 
 protocol-smoke-modbus:
 	cargo test -p roomci-serve --lib modbus_tcp
-	docker compose -f compose/docker-compose.yml build roomci-serve
+	docker compose -f compose/docker-compose.yml build roomci-serve protocol-smoke
 	docker compose -f compose/docker-compose.yml run --rm protocol-smoke
 	docker compose -f compose/docker-compose.yml down
 
