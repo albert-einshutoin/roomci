@@ -75,6 +75,29 @@ starlink_degraded
 power_domain_outage
 ```
 
+Executable Phase 17 fault profiles use the existing `fault` step and emit
+timeline/final-state BMS evidence:
+
+```yaml
+steps:
+  - at: T
+    fault:
+      target: network.segment.guest_vlan
+      type: isolated
+  - at: T+1s
+    fault:
+      target: firewall.policy.edge_to_bms
+      type: drift
+  - at: T+2s
+    fault:
+      target: mqtt.local
+      type: unreachable
+assertions:
+  - at: T+3s
+    assert:
+      network_control_panel_faults: observed
+```
+
 ## Demo: Starlink failover
 
 ```yaml

@@ -1,0 +1,29 @@
+version: "0.1"
+scenario:
+  name: network_control_panel_fault_profiles
+  tags: [hospitality, network, control-panel, bms]
+steps:
+  - at: T
+    fault:
+      target: network.segment.guest_vlan
+      type: isolated
+  - at: T+1s
+    fault:
+      target: firewall.policy.edge_to_bms
+      type: drift
+  - at: T+2s
+    fault:
+      target: control_panel.ups
+      type: battery_degraded
+  - at: T+3s
+    fault:
+      target: control_panel.circuit_protector.sauna
+      type: tripped
+  - at: T+4s
+    fault:
+      target: control_panel.psu.secondary_24v
+      type: degraded
+assertions:
+  - at: T+5s
+    assert:
+      network_control_panel_faults: observed

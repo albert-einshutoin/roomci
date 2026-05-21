@@ -346,6 +346,13 @@ pub(crate) fn evaluate_assertion(
         {
             return evaluate_intercom_relay_evidence(runtime);
         }
+        if inline_assert
+            .get("network_control_panel_faults")
+            .and_then(|value| value.as_str())
+            == Some("observed")
+        {
+            return evaluate_network_control_panel_faults(runtime);
+        }
     }
 
     AssertionResult {
@@ -421,6 +428,56 @@ fn evaluate_access_control_drift(runtime: &RuntimeState) -> AssertionResult {
             None
         } else {
             Some("Access-control drift detection did not flag stale unlock permission.".to_string())
+        },
+    }
+}
+
+fn evaluate_network_control_panel_faults(runtime: &RuntimeState) -> AssertionResult {
+    let required = [
+        "network_segment_isolated",
+        "firewall_policy_drift_detected",
+        "control_panel_ups_degraded",
+        "control_panel_circuit_protector_tripped",
+        "control_panel_redundant_psu_degraded",
+    ];
+    let missing = required
+        .iter()
+        .filter(|event_type| {
+            !runtime
+                .timeline
+                .iter()
+                .any(|event| event.event_type == **event_type)
+        })
+        .copied()
+        .collect::<Vec<_>>();
+    let passed = missing.is_empty()
+        && runtime.states.values().any(|state| {
+            state
+                .get("bms_evidence")
+                .and_then(|value| value.as_str())
+                == Some("recorded")
+        });
+    AssertionResult {
+        name: "network_control_panel_faults".to_string(),
+        assertion_type: "network_control_panel_faults".to_string(),
+        passed,
+        message: if passed {
+            "network and control-panel fault profiles produced BMS evidence".to_string()
+        } else {
+            format!(
+                "network/control-panel fault evidence incomplete; missing: {}",
+                missing.join(", ")
+            )
+        },
+        impact_level: if passed {
+            None
+        } else {
+            Some("medium".to_string())
+        },
+        impact_message: if passed {
+            None
+        } else {
+            Some("Infrastructure fault QA evidence is incomplete.".to_string())
         },
     }
 }

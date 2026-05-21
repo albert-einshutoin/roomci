@@ -252,6 +252,68 @@ impl RuntimeState {
                     .insert(topic.to_string(), count.unwrap_or(2).max(2));
             }
         }
+        if let Some(segment) = target.strip_prefix("network.segment.") {
+            if fault_type == "isolated" {
+                self.record_fault_profile(
+                    at,
+                    target,
+                    "network_segment_isolated",
+                    format!("network segment {segment} isolated"),
+                );
+            }
+        }
+        if let Some(policy) = target.strip_prefix("firewall.policy.") {
+            if fault_type == "drift" {
+                self.record_fault_profile(
+                    at,
+                    target,
+                    "firewall_policy_drift_detected",
+                    format!("firewall policy {policy} drift detected"),
+                );
+            }
+        }
+        if target == "mqtt.local" && fault_type == "unreachable" {
+            self.record_fault_profile(
+                at,
+                target,
+                "local_broker_unreachable",
+                "local MQTT broker unreachable".to_string(),
+            );
+        }
+        if target == "control_panel.ups" && fault_type == "battery_degraded" {
+            self.record_fault_profile(
+                at,
+                target,
+                "control_panel_ups_degraded",
+                "control-panel UPS battery degraded".to_string(),
+            );
+        }
+        if target.starts_with("control_panel.circuit_protector.")
+            && fault_type == "tripped"
+        {
+            self.record_fault_profile(
+                at,
+                target,
+                "control_panel_circuit_protector_tripped",
+                format!("{target} tripped"),
+            );
+        }
+        if target.starts_with("control_panel.psu.") && fault_type == "degraded" {
+            self.record_fault_profile(
+                at,
+                target,
+                "control_panel_redundant_psu_degraded",
+                format!("{target} degraded"),
+            );
+        }
+        if target == "edge.secondary" && fault_type == "takeover_failed" {
+            self.record_fault_profile(
+                at,
+                target,
+                "edge_redundancy_takeover_failed",
+                "secondary edge takeover failed".to_string(),
+            );
+        }
         if let Some(fixture) = target.strip_prefix("dali.fixture.") {
             if fault_type == "command_drop" {
                 if let Err(error) = self.lighting.drop_command_for_fixture(fixture) {
@@ -271,6 +333,32 @@ impl RuntimeState {
             Some(target.to_string()),
             format!("{} fault activated", fault_type),
         );
+    }
+
+    fn record_fault_profile(
+        &mut self,
+        at: Duration,
+        target: &str,
+        event_type: &str,
+        message: String,
+    ) {
+        let mut state = StateMap::new();
+        state.insert(
+            "status".to_string(),
+            serde_json::Value::String("faulted".to_string()),
+        );
+        state.insert(
+            "fault_profile".to_string(),
+            serde_json::Value::String(event_type.to_string()),
+        );
+        state.insert(
+            "bms_evidence".to_string(),
+            serde_json::Value::String("recorded".to_string()),
+        );
+        self.states.insert(target.to_string(), state);
+        self.push(at, event_type, Some(target.to_string()), message);
+        let event = self.ops.record_slack_notification(event_type, None);
+        self.push_ops_event(at, event);
     }
 
     fn apply_command(&mut self, at: Duration, target: &str, action: &str) {

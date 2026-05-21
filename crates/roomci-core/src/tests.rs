@@ -319,6 +319,42 @@ fn intercom_relay_safe_mock_passes_without_real_unlock_control() {
 }
 
 #[test]
+fn network_control_panel_fault_profiles_emit_bms_evidence() {
+    let scenario =
+        load_scenario(fixture("examples/network_control_panel_fault_profiles.yaml")).unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    for event_type in [
+        "network_segment_isolated",
+        "firewall_policy_drift_detected",
+        "control_panel_ups_degraded",
+        "control_panel_circuit_protector_tripped",
+        "control_panel_redundant_psu_degraded",
+    ] {
+        assert!(
+            report
+                .timeline
+                .iter()
+                .any(|event| event.event_type == event_type),
+            "missing {event_type}"
+        );
+    }
+    assert!(report.assertions.iter().any(|assertion| {
+        assertion.assertion_type == "network_control_panel_faults" && assertion.passed
+    }));
+    assert_eq!(
+        report
+            .final_state
+            .get("control_panel.ups")
+            .and_then(|state| state.get("bms_evidence"))
+            .and_then(|value| value.as_str()),
+        Some("recorded")
+    );
+}
+
+#[test]
 fn commissioning_checklist_generation_passes() {
     let scenario = load_scenario(fixture("examples/commissioning_checklist.yaml")).unwrap();
 

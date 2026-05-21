@@ -45,6 +45,18 @@ control_panel:
 | edge_failover_failed | secondary does not take over |
 | module_offline | one control module becomes unreachable |
 
+Executable Phase 17 profiles:
+
+| Target | Type | Timeline Evidence |
+|---|---|---|
+| `control_panel.ups` | `battery_degraded` | `control_panel_ups_degraded` |
+| `control_panel.circuit_protector.<id>` | `tripped` | `control_panel_circuit_protector_tripped` |
+| `control_panel.psu.<id>` | `degraded` | `control_panel_redundant_psu_degraded` |
+| `edge.secondary` | `takeover_failed` | `edge_redundancy_takeover_failed` |
+
+These profiles are QA evidence only. They do not validate wiring safety,
+breaker behavior, or physical redundancy.
+
 ## Scenario: PSU failure
 
 ```yaml
