@@ -339,6 +339,13 @@ pub(crate) fn evaluate_assertion(
         {
             return evaluate_commissioning_checklist(runtime);
         }
+        if inline_assert
+            .get("intercom_relay")
+            .and_then(|value| value.as_str())
+            == Some("safe_evidence")
+        {
+            return evaluate_intercom_relay_evidence(runtime);
+        }
     }
 
     AssertionResult {
@@ -414,6 +421,49 @@ fn evaluate_access_control_drift(runtime: &RuntimeState) -> AssertionResult {
             None
         } else {
             Some("Access-control drift detection did not flag stale unlock permission.".to_string())
+        },
+    }
+}
+
+fn evaluate_intercom_relay_evidence(runtime: &RuntimeState) -> AssertionResult {
+    let has_intercom_event = runtime
+        .timeline
+        .iter()
+        .any(|event| event.event_type.starts_with("intercom_"));
+    let has_relay_request = runtime
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "relay_pulse_requested");
+    let real_unlock_controlled = runtime
+        .states
+        .iter()
+        .filter(|(key, _)| key.starts_with("intercom."))
+        .any(|(_, state)| {
+            state
+                .get("real_unlock_controlled")
+                .and_then(|value| value.as_bool())
+                .unwrap_or(false)
+        });
+    let passed = has_intercom_event && has_relay_request && !real_unlock_controlled;
+    AssertionResult {
+        name: "intercom_relay_safe_evidence".to_string(),
+        assertion_type: "intercom_relay_safe_evidence".to_string(),
+        passed,
+        message: if passed {
+            "intercom and relay evidence was captured without controlling a real unlock".to_string()
+        } else {
+            "intercom/relay safe evidence is incomplete or attempted real unlock control"
+                .to_string()
+        },
+        impact_level: if passed {
+            None
+        } else {
+            Some("high".to_string())
+        },
+        impact_message: if passed {
+            None
+        } else {
+            Some("Access-control QA evidence is not safe enough for pre-adoption PoC.".to_string())
         },
     }
 }

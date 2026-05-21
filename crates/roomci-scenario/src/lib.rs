@@ -214,6 +214,7 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
             step.mqtt_publish.is_some(),
             step.fault.is_some(),
             step.contact.is_some(),
+            step.intercom.is_some(),
             step.ops.is_some(),
             step.automation.is_some(),
         ]
@@ -241,6 +242,11 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
             if !contacts.has_contact(&contact.id) {
                 return Err(DeviceModelError::UnknownContact(contact.id.clone()).into());
             }
+        }
+        if let Some(intercom) = &step.intercom {
+            require_non_empty("steps[].intercom.id", &intercom.id)?;
+            require_non_empty("steps[].intercom.event", &intercom.event)?;
+            require_non_empty("steps[].intercom.outcome", &intercom.outcome)?;
         }
     }
 

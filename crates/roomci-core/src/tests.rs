@@ -291,6 +291,34 @@ fn access_permission_drift_passes_when_stale_user_is_detected() {
 }
 
 #[test]
+fn intercom_relay_safe_mock_passes_without_real_unlock_control() {
+    let scenario = load_scenario(fixture("examples/intercom_relay_safe_mock.yaml")).unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "intercom_pin_accepted"));
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "relay_pulse_requested"));
+    assert!(report.assertions.iter().any(|assertion| {
+        assertion.assertion_type == "intercom_relay_safe_evidence" && assertion.passed
+    }));
+    assert_eq!(
+        report
+            .final_state
+            .get("intercom.front_gate")
+            .and_then(|state| state.get("real_unlock_controlled"))
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+}
+
+#[test]
 fn commissioning_checklist_generation_passes() {
     let scenario = load_scenario(fixture("examples/commissioning_checklist.yaml")).unwrap();
 

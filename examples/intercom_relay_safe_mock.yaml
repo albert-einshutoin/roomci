@@ -1,0 +1,25 @@
+version: "0.1"
+scenario:
+  name: intercom_relay_safe_mock
+  tags: [hospitality, intercom, access-control, safe-mock]
+steps:
+  - at: T
+    intercom:
+      id: front_gate
+      event: pin_check
+      outcome: accepted
+  - at: T+1s
+    intercom:
+      id: front_gate
+      event: relay_pulse
+      outcome: requested
+  - at: T+5s
+    intercom:
+      id: front_gate
+      event: staff_call
+      outcome: failed
+      fallback: manual_staff_callback
+assertions:
+  - at: T+6s
+    assert:
+      intercom_relay: safe_evidence

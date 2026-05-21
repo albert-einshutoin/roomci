@@ -31,19 +31,34 @@ checkin:
   valid_until: 2026-01-02T11:00:00+09:00
 ```
 
-## PIN flow
+## Safe mock flow
+
+The executable scope is a scenario-only safe mock. It records PIN decisions,
+relay pulse requests, staff-call attempts, and fallbacks as evidence, but it
+never performs real unlock authorization or controls physical locks.
 
 ```yaml
 steps:
   - at: T
     intercom:
-      action: enter_pin
-      value: "123456"
+      id: front_gate
+      event: pin_check
+      outcome: accepted
   - at: T+1s
+    intercom:
+      id: front_gate
+      event: relay_pulse
+      outcome: requested
+  - at: T+5s
+    intercom:
+      id: front_gate
+      event: staff_call
+      outcome: failed
+      fallback: manual_staff_callback
+assertions:
+  - at: T+6s
     assert:
-      intercom:
-        photo_captured: true
-        unlock_relay_pulsed: true
+      intercom_relay: safe_evidence
 ```
 
 ## Contact relay output

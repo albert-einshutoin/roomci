@@ -6,7 +6,7 @@ use roomci_edge::EdgeModel;
 use roomci_mqtt::{device_id_from_command_topic, BrokerModel};
 use roomci_ops::{OpsEvent, OpsModel};
 use roomci_scenario::{
-    parse_duration, yaml_map_to_json, MqttPublishStep, ScenarioError, ScenarioFile,
+    parse_duration, yaml_map_to_json, IntercomStep, MqttPublishStep, ScenarioError, ScenarioFile,
 };
 
 use crate::{AssertionResult, CoreError, ScheduledEvent, StateMap, TimelineEvent};
@@ -143,6 +143,9 @@ impl RuntimeState {
                         self.push_ops_event(at, event);
                     }
                 }
+                if let Some(intercom) = step.intercom {
+                    self.apply_intercom_step(at, &intercom);
+                }
                 if let Some(ops) = step.ops {
                     self.apply_ops_step(at, &ops);
                 }
@@ -154,6 +157,56 @@ impl RuntimeState {
             ScheduledEvent::Assertion(_, assertion) => {
                 Ok(Some(self.evaluate_assertion(&assertion)))
             }
+        }
+    }
+
+    fn apply_intercom_step(&mut self, at: Duration, intercom: &IntercomStep) {
+        let state_key = format!("intercom.{}", intercom.id);
+        let mut state = StateMap::new();
+        state.insert(
+            "event".to_string(),
+            serde_json::Value::String(intercom.event.clone()),
+        );
+        state.insert(
+            "outcome".to_string(),
+            serde_json::Value::String(intercom.outcome.clone()),
+        );
+        state.insert(
+            "real_unlock_controlled".to_string(),
+            serde_json::Value::Bool(false),
+        );
+        if let Some(fallback) = &intercom.fallback {
+            state.insert(
+                "fallback".to_string(),
+                serde_json::Value::String(fallback.clone()),
+            );
+        }
+        self.states.insert(state_key.clone(), state);
+
+        let event_type = match (intercom.event.as_str(), intercom.outcome.as_str()) {
+            ("pin_check", "accepted") => "intercom_pin_accepted",
+            ("pin_check", "rejected") => "intercom_pin_rejected",
+            ("relay_pulse", "requested") => "relay_pulse_requested",
+            ("staff_call", "attempted") => "staff_call_attempted",
+            (_, "failed") => "intercom_failure_observed",
+            _ => "intercom_event_observed",
+        };
+        self.push(
+            at,
+            event_type,
+            Some(state_key.clone()),
+            format!(
+                "intercom safe mock observed {} with outcome {}",
+                intercom.event, intercom.outcome
+            ),
+        );
+        if let Some(fallback) = &intercom.fallback {
+            self.push(
+                at,
+                "intercom_fallback_used",
+                Some(state_key),
+                format!("safe fallback selected: {fallback}"),
+            );
         }
     }
 

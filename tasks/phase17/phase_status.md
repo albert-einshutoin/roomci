@@ -1,12 +1,12 @@
 # Phase 17 Status: Promoted Contract Depth
 
-Status: `todo`
+Status: `in_progress`
 
 ## Tasks
 
 | Task | Status | Notes |
 |---|---|---|
-| 01 Intercom and relay safe mock | `todo` | Scenario-only profile for PIN/call/relay evidence without real unlock authorization. |
+| 01 Intercom and relay safe mock | `done` | Scenario-only `intercom` step, safe relay evidence assertion, executable example, and docs added. |
 | 02 Network and control-panel fault profiles | `todo` | Deterministic QA fault profiles for network segmentation and 24V/UPS/circuit/redundancy evidence. |
 | 03 BMS contract hardening | `todo` | Adapter/runtime boundary for schema, severity, Content-Type, optional HMAC metadata, and replay assumptions. |
 | 04 Comfort time-series domain pack | `todo` | Deterministic sensor-zone replay and comfort-impact evidence. |

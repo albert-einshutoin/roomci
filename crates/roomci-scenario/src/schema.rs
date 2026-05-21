@@ -146,6 +146,8 @@ pub struct ScenarioStep {
     #[serde(default)]
     pub contact: Option<ContactStep>,
     #[serde(default)]
+    pub intercom: Option<IntercomStep>,
+    #[serde(default)]
     pub ops: Option<BTreeMap<String, serde_yaml::Value>>,
     #[serde(default)]
     pub automation: Option<BTreeMap<String, serde_yaml::Value>>,
@@ -195,6 +197,15 @@ pub struct FaultStep {
 pub struct ContactStep {
     pub id: String,
     pub state: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct IntercomStep {
+    pub id: String,
+    pub event: String,
+    pub outcome: String,
+    #[serde(default)]
+    pub fallback: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
