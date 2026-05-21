@@ -7,8 +7,11 @@ HOSPITALITY_SCENARIOS := \
 	examples/bms_sauna_emergency_alert.yaml \
 	examples/starlink_failover.yaml \
 	examples/comfort_auto_mode.yaml \
+	examples/comfort_timeseries_replay.yaml \
 	examples/access_permission_drift.yaml \
-	examples/commissioning_checklist.yaml
+	examples/commissioning_checklist.yaml \
+	examples/intercom_relay_safe_mock.yaml \
+	examples/network_control_panel_fault_profiles.yaml
 
 GENERIC_MQTT_SCENARIOS := \
 	examples/generic_mqtt_retained_state.yaml \
@@ -63,8 +66,11 @@ verify:
 		/scenarios/bms_sauna_emergency_alert.yaml \
 		/scenarios/starlink_failover.yaml \
 		/scenarios/comfort_auto_mode.yaml \
+		/scenarios/comfort_timeseries_replay.yaml \
 		/scenarios/access_permission_drift.yaml \
 		/scenarios/commissioning_checklist.yaml \
+		/scenarios/intercom_relay_safe_mock.yaml \
+		/scenarios/network_control_panel_fault_profiles.yaml \
 		/scenarios/generic_mqtt_retained_state.yaml \
 		/scenarios/generic_mqtt_duplicate_delivery.yaml
 	docker compose -f compose/docker-compose.yml build scenario-smoke
@@ -115,7 +121,7 @@ poc-generic-mqtt:
 
 poc-core-qa:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/hospitality_local_first_room.yaml adapter-contracts/examples/building_automation_bms.yaml
-	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml examples/modbus_floor_heating.yaml examples/bms_sauna_emergency_alert.yaml examples/starlink_failover.yaml examples/comfort_auto_mode.yaml examples/access_permission_drift.yaml examples/commissioning_checklist.yaml --report-json reports/poc_core_qa.json --report-md reports/poc_core_qa.md --junit reports/poc_core_qa.xml
+	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml examples/modbus_floor_heating.yaml examples/bms_sauna_emergency_alert.yaml examples/starlink_failover.yaml examples/comfort_auto_mode.yaml examples/comfort_timeseries_replay.yaml examples/access_permission_drift.yaml examples/commissioning_checklist.yaml examples/intercom_relay_safe_mock.yaml examples/network_control_panel_fault_profiles.yaml --report-json reports/poc_core_qa.json --report-md reports/poc_core_qa.md --junit reports/poc_core_qa.xml
 
 poc-hospitality:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/hospitality_local_first_room.yaml
@@ -123,12 +129,17 @@ poc-hospitality:
 	cargo run -p roomci-cli -- run examples/edge_server_failover.yaml --report-json reports/poc_hospitality_edge_failover.json --report-md reports/poc_hospitality_edge_failover.md --junit reports/poc_hospitality_edge_failover.xml
 	cargo run -p roomci-cli -- run examples/modbus_floor_heating.yaml --report-json reports/poc_hospitality_modbus.json --report-md reports/poc_hospitality_modbus.md --junit reports/poc_hospitality_modbus.xml
 	cargo run -p roomci-cli -- run examples/bms_sauna_emergency_alert.yaml --report-json reports/poc_hospitality_bms.json --report-md reports/poc_hospitality_bms.md --junit reports/poc_hospitality_bms.xml
+	cargo run -p roomci-cli -- run examples/intercom_relay_safe_mock.yaml --report-json reports/poc_hospitality_intercom_safe_mock.json --report-md reports/poc_hospitality_intercom_safe_mock.md --junit reports/poc_hospitality_intercom_safe_mock.xml
+	cargo run -p roomci-cli -- run examples/network_control_panel_fault_profiles.yaml --report-json reports/poc_hospitality_infra_faults.json --report-md reports/poc_hospitality_infra_faults.md --junit reports/poc_hospitality_infra_faults.xml
+	cargo run -p roomci-cli -- run examples/comfort_timeseries_replay.yaml --report-json reports/poc_hospitality_comfort_timeseries.json --report-md reports/poc_hospitality_comfort_timeseries.md --junit reports/poc_hospitality_comfort_timeseries.xml
 	cargo run -p roomci-cli -- run examples/commissioning_checklist.yaml --report-json reports/poc_hospitality_commissioning.json --report-md reports/poc_hospitality_commissioning.md --junit reports/poc_hospitality_commissioning.xml
 
 poc-building-automation:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/building_automation_bms.yaml
 	cargo run -p roomci-cli -- run examples/modbus_floor_heating.yaml --report-json reports/poc_building_modbus.json --report-md reports/poc_building_modbus.md --junit reports/poc_building_modbus.xml
 	cargo run -p roomci-cli -- run examples/bms_sauna_emergency_alert.yaml --report-json reports/poc_building_bms_contact.json --report-md reports/poc_building_bms_contact.md --junit reports/poc_building_bms_contact.xml
+	cargo run -p roomci-cli -- run examples/network_control_panel_fault_profiles.yaml --report-json reports/poc_building_infra_faults.json --report-md reports/poc_building_infra_faults.md --junit reports/poc_building_infra_faults.xml
+	cargo run -p roomci-cli -- run examples/comfort_timeseries_replay.yaml --report-json reports/poc_building_comfort_timeseries.json --report-md reports/poc_building_comfort_timeseries.md --junit reports/poc_building_comfort_timeseries.xml
 
 poc-bms-ops:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/building_automation_bms.yaml adapter-contracts/examples/hospitality_local_first_room.yaml

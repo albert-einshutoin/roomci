@@ -459,10 +459,7 @@ fn evaluate_network_control_panel_faults(runtime: &RuntimeState) -> AssertionRes
         .collect::<Vec<_>>();
     let passed = missing.is_empty()
         && runtime.states.values().any(|state| {
-            state
-                .get("bms_evidence")
-                .and_then(|value| value.as_str())
-                == Some("recorded")
+            state.get("bms_evidence").and_then(|value| value.as_str()) == Some("recorded")
         });
     AssertionResult {
         name: "network_control_panel_faults".to_string(),
@@ -495,10 +492,7 @@ fn evaluate_comfort_timeseries(runtime: &RuntimeState) -> AssertionResult {
         .iter()
         .filter(|event| event.event_type == "comfort_sensor_reading_recorded")
         .count();
-    let has_comfort_state = runtime
-        .states
-        .keys()
-        .any(|key| key.starts_with("comfort."));
+    let has_comfort_state = runtime.states.keys().any(|key| key.starts_with("comfort."));
     let passed = reading_count >= 2 && has_comfort_state;
     AssertionResult {
         name: "comfort_timeseries".to_string(),

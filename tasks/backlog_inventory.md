@@ -24,6 +24,7 @@ These are implemented and tracked as `done` in phase status files:
 | Hospitality smart-home QA core coverage boundary | `done` | Phase 14 |
 | Evaluator friction removal: MQTT retained subscribe, practical Modbus depth, protocol evidence automation, and source module extraction | `done` | Phase 15 |
 | Roadmap triage for future protocol and optional-depth items | `done` | Phase 16 |
+| Promoted contract depth: intercom/relay safe mock, infrastructure fault profiles, BMS hardening, comfort time-series, adapter samples | `done` | Phase 17 |
 
 ## Already Taskified For Implementation
 
@@ -53,9 +54,9 @@ These were implied by roadmap/docs and were decided in Phase 16:
 | SDK/sample integration path for Go backends and Lua-like automation hooks | `tasks/phase16/06_adapter_sdk_samples_task.md` |
 | Observability export profile such as Influx line protocol or Grafana-friendly artifacts | `tasks/phase16/07_observability_export_profile_task.md` |
 
-## Promoted For Later Implementation
+## Promoted And Implemented In Phase 17
 
-These are the only Phase 16 items promoted into concrete implementation tasks:
+These are the Phase 16 items promoted into concrete implementation tasks and completed in Phase 17:
 
 | Area | Task |
 |---|---|
@@ -64,6 +65,14 @@ These are the only Phase 16 items promoted into concrete implementation tasks:
 | BMS contract hardening | `tasks/phase17/03_bms_contract_hardening_task.md` |
 | Comfort time-series domain pack | `tasks/phase17/04_comfort_timeseries_domain_pack_task.md` |
 | Adapter SDK samples | `tasks/phase17/05_adapter_sdk_samples_task.md` |
+
+## Newly Taskified After Phase 17 Self-Review
+
+| Area | Task |
+|---|---|
+| Adapter sample compile/run verification | `tasks/phase18/01_adapter_sample_ci_task.md` |
+| Phase 17 evidence registry expansion | `tasks/phase18/02_phase17_evidence_registry_task.md` |
+| Domain-pack release scorecard refresh | `tasks/phase18/03_release_scorecard_refresh_task.md` |
 
 ## Intentionally Not Taskified As Implementation
 

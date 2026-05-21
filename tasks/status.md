@@ -21,7 +21,8 @@
 | Phase 14 | `done` | Hospitality smart-home QA core coverage: local MQTT, edge, device protocols, network/control faults, BMS/ops, comfort, and safe access/intercom boundaries | NOT A HOTEL private compatibility and full-stack emulation remain out of scope | `phase14/phase_status.md` |
 | Phase 15 | `done` | Evaluator friction removal: retained subscribe loop, practical Modbus depth, reproducible Docker smoke, serve/core/scenario maintainability, and protocol evidence automation | None | `phase15/phase_status.md` |
 | Phase 16 | `done` | Roadmap triage for optional depth with promote/defer/non-goal decisions recorded | None | `phase16/phase_status.md` |
-| Phase 17 | `todo` | Promoted contract depth: safe intercom/relay mock, network/control-panel profiles, BMS hardening, comfort time-series, adapter samples | None | `phase17/phase_status.md` |
+| Phase 17 | `done` | Promoted contract depth: safe intercom/relay mock, network/control-panel profiles, BMS hardening, comfort time-series, adapter samples | None | `phase17/phase_status.md` |
+| Phase 18 | `todo` | Release-candidate sample and evidence hardening after Phase 17 | None | `phase18/phase_status.md` |
 
 ## Update Rules
 
@@ -40,11 +41,12 @@ Phases 11-14 are complete. The product now has the integration surface, runtime 
 - **Phase 13** completed official-spec-backed MQTT and Modbus conformance subsets.
 - **Phase 14** completed the hospitality-like core QA boundary and full-stack non-goals.
 
-The final self-review created Phase 15. Phases 15 and 16 are now complete; next work should implement only the promoted Phase 17 contract-depth items.
+The final self-review created Phase 15. Phases 15, 16, and 17 are now complete. Next work should harden sample verification and public evidence without expanding into full-stack or vendor emulation.
 
 - **Phase 15** hardened the release-candidate surface without expanding into a full smart-home stack emulator.
 - **Phase 16** recorded previously implied roadmap items and forced explicit promote/defer/reject decisions before implementation breadth expands.
-- **Phase 17** is the next implementation phase for promoted contract-depth work only.
+- **Phase 17** implemented the promoted contract-depth work.
+- **Phase 18** should focus on release-candidate sample and evidence hardening.
 
 See `tasks/backlog_inventory.md` for the current split between implemented work, already taskified implementation work, newly taskified roadmap work, and intentional non-goals.
 

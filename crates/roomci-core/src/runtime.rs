@@ -169,15 +169,17 @@ impl RuntimeState {
     fn apply_sensor_reading(&mut self, at: Duration, reading: &SensorReadingStep) {
         let discomfort = discomfort_index(reading.temperature, reading.humidity);
         let discomfort_key = format!("{}.discomfort_index", reading.target);
-        self.discomfort_by_target
-            .insert(discomfort_key, discomfort);
+        self.discomfort_by_target.insert(discomfort_key, discomfort);
 
         let mut state = StateMap::new();
         state.insert(
             "temperature".to_string(),
             serde_json::Value::from(reading.temperature),
         );
-        state.insert("humidity".to_string(), serde_json::Value::from(reading.humidity));
+        state.insert(
+            "humidity".to_string(),
+            serde_json::Value::from(reading.humidity),
+        );
         state.insert(
             "discomfort_index".to_string(),
             serde_json::Value::from(discomfort),
@@ -348,9 +350,7 @@ impl RuntimeState {
                 "control-panel UPS battery degraded".to_string(),
             );
         }
-        if target.starts_with("control_panel.circuit_protector.")
-            && fault_type == "tripped"
-        {
+        if target.starts_with("control_panel.circuit_protector.") && fault_type == "tripped" {
             self.record_fault_profile(
                 at,
                 target,

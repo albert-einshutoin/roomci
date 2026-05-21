@@ -323,8 +323,9 @@ pub(crate) fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>
                             serde_json::Value::String(sanitize_external_key(severity)),
                         );
                     }
-                    if let Some(schema_version) =
-                        contact.get("schema_version").and_then(|value| value.as_str())
+                    if let Some(schema_version) = contact
+                        .get("schema_version")
+                        .and_then(|value| value.as_str())
                     {
                         state_map.insert(
                             "schema_version".to_string(),

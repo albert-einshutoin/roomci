@@ -142,8 +142,11 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 | `examples/bms_sauna_emergency_alert.yaml` | Sauna over-temperature contact opens; BMS escalates to Slack, phone, and ticket runbook. |
 | `examples/starlink_failover.yaml` | WAN failover to Starlink within the configured budget. |
 | `examples/comfort_auto_mode.yaml` | Discomfort index drives HVAC auto-mode; user override is respected. |
+| `examples/comfort_timeseries_replay.yaml` | Deterministic sensor-zone readings update discomfort-index evidence. |
 | `examples/access_permission_drift.yaml` | Detect stale access-system users who no longer exist in the identity group. |
 | `examples/commissioning_checklist.yaml` | Generate field commissioning checks from room and device declarations. |
+| `examples/intercom_relay_safe_mock.yaml` | PIN/call/relay evidence is captured without controlling real unlocks. |
+| `examples/network_control_panel_fault_profiles.yaml` | Network, firewall, UPS, circuit, and redundant-PSU fault profiles emit BMS evidence. |
 
 These scenarios are expected to pass with `roomci run`.
 

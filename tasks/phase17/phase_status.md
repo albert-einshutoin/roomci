@@ -1,6 +1,6 @@
 # Phase 17 Status: Promoted Contract Depth
 
-Status: `in_progress`
+Status: `done`
 
 ## Tasks
 
@@ -14,4 +14,10 @@ Status: `in_progress`
 
 ## Current Blocker
 
-None. These are promoted optional-depth tasks, not blockers for the Phase 15 release-candidate surface.
+None. Phase 17 implementation is complete. The remaining follow-up work is tracked in Phase 18.
+
+## Verification
+
+- `make verify` passed after Phase 17 implementation.
+- New Phase 17 executable examples are included in `Makefile` scenario lists.
+- Go/TypeScript adapter samples are documented, but Go tooling was not available in this local environment for sample compilation.

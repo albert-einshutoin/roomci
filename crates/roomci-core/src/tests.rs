@@ -320,8 +320,10 @@ fn intercom_relay_safe_mock_passes_without_real_unlock_control() {
 
 #[test]
 fn network_control_panel_fault_profiles_emit_bms_evidence() {
-    let scenario =
-        load_scenario(fixture("examples/network_control_panel_fault_profiles.yaml")).unwrap();
+    let scenario = load_scenario(fixture(
+        "examples/network_control_panel_fault_profiles.yaml",
+    ))
+    .unwrap();
 
     let report = run_scenario(&scenario).unwrap();
 
@@ -361,12 +363,14 @@ fn comfort_timeseries_replay_updates_zone_evidence() {
     let report = run_scenario(&scenario).unwrap();
 
     assert_eq!(report.result, RunResult::Passed);
-    assert!(report
-        .timeline
-        .iter()
-        .filter(|event| event.event_type == "comfort_sensor_reading_recorded")
-        .count()
-        >= 3);
+    assert!(
+        report
+            .timeline
+            .iter()
+            .filter(|event| event.event_type == "comfort_sensor_reading_recorded")
+            .count()
+            >= 3
+    );
     assert!(report
         .assertions
         .iter()
