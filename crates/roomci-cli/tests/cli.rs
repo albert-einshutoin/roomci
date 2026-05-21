@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rumqttc::{Client, MqttOptions, QoS};
+use rumqttc::{Client, Event, MqttOptions, Packet, QoS};
 
 fn fixture(path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -363,7 +363,14 @@ fn standard_mqtt_client_publishes_retained_state_through_serve() {
     let mut options = MqttOptions::new("roomci-rumqttc-client", mqtt_host, mqtt_port);
     options.set_keep_alive(Duration::from_secs(5));
     let (client, mut connection) = Client::new(options, 10);
-    let connection_thread = std::thread::spawn(move || for _event in connection.iter().take(3) {});
+    client
+        .subscribe(
+            "fleet/demo/site/lab/device/env_sensor_01/state",
+            QoS::AtMostOnce,
+        )
+        .unwrap();
+    let initial_replay = wait_for_mqtt_publish_payload(&mut connection, "sample_interval_seconds");
+    assert!(initial_replay.contains("30"));
     client
         .publish(
             "fleet/demo/site/lab/device/env_sensor_01/command",
@@ -372,15 +379,51 @@ fn standard_mqtt_client_publishes_retained_state_through_serve() {
             r#"{"online":true,"sample_interval_seconds":20}"#,
         )
         .unwrap();
+    drive_mqtt_connection(&mut connection, 3);
     std::thread::sleep(Duration::from_millis(150));
 
     let state = http_request(&http_address, "GET", "/state", "");
     assert!(state.contains("fleet/demo/site/lab/device/env_sensor_01/state"));
     assert!(state.contains("\"sample_interval_seconds\":20"));
+    client
+        .subscribe(
+            "fleet/demo/site/lab/device/env_sensor_01/state",
+            QoS::AtMostOnce,
+        )
+        .unwrap();
+    let updated_replay = wait_for_mqtt_publish_payload(&mut connection, "sample_interval_seconds");
+    assert!(updated_replay.contains("20"));
 
-    let _ = connection_thread.join();
     child.kill().unwrap();
     child.wait().unwrap();
+}
+
+fn wait_for_mqtt_publish_payload(connection: &mut rumqttc::Connection, expected: &str) -> String {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < deadline {
+        let Some(event) = connection.iter().next() else {
+            break;
+        };
+        match event {
+            Ok(Event::Incoming(Packet::Publish(publish))) => {
+                let payload = String::from_utf8_lossy(&publish.payload).to_string();
+                if payload.contains(expected) {
+                    return payload;
+                }
+            }
+            Ok(_) => {}
+            Err(error) => panic!("MQTT connection error: {error}"),
+        }
+    }
+    panic!("timed out waiting for MQTT publish payload containing {expected}");
+}
+
+fn drive_mqtt_connection(connection: &mut rumqttc::Connection, max_events: usize) {
+    for event in connection.iter().take(max_events) {
+        if let Err(error) = event {
+            panic!("MQTT connection error: {error}");
+        }
+    }
 }
 
 fn http_request(address: &str, method: &str, path: &str, body: &str) -> String {

@@ -9,10 +9,10 @@ This is not a production PLC, gateway, or full Modbus conformance suite. It exis
 - Modbus TCP MBAP header parsing.
 - Protocol id `0`.
 - Unit id mapping from scenario `modbus.devices[].unit_id`.
-- Function code `0x03`: read holding register.
-- Function code `0x04`: read input register.
+- Function code `0x03`: read holding registers.
+- Function code `0x04`: read input registers.
 - Function code `0x06`: write single holding register.
-- Quantity `1` for read requests.
+- Quantity `1..=125` for contiguous read requests.
 - Register address convention:
   - direct scenario address if present, such as `40001`
   - conventional zero-based Modbus client address, such as `0` mapping to `40001` for holding registers
@@ -29,7 +29,7 @@ This is not a production PLC, gateway, or full Modbus conformance suite. It exis
 |---|---|
 | Unsupported function code | `0x01` illegal function |
 | Unknown unit id or register address | `0x02` illegal data address |
-| Invalid quantity or read-only write | `0x03` illegal data value |
+| Invalid quantity, malformed request payload, or read-only write | `0x03` illegal data value |
 
 ## Not Supported
 

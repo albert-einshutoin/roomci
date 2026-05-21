@@ -19,8 +19,9 @@
 | Phase 12 | `done` | Serve runtime hardening, health semantics, MQTT CONNECT validation, and release plumbing | None | `phase12/phase_status.md` |
 | Phase 13 | `done` | Official-spec-backed protocol conformance subsets for MQTT and Modbus first, with future protocol profiles tracked honestly | Full certification-grade conformance remains out of scope | `phase13/phase_status.md` |
 | Phase 14 | `done` | Hospitality smart-home QA core coverage: local MQTT, edge, device protocols, network/control faults, BMS/ops, comfort, and safe access/intercom boundaries | NOT A HOTEL private compatibility and full-stack emulation remain out of scope | `phase14/phase_status.md` |
-| Phase 15 | `todo` | Evaluator friction removal: retained subscribe loop, practical Modbus depth, reproducible Docker smoke, serve maintainability, and protocol evidence automation | None | `phase15/phase_status.md` |
-| Phase 16 | `todo` | Roadmap triage for optional depth: future protocols, intercom/relay, network/control-panel faults, BMS hardening, comfort telemetry, SDK samples, observability exports | Phase 15 should run first | `phase16/phase_status.md` |
+| Phase 15 | `done` | Evaluator friction removal: retained subscribe loop, practical Modbus depth, reproducible Docker smoke, serve/core/scenario maintainability, and protocol evidence automation | None | `phase15/phase_status.md` |
+| Phase 16 | `done` | Roadmap triage for optional depth with promote/defer/non-goal decisions recorded | None | `phase16/phase_status.md` |
+| Phase 17 | `todo` | Promoted contract depth: safe intercom/relay mock, network/control-panel profiles, BMS hardening, comfort time-series, adapter samples | None | `phase17/phase_status.md` |
 
 ## Update Rules
 
@@ -39,10 +40,11 @@ Phases 11-14 are complete. The product now has the integration surface, runtime 
 - **Phase 13** completed official-spec-backed MQTT and Modbus conformance subsets.
 - **Phase 14** completed the hospitality-like core QA boundary and full-stack non-goals.
 
-The final self-review created Phase 15. Next work should remove evaluator friction before adding more protocol breadth.
+The final self-review created Phase 15. Phases 15 and 16 are now complete; next work should implement only the promoted Phase 17 contract-depth items.
 
-- **Phase 15** should harden the current release-candidate surface rather than expanding into a full smart-home stack emulator.
-- **Phase 16** records previously implied roadmap items and forces explicit promote/defer/reject decisions before implementation breadth expands.
+- **Phase 15** hardened the release-candidate surface without expanding into a full smart-home stack emulator.
+- **Phase 16** recorded previously implied roadmap items and forced explicit promote/defer/reject decisions before implementation breadth expands.
+- **Phase 17** is the next implementation phase for promoted contract-depth work only.
 
 See `tasks/backlog_inventory.md` for the current split between implemented work, already taskified implementation work, newly taskified roadmap work, and intentional non-goals.
 

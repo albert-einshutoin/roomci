@@ -12,6 +12,7 @@ The phase should not broaden roomci into a full smart-home stack emulator. It sh
 - Modbus TCP support covers the next practical subset beyond single-register reads/writes.
 - Docker protocol smoke does not depend on ad hoc runtime package installation.
 - Serve runtime code is split enough that protocol handlers can evolve independently.
+- Core and scenario crates either meet the 800-line maintainability target or have explicit follow-up justification.
 - Public protocol claims have machine-checkable evidence links.
 
 ## Non-Goals

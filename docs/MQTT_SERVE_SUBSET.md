@@ -11,12 +11,14 @@ The HTTP observation API used with this MQTT ingress is documented in [`HTTP_SER
 - MQTT 3.1.1 `CONNECT`
 - `CONNACK` success response
 - QoS 0 `PUBLISH`
+- QoS 0 `SUBSCRIBE` / `SUBACK` for configured state topics
+- retained message replay to matching MQTT subscribers
 - `PINGREQ` / `PINGRESP`
 - `DISCONNECT`
 - UTF-8 topic names
 - JSON object payloads
 - one `{device_id}` placeholder in configured command/state topic mappings
-- retained-state observation through:
+- retained-state observation through MQTT replay and:
   - `GET /state`
   - `GET /timeline`
   - `GET /reports/latest.json`
@@ -26,8 +28,8 @@ The HTTP observation API used with this MQTT ingress is documented in [`HTTP_SER
 ## Not Supported
 
 - QoS 1 / QoS 2 wire-level acknowledgements
-- `SUBSCRIBE` / `UNSUBSCRIBE`
-- retained message replay to MQTT subscribers
+- `UNSUBSCRIBE`
+- wildcard generality beyond exact configured state topics and `+` placeholders
 - sessions, will messages, keepalive enforcement
 - TLS, ACLs, authentication, clustering, persistence
 - MQTT 5 properties

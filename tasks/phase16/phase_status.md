@@ -1,19 +1,19 @@
 # Phase 16 Status: Roadmap Triage For Optional Depth
 
-Status: `todo`
+Status: `done`
 
 ## Tasks
 
 | Task | Status | Notes |
 |---|---|---|
-| 01 Future protocol selection | `todo` | Rank BACnet, KNX, Matter, OPC UA, Zigbee, and Thread for possible future subsets. |
-| 02 Intercom and relay profile | `todo` | Decide the contract/mock depth for PIN, relay pulse, staff call, SIP/DTMF-like flows, and failure modes. |
-| 03 Network/control-panel fault profiles | `todo` | Split VLAN/firewall/segment and 24V/UPS/circuit-protector faults into executable QA profile candidates. |
-| 04 BMS contract hardening | `todo` | Decide which webhook hardening features belong in adapter contracts versus serve runtime. |
-| 05 Comfort time-series profile | `todo` | Decide whether real sensor-zone replay belongs in core or a domain pack. |
-| 06 Adapter SDK samples | `todo` | Decide whether Go backend samples and Lua-like automation hooks should ship as examples, adapters, or docs only. |
-| 07 Observability export profile | `todo` | Decide whether Influx/Grafana-friendly exports add enough evaluator value to implement. |
+| 01 Future protocol selection | `done` | BACnet/IP and OPC UA deferred; KNX adapter-contract only; Matter/Zigbee/Thread non-goals for runtime without gateway contracts. |
+| 02 Intercom and relay profile | `done` | Promoted safe scenario-only mock profile; real unlock authorization remains out of scope. |
+| 03 Network/control-panel fault profiles | `done` | Promoted deterministic QA fault profiles for Phase 17. |
+| 04 BMS contract hardening | `done` | Promoted adapter/runtime boundary hardening for Phase 17. |
+| 05 Comfort time-series profile | `done` | Promoted deterministic domain-pack replay for Phase 17. |
+| 06 Adapter SDK samples | `done` | Promoted small Go/TypeScript examples and docs-only Lua-like guidance for Phase 17. |
+| 07 Observability export profile | `done` | Deferred; JSON/Markdown/JUnit remain primary unless a concrete evaluator needs Influx/Grafana export. |
 
 ## Current Blocker
 
-Phase 15 should run first. Phase 16 is planning/selection work for optional depth.
+None. Phase 16 is complete; promoted implementation work is tracked in Phase 17.

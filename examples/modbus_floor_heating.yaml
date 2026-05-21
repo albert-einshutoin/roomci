@@ -14,11 +14,21 @@ modbus:
           type: decimal_0_1
           value: 230
           unit: celsius
+        40002:
+          name: eco_temperature
+          type: decimal_0_1
+          value: 210
+          unit: celsius
       input_registers:
         30001:
           name: current_temperature
           type: decimal_0_1
           value: 228
+          unit: celsius
+        30002:
+          name: slab_temperature
+          type: decimal_0_1
+          value: 221
           unit: celsius
       discrete_inputs:
         10001:

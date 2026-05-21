@@ -22,10 +22,12 @@ These are implemented and tracked as `done` in phase status files:
 | Serve runtime hardening and release metadata | `done` | Phase 12 |
 | MQTT 3.1.1 and Modbus TCP conformance subsets with Docker protocol smoke | `done` | Phase 13 |
 | Hospitality smart-home QA core coverage boundary | `done` | Phase 14 |
+| Evaluator friction removal: MQTT retained subscribe, practical Modbus depth, protocol evidence automation, and source module extraction | `done` | Phase 15 |
+| Roadmap triage for future protocol and optional-depth items | `done` | Phase 16 |
 
 ## Already Taskified For Implementation
 
-These are not implemented yet and are tracked in Phase 15:
+These were implemented in Phase 15 and remain here as traceability links:
 
 | Area | Task |
 |---|---|
@@ -34,10 +36,12 @@ These are not implemented yet and are tracked in Phase 15:
 | Reproducible protocol smoke image | `tasks/phase15/03_docker_protocol_smoke_image_task.md` |
 | `roomci-serve` protocol module extraction | `tasks/phase15/04_serve_protocol_module_extraction_task.md` |
 | Machine-checkable evidence for protocol claims | `tasks/phase15/05_protocol_evidence_automation_task.md` |
+| `roomci-core` module extraction for 800-line maintainability target | `tasks/phase15/06_core_module_extraction_task.md` |
+| `roomci-scenario` module extraction for 800-line maintainability target | `tasks/phase15/07_scenario_module_extraction_task.md` |
 
 ## Newly Taskified From Implied Docs
 
-These were implied by roadmap/docs but did not have dedicated tasks before Phase 16:
+These were implied by roadmap/docs and were decided in Phase 16:
 
 | Area | Task |
 |---|---|
@@ -48,6 +52,18 @@ These were implied by roadmap/docs but did not have dedicated tasks before Phase
 | Comfort sensor-zone and time-series replay profile | `tasks/phase16/05_comfort_timeseries_profile_task.md` |
 | SDK/sample integration path for Go backends and Lua-like automation hooks | `tasks/phase16/06_adapter_sdk_samples_task.md` |
 | Observability export profile such as Influx line protocol or Grafana-friendly artifacts | `tasks/phase16/07_observability_export_profile_task.md` |
+
+## Promoted For Later Implementation
+
+These are the only Phase 16 items promoted into concrete implementation tasks:
+
+| Area | Task |
+|---|---|
+| Safe intercom and relay mock profile | `tasks/phase17/01_intercom_relay_safe_mock_task.md` |
+| Network and control-panel fault profiles | `tasks/phase17/02_network_control_panel_fault_profiles_task.md` |
+| BMS contract hardening | `tasks/phase17/03_bms_contract_hardening_task.md` |
+| Comfort time-series domain pack | `tasks/phase17/04_comfort_timeseries_domain_pack_task.md` |
+| Adapter SDK samples | `tasks/phase17/05_adapter_sdk_samples_task.md` |
 
 ## Intentionally Not Taskified As Implementation
 

@@ -33,8 +33,17 @@ def wait_for_health():
 
 
 def drive_mqtt():
+    messages = []
+
+    def on_message(_client, _userdata, message):
+        messages.append(json.loads(message.payload.decode("utf-8")))
+
     client = mqtt.Client(client_id="roomci-paho-smoke", protocol=mqtt.MQTTv311)
+    client.on_message = on_message
     client.connect(MQTT_HOST, MQTT_PORT, keepalive=10)
+    client.loop_start()
+    client.subscribe("fleet/demo/site/lab/device/env_sensor_01/state", qos=0)
+    wait_for_mqtt_sample(messages, 15)
     result = client.publish(
         "fleet/demo/site/lab/device/env_sensor_01/command",
         json.dumps({"online": True, "sample_interval_seconds": 30}),
@@ -42,7 +51,20 @@ def drive_mqtt():
         retain=False,
     )
     result.wait_for_publish(timeout=5)
+    client.subscribe("fleet/demo/site/lab/device/env_sensor_01/state", qos=0)
+    wait_for_mqtt_sample(messages, 30)
+    client.loop_stop()
     client.disconnect()
+
+
+def wait_for_mqtt_sample(messages, expected_interval):
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        for message in messages:
+            if message.get("sample_interval_seconds") == expected_interval:
+                return
+        time.sleep(0.1)
+    raise RuntimeError(f"MQTT retained replay did not include {expected_interval}: {messages!r}")
 
 
 def drive_modbus():
@@ -53,6 +75,12 @@ def drive_modbus():
         holding = client.read_holding_registers(0, 1, slave=1)
         if holding.isError() or holding.registers[0] != 245:
             raise RuntimeError(f"unexpected holding register response: {holding!r}")
+        holding_pair = client.read_holding_registers(0, 2, slave=1)
+        if holding_pair.isError() or holding_pair.registers != [245, 210]:
+            raise RuntimeError(f"unexpected holding pair response: {holding_pair!r}")
+        input_pair = client.read_input_registers(0, 2, slave=1)
+        if input_pair.isError() or input_pair.registers != [228, 221]:
+            raise RuntimeError(f"unexpected input pair response: {input_pair!r}")
         write = client.write_register(0, 250, slave=1)
         if write.isError():
             raise RuntimeError(f"unexpected write response: {write!r}")

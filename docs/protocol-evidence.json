@@ -1,0 +1,60 @@
+{
+  "claims": [
+    {
+      "name": "MQTT 3.1.1 command/state contracts",
+      "status": ["conformance_subset", "serve_endpoint", "external_client_tested"],
+      "docs": [
+        "docs/MQTT_SERVE_SUBSET.md",
+        "docs/PROTOCOL_CONFORMANCE_REGISTRY.md",
+        "docs/PROTOCOL_SUPPORT_MATRIX.md"
+      ],
+      "evidence_commands": [
+        "cargo test -p roomci-serve --lib external_mqtt",
+        "cargo test -p roomci-cli --test cli standard_mqtt_client_publishes_retained_state_through_serve",
+        "make protocol-smoke-mqtt"
+      ],
+      "non_goal_docs": ["docs/MQTT_SERVE_SUBSET.md"]
+    },
+    {
+      "name": "Modbus TCP register behavior",
+      "status": ["conformance_subset", "serve_endpoint", "external_client_tested"],
+      "docs": [
+        "docs/MODBUS_TCP_SUBSET.md",
+        "docs/PROTOCOL_CONFORMANCE_REGISTRY.md",
+        "docs/PROTOCOL_SUPPORT_MATRIX.md"
+      ],
+      "evidence_commands": [
+        "cargo test -p roomci-serve --lib modbus_tcp",
+        "make protocol-smoke-modbus"
+      ],
+      "non_goal_docs": ["docs/MODBUS_TCP_SUBSET.md"]
+    },
+    {
+      "name": "BMS/contact HTTP contract",
+      "status": ["serve_endpoint", "external_client_tested"],
+      "docs": [
+        "docs/EXTERNAL_PROTOCOL_DEPTH.md",
+        "docs/PROTOCOL_CONFORMANCE_REGISTRY.md",
+        "docs/PROTOCOL_SUPPORT_MATRIX.md"
+      ],
+      "evidence_commands": [
+        "cargo test -p roomci-serve --lib external_bms_contact"
+      ],
+      "non_goal_docs": ["docs/EXTERNAL_PROTOCOL_DEPTH.md"]
+    },
+    {
+      "name": "MQTT 5.0",
+      "status": ["unsupported"],
+      "docs": ["docs/PROTOCOL_CONFORMANCE_REGISTRY.md"],
+      "evidence_commands": ["mqtt_connect_with_unsupported_level_is_rejected"],
+      "non_goal_docs": ["docs/MQTT_SERVE_SUBSET.md", "docs/PROTOCOL_CONFORMANCE_REGISTRY.md"]
+    },
+    {
+      "name": "Future protocol profiles",
+      "status": ["future_profile"],
+      "docs": ["docs/PROTOCOL_CONFORMANCE_REGISTRY.md", "docs/PROTOCOL_SUPPORT_MATRIX.md"],
+      "evidence_commands": [],
+      "non_goal_docs": ["docs/PROTOCOL_CONFORMANCE_REGISTRY.md", "docs/PROTOCOL_SUPPORT_MATRIX.md"]
+    }
+  ]
+}

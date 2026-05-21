@@ -10,6 +10,7 @@ Phase 15 is complete only when all of these gates pass:
 - `make protocol-smoke`
 - `make compose-poc`
 - A new protocol evidence check proves that every `verified` protocol claim in the support matrix links to an executable test or smoke target.
+- A source-size review confirms `roomci-serve`, `roomci-core`, and `roomci-scenario` are each split below the 800-line maintainability target, or the phase status records a justified exception.
 
 ## Review Gate
 

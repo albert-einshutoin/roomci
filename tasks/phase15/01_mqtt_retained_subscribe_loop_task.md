@@ -9,8 +9,13 @@ The current MQTT runtime accepts CONNECT, QoS0 PUBLISH, PINGREQ, and DISCONNECT.
 - Implement the narrowest useful SUBSCRIBE/SUBACK path for configured state topics.
 - Replay retained state to subscribers for topics matched by configured MQTT contracts.
 - Reject or ignore unsupported subscription shapes honestly.
-- Add a standard MQTT client test covering publish, subscribe, retained replay, and disconnect.
+- Add a standard MQTT client test covering subscribe before publish, publish then retained replay, and disconnect.
+- Extend the Docker `protocol-smoke` controller so a standard `paho-mqtt` client proves retained subscribe behavior in black-box mode.
 - Update `docs/MQTT_SERVE_SUBSET.md` and the protocol support matrix.
+
+## Coordination
+
+Implement this together with Task 04 when practical. The MQTT behavior should land inside the extracted MQTT module rather than deepening the current monolithic serve file.
 
 ## Out of Scope
 

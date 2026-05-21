@@ -7,7 +7,7 @@ This file maps the current product strategy to task status.
 | Strategy Item | Task State | Where It Lives |
 |---|---|---|
 | Make the NOT A HOTEL-like core QA journey the center of the product demo | `done`, with selected depth still `todo` | Phase 14 defines the core journey; `make poc-core-qa` is the demo path. Control-panel fault depth is triaged in Phase 16 Task 03. |
-| Local MQTT | `done`, with subscribe depth `todo` | Phase 1, Phase 10, Phase 13; Phase 15 Task 01 covers retained subscribe/replay. |
+| Local MQTT | `done` | Phase 1, Phase 10, Phase 13, and Phase 15 retained subscribe/replay. |
 | Edge server | `done` | Phase 2 and Phase 14. |
 | Modbus | `done`, with practical subset depth `todo` | Phase 3 scenario model and Phase 13 Modbus TCP subset; Phase 15 Task 02 expands the practical subset. |
 | DALI-like | `done` as scenario model | Phase 3 and Phase 14. Full DALI wire behavior is not claimed. |
@@ -17,7 +17,7 @@ This file maps the current product strategy to task status.
 | Comfort automation | `done`, with time-series depth `todo` | Phase 6 and Phase 14; Phase 16 Task 05 covers sensor-zone/time-series replay. |
 | Control panel fault | `done` as scoped QA profile, executable depth `todo` | Phase 14 scoped this safely; Phase 16 Task 03 decides which profiles become executable. |
 | Keep protocols official-spec-backed and subset-scoped | `done`, with next depth `todo` | Phase 13 registry and release checklist; Phase 15 Task 05 automates evidence. |
-| MQTT 3.1.1 subset | `done`, with subscribe depth `todo` | Phase 13; Phase 15 Task 01. |
+| MQTT 3.1.1 subset | `done` | Phase 13 plus Phase 15 QoS0 SUBSCRIBE/SUBACK retained replay for configured state topics. |
 | Modbus TCP subset | `done`, with multi-register/coil decision `todo` | Phase 13; Phase 15 Task 02. |
 | MQTT 5 unsupported boundary | `done` | Phase 13 and protocol conformance registry. |
 | BACnet / OPC UA / KNX / Matter future profiles | `done` as registry rows, selection `todo` | Phase 13 registry; Phase 16 Task 01 ranks and promotes/defers future protocols. |
