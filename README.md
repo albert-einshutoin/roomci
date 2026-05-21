@@ -5,6 +5,8 @@
 [![Coverage](https://img.shields.io/badge/coverage-84.51%25-green.svg)](#quality-gates)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
+📖 **[日本語はこちら](README.ja.md)** | **[English](README.md)**
+
 **MQTT / Edge / Device QA Contract Emulator for CI**
 
 `roomci` is a Docker-friendly **QA contract emulator** for MQTT-based edge, smart-home, and building-automation systems. It turns command/state contracts, local-first failure modes, device-adapter behavior, commissioning checks, and operations escalation into repeatable local and CI scenarios.
