@@ -1,6 +1,71 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
 .claude/
+.idea/
+.vscode/launch.json
+.vscode/*.private.*
+*.swp
+*.swo
+*~
+
+# Build artifacts
 target/
+dist/
+build/
+*.o
+*.so
+*.dylib
+
+# Test outputs & reports
 reports/
+coverage/
+.nyc_output/
+test-results/
+
+# Logs
 *.log
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.production.local
+
+# Credentials & keys
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+.ssh/
+.aws/
+.gcp/
+.azure/
+
+# Cloud credentials
+config/secrets/
+credentials.json
+service-account-key.json
+
+# Node (if applicable)
+node_modules/
+.npm
+
+# Python (if applicable)
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Miscellaneous
 recruit/
+.DS_Store
+Thumbs.db
+*.tmp

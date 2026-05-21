@@ -3,7 +3,7 @@
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
 [![Coverage](https://img.shields.io/badge/coverage-84.51%25-green.svg)](#quality-gates)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 **MQTT / Edge / Device QA Contract Emulator for CI**
 
