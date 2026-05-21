@@ -286,6 +286,8 @@ pub struct AdapterContract {
     #[serde(default)]
     pub edge: AdapterEdge,
     #[serde(default)]
+    pub protocol_profiles: AdapterProtocolProfiles,
+    #[serde(default)]
     pub auth: BTreeMap<String, serde_yaml::Value>,
     pub acceptance: AdapterAcceptance,
 }
@@ -395,6 +397,76 @@ pub struct AdapterEdgeCommand {
     pub source: String,
     pub target: String,
     pub expected_state: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+pub struct AdapterProtocolProfiles {
+    #[serde(default)]
+    pub matter: Vec<MatterProfile>,
+    #[serde(default)]
+    pub bacnet: Vec<BacnetProfile>,
+    #[serde(default)]
+    pub knx: Vec<KnxProfile>,
+    #[serde(default)]
+    pub opcua: Vec<OpcUaProfile>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct MatterProfile {
+    pub name: String,
+    pub gateway: String,
+    pub device_id: String,
+    pub endpoint_id: u32,
+    pub cluster: String,
+    pub attribute: String,
+    pub command: String,
+    pub expected_state: BTreeMap<String, serde_yaml::Value>,
+    #[serde(default)]
+    pub acceptance: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct BacnetProfile {
+    pub name: String,
+    pub device_id: String,
+    pub object_type: String,
+    pub object_instance: u32,
+    pub property: String,
+    pub expected_value: serde_yaml::Value,
+    #[serde(default)]
+    pub event_class: Option<String>,
+    #[serde(default)]
+    pub acceptance: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct KnxProfile {
+    pub name: String,
+    pub gateway: String,
+    pub group_address: String,
+    pub datapoint_type: String,
+    pub direction: String,
+    pub expected_value: serde_yaml::Value,
+    pub function: String,
+    #[serde(default)]
+    pub room: Option<String>,
+    #[serde(default)]
+    pub acceptance: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct OpcUaProfile {
+    pub name: String,
+    pub endpoint: String,
+    pub namespace: String,
+    pub node_id: String,
+    pub browse_name: String,
+    pub attribute: String,
+    pub expected_value: serde_yaml::Value,
+    #[serde(default)]
+    pub event_type: Option<String>,
+    #[serde(default)]
+    pub acceptance: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]

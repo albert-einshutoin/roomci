@@ -72,7 +72,11 @@ jobs:
             /scenarios/intercom_relay_safe_mock.yaml \
             /scenarios/network_control_panel_fault_profiles.yaml \
             /scenarios/generic_mqtt_retained_state.yaml \
-            /scenarios/generic_mqtt_duplicate_delivery.yaml
+            /scenarios/generic_mqtt_duplicate_delivery.yaml \
+            /scenarios/matter_gateway_profile.yaml \
+            /scenarios/bacnet_contract_profile.yaml \
+            /scenarios/knx_group_address_profile.yaml \
+            /scenarios/opcua_contract_profile.yaml
 
       - name: Run passing demo scenarios
         run: |
@@ -150,3 +154,6 @@ jobs:
 
       - name: Developer experience smoke
         run: make developer-experience-smoke
+
+      - name: Protocol profile smoke
+        run: make protocol-profile-smoke

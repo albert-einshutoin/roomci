@@ -23,6 +23,7 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 | Adapter sample smoke | `make adapter-samples-smoke` | Go and TypeScript adapter samples run against `roomci serve` over HTTP, MQTT, and Modbus TCP |
 | Python SDK smoke | `make python-sdk-smoke` | Python reference client drives HTTP, MQTT, and Modbus TCP against `roomci serve` |
 | Developer experience smoke | `make developer-experience-smoke` | Python SDK smoke and `roomci debug` JSON/Markdown artifacts pass |
+| Protocol profile smoke | `make protocol-profile-smoke` | Matter, BACnet, KNX, and OPC UA contract-profile examples and dry-run scenarios validate |
 | S Tier evidence smoke | `make s-tier-evidence-smoke` | JSON report, timeline JSON, timeline NDJSON, observability JSON, run id, and trace metadata are generated and validated |
 | Protocol evidence map | `make protocol-evidence` | Verified protocol claims map to commands and non-goal docs |
 | Full local CI approximation | `make verify` | Runs the same practical gate set as CI, including Docker and Compose checks |
@@ -46,3 +47,6 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 - Use [`PROTOCOL_SUPPORT_MATRIX.md`](PROTOCOL_SUPPORT_MATRIX.md) as the source of truth when describing behavior-model support versus wire-protocol support.
 - Use [`PROTOCOL_CONFORMANCE_REGISTRY.md`](PROTOCOL_CONFORMANCE_REGISTRY.md) as the source of truth for protocol specification references, conformance subset claims, verification commands, and explicit rejections.
 - Do not use "compatible", "conformant", "supports", or "implements" for a protocol unless the claim maps to a registry row and a verification command.
+- Matter, BACnet, KNX, and OPC UA are B Tier `contract_profile` entries only;
+  do not describe them as wire-level support, full protocol implementations, or
+  certification evidence.

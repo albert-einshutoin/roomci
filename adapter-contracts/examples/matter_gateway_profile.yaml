@@ -1,0 +1,33 @@
+version: adapter.v1
+adapter:
+  name: matter-gateway-profile
+  domain_pack: protocol-profile
+  owner: roomci
+site:
+  id: matter-demo
+  rooms:
+    - id: living
+devices:
+  - id: matter_light_01
+    type: dimmable_light
+    protocol: matter_contract_profile
+protocol_profiles:
+  matter:
+    - name: living_light_onoff_level
+      gateway: matter-gateway-demo
+      device_id: matter_light_01
+      endpoint_id: 1
+      cluster: OnOff
+      attribute: OnOff
+      command: On
+      expected_state:
+        on: true
+        level_percent: 70
+      acceptance:
+        - Gateway adapter maps the private Matter endpoint to roomci device identity.
+        - Command evidence shows expected state without claiming commissioning or fabric behavior.
+acceptance:
+  criteria:
+    - Matter gateway contract fields are present and map to a device-state expectation.
+    - No Matter controller, fabric, commissioning, CASE/PASE, Thread, or certification behavior is claimed.
+  report_formats: [json, markdown]

@@ -10,6 +10,11 @@ Use this checklist when evaluating `roomci` for a non-hospitality smart-home, Io
 - Device identity and room/site naming conventions.
 - BMS/webhook event contract if operations flows are in scope.
 - Network or edge-failover assumptions.
+- Optional B Tier protocol maps:
+  - Matter gateway endpoint/cluster/attribute/command maps.
+  - BACnet object/property maps.
+  - KNX group-address and datapoint maps.
+  - OPC UA namespace/node/attribute maps.
 - Pass/fail acceptance criteria and required report artifacts.
 
 ## What To Run First
@@ -19,6 +24,7 @@ make poc-generic-mqtt
 make poc-building-automation
 make protocol-smoke
 make adapter-samples-smoke
+make protocol-profile-smoke
 make protocol-evidence
 ```
 
@@ -45,6 +51,7 @@ targets, start from the small Go and TypeScript samples in
 | Safety-sensitive access flows | Safe scenario evidence for intercom/relay is enough | Real unlock authorization or relay control must be validated |
 | Comfort and field faults | Deterministic time-series, network, and control-panel profiles are useful | Thermal physics, electrical timing, or live network chaos is required |
 | Protocol depth | Narrow conformance subsets are acceptable | Full protocol certification is required |
+| B Tier protocol profiles | Gateway/object/group-address/node maps can be expressed as contracts | You need Matter/BACnet/KNX/OPC UA wire endpoints or certification |
 
 ## Boundary
 

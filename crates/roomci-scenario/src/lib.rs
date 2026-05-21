@@ -97,10 +97,11 @@ pub fn validate_adapter_contract(contract: &AdapterContract) -> Result<(), Scena
         || !contract.mqtt.contracts.is_empty()
         || !contract.modbus.devices.is_empty()
         || !contract.bms.alerts.is_empty()
-        || !contract.edge.commands.is_empty();
+        || !contract.edge.commands.is_empty()
+        || contract.protocol_profiles.has_profiles();
     if !has_surface {
         return Err(ScenarioError::InvalidAdapterContract(
-            "at least one device, MQTT contract, Modbus device, BMS alert, or edge command is required"
+            "at least one device, MQTT contract, Modbus device, BMS alert, edge command, or protocol profile is required"
                 .to_string(),
         ));
     }
@@ -194,6 +195,8 @@ pub fn validate_adapter_contract(contract: &AdapterContract) -> Result<(), Scena
         require_non_empty("edge.commands[].expected_state", &command.expected_state)?;
     }
 
+    validate_protocol_profiles(&contract.protocol_profiles)?;
+
     if contract.acceptance.criteria.is_empty() {
         return Err(ScenarioError::InvalidAdapterContract(
             "acceptance.criteria must declare at least one pass/fail criterion".to_string(),
@@ -206,6 +209,97 @@ pub fn validate_adapter_contract(contract: &AdapterContract) -> Result<(), Scena
     }
 
     Ok(())
+}
+
+fn validate_protocol_profiles(profiles: &AdapterProtocolProfiles) -> Result<(), ScenarioError> {
+    for profile in &profiles.matter {
+        require_non_empty("protocol_profiles.matter[].name", &profile.name)?;
+        require_non_empty("protocol_profiles.matter[].gateway", &profile.gateway)?;
+        require_non_empty("protocol_profiles.matter[].device_id", &profile.device_id)?;
+        require_non_empty("protocol_profiles.matter[].cluster", &profile.cluster)?;
+        require_non_empty("protocol_profiles.matter[].attribute", &profile.attribute)?;
+        require_non_empty("protocol_profiles.matter[].command", &profile.command)?;
+        if profile.expected_state.is_empty() {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "Matter profile {} must declare expected_state",
+                profile.name
+            )));
+        }
+    }
+
+    for profile in &profiles.bacnet {
+        require_non_empty("protocol_profiles.bacnet[].name", &profile.name)?;
+        require_non_empty("protocol_profiles.bacnet[].device_id", &profile.device_id)?;
+        require_non_empty(
+            "protocol_profiles.bacnet[].object_type",
+            &profile.object_type,
+        )?;
+        require_non_empty("protocol_profiles.bacnet[].property", &profile.property)?;
+        if profile.expected_value.is_null() {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "BACnet profile {} must declare expected_value",
+                profile.name
+            )));
+        }
+    }
+
+    for profile in &profiles.knx {
+        require_non_empty("protocol_profiles.knx[].name", &profile.name)?;
+        require_non_empty("protocol_profiles.knx[].gateway", &profile.gateway)?;
+        require_non_empty(
+            "protocol_profiles.knx[].group_address",
+            &profile.group_address,
+        )?;
+        require_non_empty(
+            "protocol_profiles.knx[].datapoint_type",
+            &profile.datapoint_type,
+        )?;
+        match profile.direction.as_str() {
+            "read" | "write" | "read_write" => {}
+            _ => {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "KNX profile {} uses unsupported direction {}; expected read, write, or read_write",
+                    profile.name, profile.direction
+                )));
+            }
+        }
+        require_non_empty("protocol_profiles.knx[].function", &profile.function)?;
+        if profile.expected_value.is_null() {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "KNX profile {} must declare expected_value",
+                profile.name
+            )));
+        }
+    }
+
+    for profile in &profiles.opcua {
+        require_non_empty("protocol_profiles.opcua[].name", &profile.name)?;
+        require_non_empty("protocol_profiles.opcua[].endpoint", &profile.endpoint)?;
+        require_non_empty("protocol_profiles.opcua[].namespace", &profile.namespace)?;
+        require_non_empty("protocol_profiles.opcua[].node_id", &profile.node_id)?;
+        require_non_empty(
+            "protocol_profiles.opcua[].browse_name",
+            &profile.browse_name,
+        )?;
+        require_non_empty("protocol_profiles.opcua[].attribute", &profile.attribute)?;
+        if profile.expected_value.is_null() {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "OPC UA profile {} must declare expected_value",
+                profile.name
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+impl AdapterProtocolProfiles {
+    fn has_profiles(&self) -> bool {
+        !self.matter.is_empty()
+            || !self.bacnet.is_empty()
+            || !self.knx.is_empty()
+            || !self.opcua.is_empty()
+    }
 }
 
 fn require_non_empty(field: &str, value: &str) -> Result<(), ScenarioError> {

@@ -1,0 +1,25 @@
+version: "0.1"
+scenario:
+  name: matter_gateway_profile
+  description: Dry-run profile fixture for a Matter gateway contract mapping.
+  tags: [matter, contract-profile, dry-run]
+
+future_milestone:
+  protocol_profile: matter
+  contract: adapter-contracts/examples/matter_gateway_profile.yaml
+  supported_fields:
+    - endpoint_id
+    - cluster
+    - attribute
+    - command
+    - expected_state
+  non_goals:
+    - Matter fabric
+    - commissioning
+    - CASE/PASE
+    - Thread/Wi-Fi transport
+    - certification
+
+steps:
+  - at: T
+    event: Matter gateway profile contract is validated as adapter metadata only.

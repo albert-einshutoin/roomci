@@ -1,0 +1,31 @@
+version: adapter.v1
+adapter:
+  name: opcua-contract-profile
+  domain_pack: protocol-profile
+  owner: roomci
+site:
+  id: opcua-demo
+  rooms:
+    - id: plant-room
+devices:
+  - id: opcua_chiller_01
+    type: chiller
+    protocol: opcua_contract_profile
+protocol_profiles:
+  opcua:
+    - name: chiller_run_status
+      endpoint: opcua-edge-gateway-demo
+      namespace: urn:roomci:demo:building
+      node_id: ns=2;s=Chiller01.RunStatus
+      browse_name: Chiller01.RunStatus
+      attribute: Value
+      expected_value: running
+      event_type: condition-state
+      acceptance:
+        - Adapter maps the supplied node id and attribute to a roomci state expectation.
+        - Event type is evidence metadata, not OPC UA subscription behavior.
+acceptance:
+  criteria:
+    - OPC UA node, namespace, browse name, attribute, and expected value are explicit.
+    - No OPC UA server, subscription, security policy, certificate, NodeSet, or compliance behavior is claimed.
+  report_formats: [json, markdown]

@@ -1,0 +1,26 @@
+version: "0.1"
+scenario:
+  name: knx_group_address_profile
+  description: Dry-run profile fixture for KNX group-address contract mapping.
+  tags: [knx, contract-profile, dry-run]
+
+future_milestone:
+  protocol_profile: knx
+  contract: adapter-contracts/examples/knx_group_address_profile.yaml
+  supported_fields:
+    - gateway
+    - group_address
+    - datapoint_type
+    - direction
+    - expected_value
+    - function
+  non_goals:
+    - ETS import
+    - KNX/IP tunneling
+    - routing
+    - bus timing
+    - certification
+
+steps:
+  - at: T
+    event: KNX group-address profile is validated as adapter metadata only.

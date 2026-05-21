@@ -25,7 +25,7 @@
 | Phase 18 | `done` | Release-candidate sample and evidence hardening after Phase 17 | None | `phase18/phase_status.md` |
 | Phase 19 | `done` | S Tier observability and CI evidence completion | None | `phase19/phase_status.md` |
 | Phase 20 | `done` | A Tier developer experience completion for Python SDK, scenario debugger, and adoption workflow docs | VSCode assets deferred to Phase 22 | `phase20/phase_status.md` |
-| Phase 21 | `todo` | B Tier protocol profile completion: Matter, BACnet, KNX, and OPC UA contract profiles | None | `phase21/phase_status.md` |
+| Phase 21 | `done` | B Tier protocol profile completion: Matter, BACnet, KNX, and OPC UA contract profiles | Real customer maps needed before any profile is promoted beyond contract_profile | `phase21/phase_status.md` |
 | Phase 22 | `todo` | Deferred VSCode editor authoring assets | None | `phase22/phase_status.md` |
 
 ## Update Rules
@@ -56,7 +56,7 @@ The final self-review created Phase 15. Phases 15, 16, 17, and 18 are now comple
   documentation.
 - **Phase 20** completed the A Tier developer-experience surface for Python
   automation and scenario debugging without reading Rust internals.
-- **Phase 21** should complete the B Tier protocol-profile surface for Matter,
+- **Phase 21** completed the B Tier protocol-profile surface for Matter,
   BACnet, KNX, and OPC UA as scoped contract profiles, not full protocol
   implementations.
 - **Phase 22** tracks the intentionally deferred VSCode editor authoring

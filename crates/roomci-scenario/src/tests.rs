@@ -194,6 +194,10 @@ fn validates_adapter_contract_examples() {
         "adapter-contracts/examples/generic_mqtt_edge_device.yaml",
         "adapter-contracts/examples/hospitality_local_first_room.yaml",
         "adapter-contracts/examples/building_automation_bms.yaml",
+        "adapter-contracts/examples/matter_gateway_profile.yaml",
+        "adapter-contracts/examples/bacnet_contract_profile.yaml",
+        "adapter-contracts/examples/knx_group_address_profile.yaml",
+        "adapter-contracts/examples/opcua_contract_profile.yaml",
     ] {
         let contract = load_adapter_contract(fixture(path)).unwrap();
         validate_adapter_contract(&contract).unwrap();
@@ -303,6 +307,62 @@ acceptance:
         validate_adapter_contract(&invalid_hmac),
         Err(ScenarioError::InvalidAdapterContract(message))
             if message.contains("severity critical is not declared")
+    ));
+}
+
+#[test]
+fn rejects_adapter_contract_with_invalid_protocol_profile() {
+    let invalid_knx_direction: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter:
+  name: invalid-knx-profile
+protocol_profiles:
+  knx:
+    - name: scene
+      gateway: knx-gateway
+      group_address: 1/2/3
+      datapoint_type: DPT-1.001
+      direction: tunnel
+      expected_value: true
+      function: scene activation
+acceptance:
+  criteria: [KNX profile validates.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    assert!(matches!(
+        validate_adapter_contract(&invalid_knx_direction),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("unsupported direction")
+    ));
+
+    let missing_matter_expected_state: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter:
+  name: invalid-matter-profile
+protocol_profiles:
+  matter:
+    - name: light
+      gateway: matter-gateway
+      device_id: light-01
+      endpoint_id: 1
+      cluster: OnOff
+      attribute: OnOff
+      command: On
+      expected_state: {}
+acceptance:
+  criteria: [Matter profile validates.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    assert!(matches!(
+        validate_adapter_contract(&missing_matter_expected_state),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("expected_state")
     ));
 }
 

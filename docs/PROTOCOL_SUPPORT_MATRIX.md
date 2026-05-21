@@ -10,6 +10,8 @@ Support levels:
 - `serve_endpoint`: the behavior can be driven or observed through `roomci serve`.
 - `external_client_tested`: black-box clients exercise the serve surface in tests or Compose.
 - `conformance_subset`: `roomci` implements a documented wire-level subset.
+- `contract_profile`: adapter-contract fields and dry-run fixtures describe how
+  an evaluator would map a real gateway or protocol stack later.
 - `unsupported`: not implemented, or intentionally outside the product scope.
 
 ## Matrix
@@ -25,6 +27,10 @@ Support levels:
 | WAN / network failover | `scenario_model` | `examples/local_first_cloud_outage.yaml`, `examples/starlink_failover.yaml`, `docs/11_network_and_failover.md`, fault model | Faults can be driven through HTTP `POST /fault`; reports expose result | Link names, degraded/offline semantics, fallback timing, guest-impact thresholds | Network simulator, packet-level WAN emulation, ISP validation |
 | Access control / intercom | `scenario_model` for access drift; `unsupported` for intercom wire behavior | `examples/access_permission_drift.yaml`, `docs/14_intercom_and_access_control.md`, report recommendation logic | No access/intercom protocol endpoint | Identity source, access-system group, stale-user criteria, intercom event/webhook contracts | Real lock/intercom controller, SIP/DTMF gateway, physical access safety guarantee |
 | Comfort / HVAC automation | `scenario_model` | `examples/comfort_auto_mode.yaml`, `docs/13_comfort_automation.md`, core tests | Reports expose comfort assertion results | Comfort target, room model assumptions, sensor names, override behavior, pass/fail threshold | Physical HVAC control, energy optimization, thermal engineering validation |
+| Matter gateway profile | `contract_profile` | `adapter-contracts/examples/matter_gateway_profile.yaml`, `examples/matter_gateway_profile.yaml`, `docs/B_TIER_PROTOCOL_PROFILES.md`, `make protocol-profile-smoke` | Adapter contract validation and dry-run scenario evidence only | Gateway map, device identity, endpoint ids, cluster/attribute/command mapping, expected state, acceptance criteria | Matter fabric, commissioning, CASE/PASE, Thread/Wi-Fi transport, Matter SDK integration, certification |
+| BACnet contract profile | `contract_profile` | `adapter-contracts/examples/bacnet_contract_profile.yaml`, `examples/bacnet_contract_profile.yaml`, `docs/B_TIER_PROTOCOL_PROFILES.md`, `make protocol-profile-smoke` | Adapter contract validation and dry-run scenario evidence only | Device id, object type/instance, property, expected value, event/alarm class, acceptance criteria | BACnet/IP endpoint, object services, COV, BBMD, routing, certification |
+| KNX group-address profile | `contract_profile` | `adapter-contracts/examples/knx_group_address_profile.yaml`, `examples/knx_group_address_profile.yaml`, `docs/B_TIER_PROTOCOL_PROFILES.md`, `make protocol-profile-smoke` | Adapter contract validation and dry-run scenario evidence only | Gateway label, group-address map, datapoint type, direction, expected value, function/room mapping, acceptance criteria | ETS import, KNX/IP tunneling or routing, telegram timing, bus behavior, device certification |
+| OPC UA node profile | `contract_profile` | `adapter-contracts/examples/opcua_contract_profile.yaml`, `examples/opcua_contract_profile.yaml`, `docs/B_TIER_PROTOCOL_PROFILES.md`, `make protocol-profile-smoke` | Adapter contract validation and dry-run scenario evidence only | Endpoint label, namespace, node id, browse name, attribute, expected value, event type, acceptance criteria | OPC UA server endpoint, subscriptions, security policies, certificates, NodeSet/address-space compliance, certification |
 
 ## Compatibility Position
 

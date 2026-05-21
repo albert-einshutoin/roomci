@@ -1,0 +1,27 @@
+version: "0.1"
+scenario:
+  name: opcua_contract_profile
+  description: Dry-run profile fixture for OPC UA node/attribute contract mapping.
+  tags: [opcua, contract-profile, dry-run]
+
+future_milestone:
+  protocol_profile: opcua
+  contract: adapter-contracts/examples/opcua_contract_profile.yaml
+  supported_fields:
+    - endpoint
+    - namespace
+    - node_id
+    - browse_name
+    - attribute
+    - expected_value
+    - event_type
+  non_goals:
+    - OPC UA server
+    - subscriptions
+    - security policies
+    - certificates
+    - address-space compliance
+
+steps:
+  - at: T
+    event: OPC UA node profile is validated as adapter metadata only.

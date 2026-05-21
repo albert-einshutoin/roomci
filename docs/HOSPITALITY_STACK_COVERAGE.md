@@ -30,7 +30,7 @@ The useful product boundary is the middle of the stack: local MQTT, edge control
 | Applications and APIs | Go, TypeScript, Swift, Lua, Protocol Buffers, gRPC, REST, iPad app, Web API, PMS | Mock / contract only / out of scope | Production app languages are not emulator targets. Protocol payloads and acceptance criteria are adapter inputs. PMS and booking flows are out of scope. |
 | Monitoring / data | Grafana, InfluxDB, time-series DB, Grafana Alerting | Mock / contract only | Reports and exported evidence should be enough for CI. Real observability stack replacement is out of scope. |
 | Design / construction | Rebro, CAD, UniFi Design Center, BuddyBoard, draw.io, KiCad, JLCPCB, Blender, 3D printing | Out of scope | These are design/construction tools, not local/CI QA emulator surfaces. |
-| Broader standards | BACnet, OPC UA, Zigbee, Thread, Matter, KNX | Future profile / adapter-contract only / runtime non-goal | Phase 16 deferred BACnet/IP and OPC UA, kept KNX as adapter-contract only unless real group maps are supplied, and kept Matter/Zigbee/Thread as runtime non-goals without gateway contracts. |
+| Broader standards | BACnet, OPC UA, Zigbee, Thread, Matter, KNX | Contract profile / future profile / runtime non-goal | Phase 21 adds Matter, BACnet, KNX, and OPC UA contract profiles for evaluator-supplied gateway maps. Zigbee and Thread remain future profile / runtime non-goals. |
 
 ## Core QA Journey
 

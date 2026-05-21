@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke protocol-profile-smoke s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -17,12 +17,19 @@ GENERIC_MQTT_SCENARIOS := \
 	examples/generic_mqtt_retained_state.yaml \
 	examples/generic_mqtt_duplicate_delivery.yaml
 
+PROTOCOL_PROFILE_SCENARIOS := \
+	examples/matter_gateway_profile.yaml \
+	examples/bacnet_contract_profile.yaml \
+	examples/knx_group_address_profile.yaml \
+	examples/opcua_contract_profile.yaml
+
 PASSING_SCENARIOS := \
 	$(HOSPITALITY_SCENARIOS) \
 	$(GENERIC_MQTT_SCENARIOS)
 
 ALL_SCENARIOS := \
 	$(PASSING_SCENARIOS) \
+	$(PROTOCOL_PROFILE_SCENARIOS) \
 	examples/dali_scene_partial_failure.yaml
 
 demo:
@@ -84,6 +91,7 @@ verify:
 	python3 scripts/protocol_evidence_check.py
 	$(MAKE) s-tier-evidence-smoke
 	$(MAKE) developer-experience-smoke
+	$(MAKE) protocol-profile-smoke
 
 docker-demo:
 	docker build -t roomci:demo .
@@ -138,6 +146,26 @@ developer-experience-smoke:
 	cargo run -p roomci-cli -- debug examples/local_first_cloud_outage.yaml \
 		--debug-json reports/local_first.debug.json \
 		--debug-md reports/local_first.debug.md
+
+protocol-profile-smoke:
+	cargo run -p roomci-cli -- adapter validate \
+		adapter-contracts/examples/matter_gateway_profile.yaml \
+		adapter-contracts/examples/bacnet_contract_profile.yaml \
+		adapter-contracts/examples/knx_group_address_profile.yaml \
+		adapter-contracts/examples/opcua_contract_profile.yaml
+	cargo run -p roomci-cli -- validate \
+		examples/matter_gateway_profile.yaml \
+		examples/bacnet_contract_profile.yaml \
+		examples/knx_group_address_profile.yaml \
+		examples/opcua_contract_profile.yaml
+	cargo run -p roomci-cli -- run \
+		examples/matter_gateway_profile.yaml \
+		examples/bacnet_contract_profile.yaml \
+		examples/knx_group_address_profile.yaml \
+		examples/opcua_contract_profile.yaml \
+		--report-json reports/protocol_profiles.json \
+		--report-md reports/protocol_profiles.md \
+		--junit reports/protocol_profiles.xml
 
 s-tier-evidence-smoke:
 	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml \

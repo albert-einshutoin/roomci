@@ -150,6 +150,21 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 
 These scenarios are expected to pass with `roomci run`.
 
+## Protocol-profile fixtures
+
+These B Tier fixtures validate customer-supplied protocol maps as
+`contract_profile` metadata. They are not wire-protocol endpoints or
+certification evidence.
+
+| Scenario | What it shows |
+|---|---|
+| `examples/matter_gateway_profile.yaml` | Matter gateway endpoint/cluster/attribute/command mapping as contract evidence. |
+| `examples/bacnet_contract_profile.yaml` | BACnet object/property/event mapping as contract evidence. |
+| `examples/knx_group_address_profile.yaml` | KNX group-address/datapoint/function mapping as contract evidence. |
+| `examples/opcua_contract_profile.yaml` | OPC UA node/attribute/event mapping as contract evidence. |
+
+Run them with `make protocol-profile-smoke`.
+
 ## Failure-report demo scenario
 
 | Scenario | What it shows |
@@ -176,6 +191,9 @@ copy-paste evaluator path.
 
 For Python automation and scenario debugging, see
 [`docs/DEVELOPER_WORKFLOW.md`](docs/DEVELOPER_WORKFLOW.md).
+
+For Matter, BACnet, KNX, and OPC UA contract-profile boundaries, see
+[`docs/B_TIER_PROTOCOL_PROFILES.md`](docs/B_TIER_PROTOCOL_PROFILES.md).
 
 ## CLI reference
 

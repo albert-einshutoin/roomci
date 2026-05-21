@@ -44,11 +44,12 @@ It provides the pre-adoption and pre-site layer:
 3. **Developer workflow**
    - use SDK samples or SDK packages from Go, TypeScript, and Python
    - debug scenario execution without reading Rust internals
-   - use editor support for schema validation, snippets, and task commands
+   - use deferred editor support for schema validation, snippets, and task
+     commands once Phase 22 lands
 
 4. **Protocol-profile evaluation**
    - evaluate MQTT and Modbus through implemented official-spec-backed subsets
-   - evaluate Matter, BACnet, KNX, and OPC UA through future/prototype profiles
+   - evaluate Matter, BACnet, KNX, and OPC UA through contract profiles
      that remain honest about non-certification scope
 
 ## Tier Completion Model
@@ -66,11 +67,11 @@ curl scripts or reading Rust code:
 
 - Python SDK package
 - scenario debugger
-- VSCode extension assets
 - SDK and debugger CI examples
 - copy-paste evaluator workflows
 
-This is tracked in Phase 20.
+This is tracked in Phase 20. VSCode extension assets are intentionally deferred
+to Phase 22.
 
 ### B Tier: Future Protocol Profile Surface
 
@@ -82,9 +83,9 @@ protocols are represented as scoped profile prototypes:
 - KNX profile
 - OPC UA profile
 
-These profiles should validate contracts and produce useful scenario evidence,
-but must not claim full protocol certification or production gateway behavior.
-This is tracked in Phase 21.
+These profiles validate contracts and produce dry-run scenario evidence, but
+must not claim full protocol certification or production gateway behavior. This
+is tracked in Phase 21.
 
 ## Permanent Non-Goals
 

@@ -1,0 +1,30 @@
+version: adapter.v1
+adapter:
+  name: bacnet-contract-profile
+  domain_pack: protocol-profile
+  owner: roomci
+site:
+  id: bacnet-demo
+  rooms:
+    - id: plant-room
+devices:
+  - id: bacnet_ahu_01
+    type: air_handler
+    protocol: bacnet_contract_profile
+protocol_profiles:
+  bacnet:
+    - name: ahu_supply_air_temperature_present_value
+      device_id: bacnet_ahu_01
+      object_type: analog-input
+      object_instance: 1
+      property: present-value
+      expected_value: 22.8
+      event_class: comfort-warning
+      acceptance:
+        - Adapter maps BACnet object and property identifiers to roomci evidence.
+        - Alarm class is evidence metadata, not BACnet event enrollment behavior.
+acceptance:
+  criteria:
+    - BACnet object/property fields are present and map to an expected value.
+    - No BACnet/IP endpoint, COV, BBMD, routing, object service, or certification behavior is claimed.
+  report_formats: [json, markdown]

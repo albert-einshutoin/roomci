@@ -28,6 +28,7 @@ These are implemented and tracked as `done` in phase status files:
 | Release-candidate evidence hardening | `done` | Phase 18 |
 | S Tier observability and CI evidence completion | `done` | Phase 19 |
 | A Tier Python and debugger developer experience | `done` | Phase 20 |
+| B Tier protocol profiles for Matter, BACnet, KNX, and OPC UA | `done` | Phase 21 |
 
 ## Already Taskified For Implementation
 
@@ -111,6 +112,9 @@ These are the Phase 16 items promoted into concrete implementation tasks and com
 | KNX contract profile | `tasks/phase21/03_knx_contract_profile_task.md` |
 | OPC UA contract profile | `tasks/phase21/04_opcua_contract_profile_task.md` |
 | B Tier evidence and docs gate | `tasks/phase21/05_b_tier_evidence_docs_gate_task.md` |
+
+These Phase 21 tasks are now implemented as `contract_profile` evidence, not
+wire-protocol implementations.
 
 ## Intentionally Not Taskified As Implementation
 

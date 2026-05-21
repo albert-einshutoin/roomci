@@ -10,6 +10,7 @@ REGISTRY_TEXT = (ROOT / "docs" / "PROTOCOL_CONFORMANCE_REGISTRY.md").read_text()
 SUPPORT_TEXT = (ROOT / "docs" / "PROTOCOL_SUPPORT_MATRIX.md").read_text()
 RELEASE_TEXT = (ROOT / "docs" / "RELEASE_CHECKLIST.md").read_text()
 MAKEFILE_TEXT = (ROOT / "Makefile").read_text()
+B_TIER_TEXT = (ROOT / "docs" / "B_TIER_PROTOCOL_PROFILES.md").read_text()
 SOURCE_TEXT = "\n".join(
     path.read_text(errors="ignore")
     for directory in ["crates", "examples", "adapter-contracts", "scripts", ".github"]
@@ -75,6 +76,16 @@ def main():
             fail(f"{name} is adapter-sample tested but lacks an adapter smoke command")
         if statuses & {"unsupported", "future_profile"} and not claim.get("non_goal_docs"):
             fail(f"{name} is unsupported/future but has no non-goal docs")
+        if statuses & {"contract_profile"}:
+            if "conformance_subset" in statuses:
+                fail(f"{name} cannot be both contract_profile and conformance_subset")
+            if "make protocol-profile-smoke" not in commands:
+                fail(f"{name} is a contract profile but lacks make protocol-profile-smoke")
+            if not (claim.get("examples") and claim.get("non_goal_docs")):
+                fail(f"{name} is a contract profile but lacks examples/non-goal docs")
+            for token in ["not certification", "Non-goals", "contract_profile"]:
+                if token not in B_TIER_TEXT:
+                    fail(f"B Tier profile docs missing required wording: {token}")
         for command in commands:
             require_command(command)
 

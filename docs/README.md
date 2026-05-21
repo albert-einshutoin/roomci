@@ -16,6 +16,7 @@ its own.
 | Modbus serve | [Modbus TCP subset](MODBUS_TCP_SUBSET.md) | Minimal Modbus TCP read/write endpoint for PoC tests |
 | Protocols | [Protocol support matrix](PROTOCOL_SUPPORT_MATRIX.md) | Source of truth for behavior models, serve endpoints, tested external surfaces, and non-goals |
 | Protocols | [Protocol conformance registry](PROTOCOL_CONFORMANCE_REGISTRY.md) | Official references, implemented subsets, black-box verification commands, and explicit rejections |
+| Protocols | [B Tier protocol profiles](B_TIER_PROTOCOL_PROFILES.md) | Matter, BACnet, KNX, and OPC UA contract-profile fixtures and non-goals |
 | Coverage | [Hospitality stack coverage](HOSPITALITY_STACK_COVERAGE.md) | What roomci covers, mocks, defers, or rejects from a hospitality smart-home stack |
 | Journey | [Core QA journey](CORE_QA_JOURNEY.md) | End-to-end local MQTT, edge, device, fault, BMS, comfort, and evidence path |
 | Adapters | [Adapter contract kit](ADAPTER_CONTRACT_KIT.md) | Templates, examples, and validation for company-specific protocol contracts |

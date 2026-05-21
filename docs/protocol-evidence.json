@@ -202,6 +202,70 @@
       ],
       "evidence_commands": ["make developer-experience-smoke"],
       "non_goal_docs": ["docs/DEVELOPER_WORKFLOW.md"]
+    },
+    {
+      "name": "Matter gateway contract profile",
+      "status": ["contract_profile"],
+      "docs": [
+        "docs/B_TIER_PROTOCOL_PROFILES.md",
+        "docs/PROTOCOL_SUPPORT_MATRIX.md",
+        "docs/PROTOCOL_CONFORMANCE_REGISTRY.md"
+      ],
+      "examples": [
+        "adapter-contracts/examples/matter_gateway_profile.yaml",
+        "examples/matter_gateway_profile.yaml"
+      ],
+      "test_names": ["validates_adapter_contract_examples"],
+      "evidence_commands": ["make protocol-profile-smoke"],
+      "non_goal_docs": ["docs/B_TIER_PROTOCOL_PROFILES.md"]
+    },
+    {
+      "name": "BACnet contract profile",
+      "status": ["contract_profile"],
+      "docs": [
+        "docs/B_TIER_PROTOCOL_PROFILES.md",
+        "docs/PROTOCOL_SUPPORT_MATRIX.md",
+        "docs/PROTOCOL_CONFORMANCE_REGISTRY.md"
+      ],
+      "examples": [
+        "adapter-contracts/examples/bacnet_contract_profile.yaml",
+        "examples/bacnet_contract_profile.yaml"
+      ],
+      "test_names": ["validates_adapter_contract_examples"],
+      "evidence_commands": ["make protocol-profile-smoke"],
+      "non_goal_docs": ["docs/B_TIER_PROTOCOL_PROFILES.md"]
+    },
+    {
+      "name": "KNX group-address contract profile",
+      "status": ["contract_profile"],
+      "docs": [
+        "docs/B_TIER_PROTOCOL_PROFILES.md",
+        "docs/PROTOCOL_SUPPORT_MATRIX.md",
+        "docs/PROTOCOL_CONFORMANCE_REGISTRY.md"
+      ],
+      "examples": [
+        "adapter-contracts/examples/knx_group_address_profile.yaml",
+        "examples/knx_group_address_profile.yaml"
+      ],
+      "test_names": ["validates_adapter_contract_examples"],
+      "evidence_commands": ["make protocol-profile-smoke"],
+      "non_goal_docs": ["docs/B_TIER_PROTOCOL_PROFILES.md"]
+    },
+    {
+      "name": "OPC UA node contract profile",
+      "status": ["contract_profile"],
+      "docs": [
+        "docs/B_TIER_PROTOCOL_PROFILES.md",
+        "docs/PROTOCOL_SUPPORT_MATRIX.md",
+        "docs/PROTOCOL_CONFORMANCE_REGISTRY.md"
+      ],
+      "examples": [
+        "adapter-contracts/examples/opcua_contract_profile.yaml",
+        "examples/opcua_contract_profile.yaml"
+      ],
+      "test_names": ["validates_adapter_contract_examples"],
+      "evidence_commands": ["make protocol-profile-smoke"],
+      "non_goal_docs": ["docs/B_TIER_PROTOCOL_PROFILES.md"]
     }
   ]
 }

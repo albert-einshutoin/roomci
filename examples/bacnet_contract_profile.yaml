@@ -1,0 +1,26 @@
+version: "0.1"
+scenario:
+  name: bacnet_contract_profile
+  description: Dry-run profile fixture for BACnet object/property contract mapping.
+  tags: [bacnet, contract-profile, dry-run]
+
+future_milestone:
+  protocol_profile: bacnet
+  contract: adapter-contracts/examples/bacnet_contract_profile.yaml
+  supported_fields:
+    - device_id
+    - object_type
+    - object_instance
+    - property
+    - expected_value
+    - event_class
+  non_goals:
+    - BACnet/IP endpoint
+    - COV
+    - BBMD
+    - routing
+    - certification
+
+steps:
+  - at: T
+    event: BACnet profile contract is validated as object/property metadata only.

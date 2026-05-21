@@ -1,0 +1,31 @@
+version: adapter.v1
+adapter:
+  name: knx-group-address-profile
+  domain_pack: protocol-profile
+  owner: roomci
+site:
+  id: knx-demo
+  rooms:
+    - id: living
+devices:
+  - id: knx_scene_living
+    type: lighting_scene
+    protocol: knx_contract_profile
+protocol_profiles:
+  knx:
+    - name: living_scene_switch
+      gateway: knx-ip-gateway-demo
+      group_address: 1/2/10
+      datapoint_type: DPT-1.001
+      direction: write
+      expected_value: true
+      function: living welcome scene
+      room: living
+      acceptance:
+        - Adapter maps the supplied group address and DPT to a roomci scene expectation.
+        - Group-address map is evaluator-supplied and not inferred from ETS.
+acceptance:
+  criteria:
+    - KNX group address, datapoint type, direction, and expected value are explicit.
+    - No ETS import, KNX/IP tunneling, routing, bus timing, or device certification behavior is claimed.
+  report_formats: [json, markdown]

@@ -7,7 +7,9 @@ Matter and CSA Aliro are interesting future standards, but they are not MVP prio
 Use future positioning:
 
 ```txt
-roomci can add Matter-like or Aliro-like profiles once the local-first QA core is stable.
+roomci has a Matter gateway contract_profile for evaluator-supplied endpoint,
+cluster, attribute, command, and expected-state maps. It does not implement
+Matter fabric, commissioning, transport, SDK integration, or certification.
 ```
 
 ## Home Assistant discovery
@@ -41,6 +43,10 @@ Useful for future BMS maturity:
 - binaryValue
 - device status
 - alarm state
+
+Phase 21 adds a BACnet contract_profile for evaluator-supplied object/property
+maps. It does not implement a BACnet/IP endpoint, object services, COV, BBMD,
+routing, or certification.
 
 ## DoorBird / ONVIF / SIP / DTMF
 
