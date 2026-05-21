@@ -1,6 +1,6 @@
 use super::*;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     io::Read,
     net::{SocketAddr, TcpListener, TcpStream},
     path::PathBuf,
@@ -43,6 +43,7 @@ fn serve_state_for_scenario(scenario: ScenarioFile) -> Arc<Mutex<ServeState>> {
         has_completed_run: false,
         external_observation_timeline: Vec::new(),
         external_observations: BTreeMap::new(),
+        bms_replay_ids: BTreeSet::new(),
         external_mqtt_final_state: BTreeMap::new(),
         external_mqtt_retained_state: BTreeMap::new(),
         modbus,

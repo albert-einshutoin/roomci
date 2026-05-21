@@ -251,6 +251,62 @@ acceptance:
 }
 
 #[test]
+fn rejects_adapter_contract_with_invalid_bms_hardening_fields() {
+    let invalid_content_type: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter:
+  name: invalid-bms-content-type
+bms:
+  alerts:
+    - id: emergency
+      source: contact.emergency
+      severity: critical
+      content_type: text/plain
+      channels: [slack]
+acceptance:
+  criteria: [BMS alert contract is valid.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    assert!(matches!(
+        validate_adapter_contract(&invalid_content_type),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("unsupported content_type")
+    ));
+
+    let invalid_hmac: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter:
+  name: invalid-bms-hmac
+bms:
+  alerts:
+    - id: emergency
+      source: contact.emergency
+      severity: critical
+      severity_enum: [info, warning]
+      hmac:
+        header: X-Signature
+        algorithm: sha1
+        secret_ref: env:SECRET
+      replay_window_seconds: 0
+      channels: [slack]
+acceptance:
+  criteria: [BMS alert contract is valid.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    assert!(matches!(
+        validate_adapter_contract(&invalid_hmac),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("severity critical is not declared")
+    ));
+}
+
+#[test]
 fn rejects_ambiguous_mqtt_connection_contracts() {
     let scenario: ScenarioFile = serde_yaml::from_str(
         r#"

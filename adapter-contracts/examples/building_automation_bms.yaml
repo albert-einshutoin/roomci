@@ -36,6 +36,10 @@ bms:
     - id: leak-detected
       source: contact.leak_sensor_01
       severity: critical
+      schema_version: bms.alert.v1
+      content_type: application/json
+      severity_enum: [info, warning, critical, emergency]
+      replay_window_seconds: 300
       channels: [bms-dashboard, pager]
       ticket_lifecycle: [open, assigned, resolved]
 acceptance:

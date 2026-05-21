@@ -37,6 +37,33 @@ alerts:
     runbook_url: https://example.com/runbooks/sauna-emergency
 ```
 
+## Adapter contract hardening
+
+Company-specific BMS webhook assumptions belong in adapter contracts. The
+core runtime remains vendor-neutral, but validates enough shape to catch bad
+PoC wiring early:
+
+```yaml
+bms:
+  alerts:
+    - id: sauna_emergency
+      source: contact.sauna_emergency_button
+      severity: critical
+      schema_version: bms.alert.v1
+      content_type: application/json
+      severity_enum: [info, warning, critical, emergency]
+      hmac:
+        header: X-RoomCI-Signature
+        algorithm: hmac-sha256
+        secret_ref: env:ROOMCI_BMS_WEBHOOK_SECRET
+      replay_window_seconds: 300
+```
+
+`roomci serve` also rejects unsupported external BMS severities and duplicate
+`replay_id` values on `POST /external/bms/contact`. HMAC metadata is declared
+in the adapter contract; the local PoC runtime does not verify production
+secrets.
+
 ## Notification model
 
 Slack-like message:

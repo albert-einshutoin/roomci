@@ -31,6 +31,15 @@ Additional external input endpoint:
 
 - `POST /external/bms/contact` accepts BMS/contact event JSON for operations PoCs. See [`EXTERNAL_PROTOCOL_DEPTH.md`](EXTERNAL_PROTOCOL_DEPTH.md).
 
+`POST /external/bms/contact` accepts these hardening fields:
+
+- `severity`: optional, must be `info`, `warning`, `critical`, or `emergency`
+- `schema_version`: optional string, copied into evidence
+- `replay_id`: optional string, rejected with `HTTP 409` if reused in the same serve process
+
+Production HMAC verification is intentionally outside the local serve runtime;
+declare HMAC metadata in an adapter contract instead.
+
 ## Run Requests
 
 `POST /run` snapshots the current scenario config, releases the serve-state lock while the scenario executes, and then writes the new report back after execution.

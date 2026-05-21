@@ -348,9 +348,26 @@ pub struct AdapterBmsAlert {
     pub source: String,
     pub severity: String,
     #[serde(default)]
+    pub schema_version: Option<String>,
+    #[serde(default)]
+    pub content_type: Option<String>,
+    #[serde(default)]
+    pub severity_enum: Vec<String>,
+    #[serde(default)]
+    pub hmac: Option<AdapterHmacMetadata>,
+    #[serde(default)]
+    pub replay_window_seconds: Option<u64>,
+    #[serde(default)]
     pub channels: Vec<String>,
     #[serde(default)]
     pub ticket_lifecycle: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AdapterHmacMetadata {
+    pub header: String,
+    pub algorithm: String,
+    pub secret_ref: String,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]

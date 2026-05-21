@@ -36,6 +36,14 @@ bms:
     - id: demo-critical-contact
       source: contact.demo_emergency
       severity: critical
+      schema_version: bms.alert.v1
+      content_type: application/json
+      severity_enum: [info, warning, critical, emergency]
+      hmac:
+        header: X-RoomCI-Signature
+        algorithm: hmac-sha256
+        secret_ref: env:ROOMCI_BMS_WEBHOOK_SECRET
+      replay_window_seconds: 300
       channels: [slack, phone]
       ticket_lifecycle: [open, acknowledged, resolved]
 edge:

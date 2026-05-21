@@ -33,6 +33,7 @@ fn serve_state_for_scenario(scenario: ScenarioFile) -> Arc<Mutex<ServeState>> {
         has_completed_run: false,
         external_observation_timeline: Vec::new(),
         external_observations: BTreeMap::new(),
+        bms_replay_ids: BTreeSet::new(),
         external_mqtt_final_state: BTreeMap::new(),
         external_mqtt_retained_state: BTreeMap::new(),
         modbus,
@@ -396,6 +397,54 @@ fn external_bms_contact_rejects_invalid_payloads() {
     assert!(after_state.contains("\"external_observations\":{}"));
     let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
     assert!(!timeline.contains("external_bms_contact_observed"));
+}
+
+#[test]
+fn external_bms_contact_enforces_severity_schema_and_replay_id() {
+    let state = serve_state();
+
+    let invalid_severity = route_request(
+        &request(
+            "POST",
+            "/external/bms/contact",
+            r#"{"source":"contact.sauna_emergency_button","state":"on","severity":"page-now"}"#,
+        ),
+        Arc::clone(&state),
+    );
+    assert!(invalid_severity.contains("HTTP/1.1 400 Bad Request"));
+    assert!(invalid_severity.contains("invalid_severity"));
+
+    let invalid_schema = route_request(
+        &request(
+            "POST",
+            "/external/bms/contact",
+            r#"{"source":"contact.sauna_emergency_button","state":"on","schema_version":1}"#,
+        ),
+        Arc::clone(&state),
+    );
+    assert!(invalid_schema.contains("HTTP/1.1 400 Bad Request"));
+    assert!(invalid_schema.contains("invalid_schema_version"));
+
+    let accepted = route_request(
+        &request(
+            "POST",
+            "/external/bms/contact",
+            r#"{"source":"contact.sauna_emergency_button","state":"on","severity":"critical","schema_version":"bms.alert.v1","replay_id":"event-001"}"#,
+        ),
+        Arc::clone(&state),
+    );
+    assert!(accepted.contains("HTTP/1.1 202 Accepted"));
+
+    let replayed = route_request(
+        &request(
+            "POST",
+            "/external/bms/contact",
+            r#"{"source":"contact.sauna_emergency_button","state":"on","severity":"critical","schema_version":"bms.alert.v1","replay_id":"event-001"}"#,
+        ),
+        Arc::clone(&state),
+    );
+    assert!(replayed.contains("HTTP/1.1 409 Conflict"));
+    assert!(replayed.contains("duplicate_replay_id"));
 }
 
 #[test]

@@ -5,7 +5,7 @@
 //! production HTTP server or MQTT broker.
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     io::Write,
     net::TcpListener,
     sync::{Arc, Mutex, MutexGuard},
@@ -114,6 +114,8 @@ struct ServeState {
     /// `latest_report.final_state` (with the `external.bms.` prefix) at the
     /// next `/run` boundary.
     external_observations: BTreeMap<String, BTreeMap<String, serde_json::Value>>,
+    /// Optional replay IDs accepted through `/external/bms/contact`.
+    bms_replay_ids: BTreeSet<String>,
     /// Device final-state updates derived from external MQTT publishes. Kept
     /// separate from `latest_report` until a successful `/run` drains the
     /// overlay.
@@ -148,6 +150,7 @@ fn serve_http(
         has_completed_run: false,
         external_observation_timeline: Vec::new(),
         external_observations: BTreeMap::new(),
+        bms_replay_ids: BTreeSet::new(),
         external_mqtt_final_state: BTreeMap::new(),
         external_mqtt_retained_state: BTreeMap::new(),
         modbus,

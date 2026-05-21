@@ -266,11 +266,49 @@ pub(crate) fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>
                             }),
                         );
                     };
+                    if let Some(schema_version) = contact.get("schema_version") {
+                        if !schema_version.is_string() {
+                            return json_response(
+                                400,
+                                &json!({
+                                    "error": "invalid_schema_version",
+                                    "message": "external BMS contact payload schema_version must be a string when present"
+                                }),
+                            );
+                        }
+                    }
+                    if let Some(severity) = contact.get("severity").and_then(|value| value.as_str())
+                    {
+                        if !matches!(severity, "info" | "warning" | "critical" | "emergency") {
+                            return json_response(
+                                400,
+                                &json!({
+                                    "error": "invalid_severity",
+                                    "message": "severity must be one of info, warning, critical, emergency"
+                                }),
+                            );
+                        }
+                    }
+                    let replay_id = contact
+                        .get("replay_id")
+                        .and_then(|value| value.as_str())
+                        .map(str::to_string);
 
                     let mut state = match lock_serve_state(&state) {
                         Ok(state) => state,
                         Err(error) => return serve_error_response(error),
                     };
+                    if let Some(replay_id) = &replay_id {
+                        if !state.bms_replay_ids.insert(replay_id.clone()) {
+                            return json_response(
+                                409,
+                                &json!({
+                                    "error": "duplicate_replay_id",
+                                    "message": "external BMS contact replay_id has already been accepted"
+                                }),
+                            );
+                        }
+                    }
                     let sanitized_source = sanitize_external_key(source);
                     let sanitized_state = sanitize_external_key(contact_state);
                     let mut state_map = BTreeMap::new();
@@ -283,6 +321,20 @@ pub(crate) fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>
                         state_map.insert(
                             "severity".to_string(),
                             serde_json::Value::String(sanitize_external_key(severity)),
+                        );
+                    }
+                    if let Some(schema_version) =
+                        contact.get("schema_version").and_then(|value| value.as_str())
+                    {
+                        state_map.insert(
+                            "schema_version".to_string(),
+                            serde_json::Value::String(sanitize_external_key(schema_version)),
+                        );
+                    }
+                    if let Some(replay_id) = replay_id {
+                        state_map.insert(
+                            "replay_id".to_string(),
+                            serde_json::Value::String(sanitize_external_key(&replay_id)),
                         );
                     }
                     state

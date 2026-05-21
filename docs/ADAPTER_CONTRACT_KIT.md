@@ -45,6 +45,11 @@ For BMS / operations:
 
 - alert source
 - severity
+- schema version
+- content type, currently `application/json`
+- severity enum, such as `info`, `warning`, `critical`, `emergency`
+- optional HMAC metadata: header, `hmac-sha256`, and secret reference
+- replay window in seconds
 - notification channels
 - ticket lifecycle
 - acknowledgement expectation

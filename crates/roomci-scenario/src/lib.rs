@@ -138,6 +138,45 @@ pub fn validate_adapter_contract(contract: &AdapterContract) -> Result<(), Scena
         require_non_empty("bms.alerts[].id", &alert.id)?;
         require_non_empty("bms.alerts[].source", &alert.source)?;
         require_non_empty("bms.alerts[].severity", &alert.severity)?;
+        if let Some(schema_version) = &alert.schema_version {
+            require_non_empty("bms.alerts[].schema_version", schema_version)?;
+        }
+        if let Some(content_type) = &alert.content_type {
+            if content_type != "application/json" {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "BMS alert {} uses unsupported content_type {}; expected application/json",
+                    alert.id, content_type
+                )));
+            }
+        }
+        if !alert.severity_enum.is_empty()
+            && !alert
+                .severity_enum
+                .iter()
+                .any(|severity| severity == &alert.severity)
+        {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "BMS alert {} severity {} is not declared in severity_enum",
+                alert.id, alert.severity
+            )));
+        }
+        if let Some(hmac) = &alert.hmac {
+            require_non_empty("bms.alerts[].hmac.header", &hmac.header)?;
+            require_non_empty("bms.alerts[].hmac.algorithm", &hmac.algorithm)?;
+            require_non_empty("bms.alerts[].hmac.secret_ref", &hmac.secret_ref)?;
+            if hmac.algorithm != "hmac-sha256" {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "BMS alert {} uses unsupported HMAC algorithm {}; expected hmac-sha256",
+                    alert.id, hmac.algorithm
+                )));
+            }
+        }
+        if alert.replay_window_seconds == Some(0) {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "BMS alert {} replay_window_seconds must be greater than zero",
+                alert.id
+            )));
+        }
         if alert.channels.is_empty() {
             return Err(ScenarioError::InvalidAdapterContract(format!(
                 "BMS alert {} must declare at least one notification channel",
