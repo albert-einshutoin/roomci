@@ -53,6 +53,15 @@ jobs:
       - name: Build roomci image
         run: docker build -t roomci:ci .
 
+      - name: Validate adapter contracts
+        run: |
+          docker run --rm \
+            -v $PWD/adapter-contracts:/adapter-contracts:ro \
+            roomci:ci \
+            adapter validate \
+            /adapter-contracts/templates/company_adapter_contract.yaml \
+            /adapter-contracts/examples/*.yaml
+
       - name: Validate public scenarios
         run: |
           docker run --rm \
@@ -115,6 +124,10 @@ jobs:
             -v $PWD/examples:/scenarios:ro \
             roomci:ci \
             serve --config /scenarios/local_first_cloud_outage.yaml --check
+          docker run --rm \
+            -v $PWD/examples:/scenarios:ro \
+            roomci:ci \
+            serve --config /scenarios/protocol_conformance_smoke.yaml --check
 
       - name: Run intentional failure-report scenario
         run: |
@@ -134,6 +147,17 @@ jobs:
           set -e
           test "$status" -eq 1
 
+      - name: Docker Compose integration tests
+        run: |
+          docker compose -f compose/docker-compose.yml build scenario-smoke
+          docker compose -f compose/docker-compose.yml run --rm scenario-smoke
+          docker compose -f compose/docker-compose.yml build roomci-serve external-controller protocol-smoke
+          docker compose -f compose/docker-compose.yml run --rm external-controller
+          docker compose -f compose/docker-compose.yml run --rm protocol-smoke
+          docker compose -f compose/docker-compose.yml build adapter-samples
+          docker compose -f compose/docker-compose.yml run --rm adapter-samples
+          docker compose -f compose/docker-compose.yml down
+
       - name: Upload roomci reports
         uses: actions/upload-artifact@v4
         with:
@@ -146,11 +170,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Protocol evidence check script
+        run: python3 scripts/protocol_evidence_check.py
+
       - name: Protocol and domain evidence registry
         run: make protocol-evidence
 
       - name: Adapter sample smoke
         run: make adapter-samples-smoke
+
+      - name: S-Tier evidence smoke
+        run: make s-tier-evidence-smoke
 
       - name: Developer experience smoke
         run: make developer-experience-smoke
