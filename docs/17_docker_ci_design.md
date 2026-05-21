@@ -56,7 +56,10 @@ docker run --rm \
   run /scenarios/local_first_cloud_outage.yaml \
   --report-md /reports/roomci.md \
   --report-json /reports/roomci.json \
-  --junit /reports/roomci.xml
+  --junit /reports/roomci.xml \
+  --timeline-json /reports/roomci.timeline.json \
+  --timeline-ndjson /reports/roomci.timeline.ndjson \
+  --observability-json /reports/roomci.observability.json
 ```
 
 Service-mode config check:
@@ -128,7 +131,17 @@ jobs:
             ghcr.io/albert-einshutoin/roomci:latest \
             run /scenarios/local_first_cloud_outage.yaml \
             --junit /reports/roomci.xml \
-            --report-md /reports/roomci.md
+            --report-md /reports/roomci.md \
+            --report-json /reports/roomci.json \
+            --timeline-json /reports/roomci.timeline.json \
+            --timeline-ndjson /reports/roomci.timeline.ndjson \
+            --observability-json /reports/roomci.observability.json
+
+      - name: Verify release evidence
+        run: |
+          make protocol-evidence
+          make adapter-samples-smoke
+          make s-tier-evidence-smoke
 ```
 
 ## CI outputs
@@ -139,12 +152,17 @@ Required:
 - Markdown summary
 - JSON report
 - JUnit XML
+- timeline JSON
+- timeline NDJSON
+- observability JSON
 
 Useful:
 
 - GitHub Step Summary
 - uploaded artifact
 - per-scenario timeline
+- trace/run correlation id
+- artifact-level observability counters
 
 ## Report content
 

@@ -73,6 +73,7 @@ its own.
 | PoC | [Pre-adoption PoC checklist](PRE_ADOPTION_POC_CHECKLIST.md) | Integration checklist for external protocol contracts and acceptance criteria |
 | PoC | [Generic SmartHome evaluator checklist](GENERIC_SMARTHOME_EVALUATOR_CHECKLIST.md) | Evaluation checklist for generic IoT, SmartHome, edge-device, and building-automation teams |
 | Release | [Release checklist](RELEASE_CHECKLIST.md) | Reproducible gates for CI, Docker, Compose, reports, docs, and coverage |
+| Release | [S Tier evidence guide](S_TIER_EVIDENCE_GUIDE.md) | Copy-paste evaluator path for adapter CI, timeline export, trace metadata, observability artifacts, and GitHub Actions evidence |
 | 20 | [Appendix: future integrations](20_appendix_future_integrations.md) | Out-of-scope work and where it would live |
 
 For the API-level reference, run `cargo doc --no-deps --open` from the repo

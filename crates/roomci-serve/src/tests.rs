@@ -87,6 +87,26 @@ fn http_router_serves_core_observation_endpoints() {
 
     let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
     assert!(timeline.contains("mqtt_publish"));
+
+    let timeline_export = route_request(
+        &request("GET", "/timeline.export.json", ""),
+        Arc::clone(&state),
+    );
+    assert!(timeline_export.contains("roomci.timeline.v1"));
+    assert!(timeline_export.contains("\"sequence\": 0"));
+    assert!(timeline_export.contains("\"trace_id\""));
+
+    let timeline_ndjson =
+        route_request(&request("GET", "/timeline.ndjson", ""), Arc::clone(&state));
+    assert!(timeline_ndjson.contains("application/x-ndjson"));
+    assert!(timeline_ndjson.contains("roomci.timeline.v1"));
+
+    let observability = route_request(
+        &request("GET", "/observability/latest.json", ""),
+        Arc::clone(&state),
+    );
+    assert!(observability.contains("roomci.observability.v1"));
+    assert!(observability.contains("\"events_by_type\""));
 }
 
 #[test]
@@ -97,6 +117,7 @@ fn health_reports_idle_running_passed_and_failed_states() {
     assert!(idle.contains("HTTP/1.1 200 OK"));
     assert!(idle.contains("\"status\":\"idle\""));
     assert!(idle.contains("\"serve_version\""));
+    assert!(idle.contains("\"latest_report_id\":\"generic_mqtt_retained_state\""));
 
     {
         let mut state_guard = state.lock().unwrap();

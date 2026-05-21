@@ -158,13 +158,21 @@ These scenarios are expected to pass with `roomci run`.
 
 ## Reports
 
-`roomci run` emits three report formats from the same execution:
+`roomci run` emits CI-friendly report and evidence formats from the same execution:
 
 - `--report-json <path>` — full machine-readable run report (timeline, assertions, final state, retained MQTT messages).
 - `--report-md <path>` — human-readable Markdown summary with guest-impact framing.
 - `--junit <path>` — JUnit XML for CI dashboards (GitHub Actions, GitLab CI, Jenkins).
+- `--timeline-json <path>` — stable timeline event export for log/search/trace ingestion.
+- `--timeline-ndjson <path>` — newline-delimited timeline event export.
+- `--observability-json <path>` — deterministic counters and run summary for external observability ingestion.
+- `--run-id <id>` — stable run correlation id used by JSON, timeline, and observability artifacts.
 
-CI artifacts from `.github/workflows/smart-home-ci.yml` upload all three formats for every passing demo scenario and the intentional failure-report demo.
+CI artifacts from `.github/workflows/smart-home-ci.yml` upload report,
+timeline, and observability formats for every passing demo scenario and the
+intentional failure-report demo. See
+[`docs/S_TIER_EVIDENCE_GUIDE.md`](docs/S_TIER_EVIDENCE_GUIDE.md) for the
+copy-paste evaluator path.
 
 ## CLI reference
 
@@ -173,6 +181,12 @@ roomci run <scenarios...>
   --report-json <path>   write JSON report for the last scenario
   --report-md   <path>   write Markdown report for the last scenario
   --junit       <path>   write JUnit XML report for the last scenario
+  --timeline-json <path> write stable timeline JSON for the last scenario
+  --timeline-ndjson <path>
+                         write stable newline-delimited timeline JSON
+  --observability-json <path>
+                         write observability summary JSON
+  --run-id <id>          set the run correlation id for exported artifacts
   --verbose              print every timeline event
   --quiet                suppress per-scenario detail
   --dry-run              validate only; do not execute
@@ -202,6 +216,8 @@ Current HTTP endpoints:
 - `GET /scenario`
 - `GET /state`
 - `GET /timeline`
+- `GET /timeline.export.json`
+- `GET /timeline.ndjson`
 - `POST /fault`
 - `POST /run`
 - `POST /finish`
@@ -209,6 +225,7 @@ Current HTTP endpoints:
 - `GET /reports/latest.json`
 - `GET /reports/latest.md`
 - `GET /reports/latest.junit.xml`
+- `GET /observability/latest.json`
 
 This is a local PoC integration surface, not a production API or MQTT broker replacement.
 

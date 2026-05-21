@@ -11,7 +11,9 @@ use std::{
 };
 
 use roomci_core::{run_scenario, TimelineEvent};
-use roomci_report::{to_json, to_junit, to_markdown};
+use roomci_report::{
+    to_json, to_junit, to_markdown, to_observability_json, to_timeline_json, to_timeline_ndjson,
+};
 use serde_json::json;
 
 use crate::{
@@ -177,7 +179,7 @@ pub(crate) fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>
                     "status": status,
                     "scenario": state.scenario.scenario.name,
                     "result": state.latest_report.result,
-                    "latest_report_id": format!("{}:latest", state.latest_report.scenario_name),
+                    "latest_report_id": state.latest_report.run_id,
                     "serve_version": env!("CARGO_PKG_VERSION"),
                 }),
             )
@@ -215,6 +217,34 @@ pub(crate) fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>
             };
             let rendered = rendered_report_view(&state);
             json_response(200, &rendered.timeline)
+        }
+        ("GET", "/timeline.export.json") => {
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
+            let rendered = rendered_report_view(&state);
+            match to_timeline_json(&rendered) {
+                Ok(report) => raw_response(200, "application/json", &report),
+                Err(error) => json_response(
+                    500,
+                    &json!({ "error": "timeline_render_failed", "message": error.to_string() }),
+                ),
+            }
+        }
+        ("GET", "/timeline.ndjson") => {
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
+            let rendered = rendered_report_view(&state);
+            match to_timeline_ndjson(&rendered) {
+                Ok(report) => raw_response(200, "application/x-ndjson", &report),
+                Err(error) => json_response(
+                    500,
+                    &json!({ "error": "timeline_render_failed", "message": error.to_string() }),
+                ),
+            }
         }
         ("POST", "/fault") => match serde_json::from_str::<serde_json::Value>(&request.body) {
             Ok(fault) => {
@@ -452,6 +482,20 @@ pub(crate) fn route_request(request: &HttpRequest, state: Arc<Mutex<ServeState>>
             };
             let rendered = rendered_report_view(&state);
             raw_response(200, "application/xml; charset=utf-8", &to_junit(&rendered))
+        }
+        ("GET", "/observability/latest.json") => {
+            let state = match lock_serve_state(&state) {
+                Ok(state) => state,
+                Err(error) => return serve_error_response(error),
+            };
+            let rendered = rendered_report_view(&state);
+            match to_observability_json(&rendered) {
+                Ok(report) => raw_response(200, "application/json", &report),
+                Err(error) => json_response(
+                    500,
+                    &json!({ "error": "observability_render_failed", "message": error.to_string() }),
+                ),
+            }
         }
         _ => json_response(
             404,

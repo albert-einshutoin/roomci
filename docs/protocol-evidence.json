@@ -129,6 +129,48 @@
       "test_names": [],
       "evidence_commands": ["make adapter-samples-smoke"],
       "non_goal_docs": ["docs/ADAPTER_SDK_SAMPLES.md", "examples/adapters/README.md"]
+    },
+    {
+      "name": "S Tier GitHub Actions evidence parity",
+      "status": ["ci_evidence_tested"],
+      "docs": [
+        "docs/RELEASE_CHECKLIST.md",
+        "docs/EVALUATION_EVIDENCE_PACK.md"
+      ],
+      "examples": [".github/workflows/smart-home-ci.yml"],
+      "test_names": [],
+      "evidence_commands": ["make protocol-evidence", "make adapter-samples-smoke"],
+      "non_goal_docs": ["docs/RELEASE_CHECKLIST.md"]
+    },
+    {
+      "name": "Stable timeline export and trace metadata",
+      "status": ["artifact_export"],
+      "docs": [
+        "docs/HTTP_SERVE_BEHAVIOR.md",
+        "docs/RELEASE_CHECKLIST.md"
+      ],
+      "examples": ["scripts/s_tier_evidence_check.py"],
+      "test_names": [
+        "renders_stable_timeline_export",
+        "run_generates_timeline_and_observability_exports_with_run_id"
+      ],
+      "evidence_commands": ["make s-tier-evidence-smoke"],
+      "non_goal_docs": ["docs/HTTP_SERVE_BEHAVIOR.md"]
+    },
+    {
+      "name": "Observability artifact profile",
+      "status": ["artifact_export"],
+      "docs": [
+        "docs/HTTP_SERVE_BEHAVIOR.md",
+        "docs/RELEASE_CHECKLIST.md"
+      ],
+      "examples": ["scripts/s_tier_evidence_check.py"],
+      "test_names": [
+        "renders_observability_export",
+        "run_generates_timeline_and_observability_exports_with_run_id"
+      ],
+      "evidence_commands": ["make s-tier-evidence-smoke"],
+      "non_goal_docs": ["docs/HTTP_SERVE_BEHAVIOR.md"]
     }
   ]
 }

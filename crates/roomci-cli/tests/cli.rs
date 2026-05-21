@@ -99,6 +99,64 @@ fn run_generates_reports_for_latest_local_first_scenario() {
 }
 
 #[test]
+fn run_generates_timeline_and_observability_exports_with_run_id() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let json = tempdir.path().join("roomci.json");
+    let timeline_json = tempdir.path().join("roomci.timeline.json");
+    let timeline_ndjson = tempdir.path().join("roomci.timeline.ndjson");
+    let observability_json = tempdir.path().join("roomci.observability.json");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg("--run-id")
+        .arg("phase19-smoke")
+        .arg("--report-json")
+        .arg(&json)
+        .arg("--timeline-json")
+        .arg(&timeline_json)
+        .arg("--timeline-ndjson")
+        .arg(&timeline_ndjson)
+        .arg("--observability-json")
+        .arg(&observability_json)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(json).unwrap()).unwrap();
+    assert_eq!(report["schema_version"], "roomci.report.v1");
+    assert_eq!(report["run_id"], "phase19-smoke");
+
+    let timeline: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&timeline_json).unwrap()).unwrap();
+    let timeline = timeline.as_array().unwrap();
+    assert!(!timeline.is_empty());
+    assert_eq!(timeline[0]["schema_version"], "roomci.timeline.v1");
+    assert_eq!(timeline[0]["run_id"], "phase19-smoke");
+    assert_eq!(timeline[0]["sequence"], 0);
+    assert!(timeline[0].get("trace_id").is_some());
+    assert!(timeline[0].get("span_id").is_some());
+
+    let ndjson = std::fs::read_to_string(timeline_ndjson).unwrap();
+    assert_eq!(ndjson.lines().count(), timeline.len());
+
+    let observability: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(observability_json).unwrap()).unwrap();
+    assert_eq!(observability["schema_version"], "roomci.observability.v1");
+    assert_eq!(observability["run_id"], "phase19-smoke");
+    assert!(observability["timeline_event_count"].as_u64().unwrap() > 0);
+    assert!(observability.get("events_by_type").is_some());
+    assert!(observability.get("assertions_by_status").is_some());
+}
+
+#[test]
 fn run_with_missing_scenario_file_exits_with_error() {
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
         .arg("run")

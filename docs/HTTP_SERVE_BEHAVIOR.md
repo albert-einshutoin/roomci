@@ -74,9 +74,21 @@ The overlay is also visible while it is queued:
   field.
 - `GET /timeline` returns the union of `latest_report.timeline` and
   the overlay.
+- `GET /timeline.export.json` returns the same union as stable
+  `roomci.timeline.v1` events with `run_id`, `trace_id`, `span_id`, and
+  sequence fields.
+- `GET /timeline.ndjson` returns the same stable timeline events as
+  newline-delimited JSON.
 - `GET /reports/latest.json|md|junit.xml` render the same union, so a
   CI consumer sees external events whether they fetch the JSON or the
   human-readable Markdown.
+- `GET /observability/latest.json` returns a deterministic
+  `roomci.observability.v1` artifact with event counters, assertion counters,
+  scenario result, and impact levels.
+
+The trace fields are deterministic artifact metadata for local and CI
+correlation. They are not an OpenTelemetry implementation and do not imply
+distributed tracing across production systems.
 
 ## Health Semantics
 
@@ -89,4 +101,5 @@ The overlay is also visible while it is queued:
 | `passed` | 200 | The most recent `/run` or `/finish` completed with a passing report. |
 | `failed` | 503 | The most recent `/run` or `/finish` completed with a failing report. |
 
-The response also includes `scenario`, `result`, `latest_report_id`, and `serve_version`.
+The response also includes `scenario`, `result`, `latest_report_id`, and
+`serve_version`. `latest_report_id` matches the current report `run_id`.

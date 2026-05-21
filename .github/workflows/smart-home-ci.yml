@@ -66,8 +66,11 @@ jobs:
             /scenarios/bms_sauna_emergency_alert.yaml \
             /scenarios/starlink_failover.yaml \
             /scenarios/comfort_auto_mode.yaml \
+            /scenarios/comfort_timeseries_replay.yaml \
             /scenarios/access_permission_drift.yaml \
             /scenarios/commissioning_checklist.yaml \
+            /scenarios/intercom_relay_safe_mock.yaml \
+            /scenarios/network_control_panel_fault_profiles.yaml \
             /scenarios/generic_mqtt_retained_state.yaml \
             /scenarios/generic_mqtt_duplicate_delivery.yaml
 
@@ -80,8 +83,11 @@ jobs:
             bms_sauna_emergency_alert.yaml \
             starlink_failover.yaml \
             comfort_auto_mode.yaml \
+            comfort_timeseries_replay.yaml \
             access_permission_drift.yaml \
             commissioning_checklist.yaml \
+            intercom_relay_safe_mock.yaml \
+            network_control_panel_fault_profiles.yaml \
             generic_mqtt_retained_state.yaml \
             generic_mqtt_duplicate_delivery.yaml
           do
@@ -93,7 +99,10 @@ jobs:
               run "/scenarios/${scenario}" \
               --junit "/reports/${name}.xml" \
               --report-md "/reports/${name}.md" \
-              --report-json "/reports/${name}.json"
+              --report-json "/reports/${name}.json" \
+              --timeline-json "/reports/${name}.timeline.json" \
+              --timeline-ndjson "/reports/${name}.timeline.ndjson" \
+              --observability-json "/reports/${name}.observability.json"
           done
 
       - name: Check service-mode config
@@ -113,7 +122,10 @@ jobs:
             run /scenarios/dali_scene_partial_failure.yaml \
             --junit /reports/dali_scene_partial_failure.xml \
             --report-md /reports/dali_scene_partial_failure.md \
-            --report-json /reports/dali_scene_partial_failure.json
+            --report-json /reports/dali_scene_partial_failure.json \
+            --timeline-json /reports/dali_scene_partial_failure.timeline.json \
+            --timeline-ndjson /reports/dali_scene_partial_failure.timeline.ndjson \
+            --observability-json /reports/dali_scene_partial_failure.observability.json
           status=$?
           set -e
           test "$status" -eq 1
@@ -123,3 +135,15 @@ jobs:
         with:
           name: roomci-reports
           path: reports
+
+  release-evidence:
+    name: Release evidence gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Protocol and domain evidence registry
+        run: make protocol-evidence
+
+      - name: Adapter sample smoke
+        run: make adapter-samples-smoke

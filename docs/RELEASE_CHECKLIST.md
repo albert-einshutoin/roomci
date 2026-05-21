@@ -21,6 +21,7 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 | MQTT protocol smoke | `make protocol-smoke-mqtt` | Standard MQTT client/library path publishes to `roomci serve` and observes state through HTTP reports |
 | Modbus protocol smoke | `make protocol-smoke-modbus` | Modbus TCP client path reads/writes selected registers and observes state through HTTP reports |
 | Adapter sample smoke | `make adapter-samples-smoke` | Go and TypeScript adapter samples run against `roomci serve` over HTTP, MQTT, and Modbus TCP |
+| S Tier evidence smoke | `make s-tier-evidence-smoke` | JSON report, timeline JSON, timeline NDJSON, observability JSON, run id, and trace metadata are generated and validated |
 | Protocol evidence map | `make protocol-evidence` | Verified protocol claims map to commands and non-goal docs |
 | Full local CI approximation | `make verify` | Runs the same practical gate set as CI, including Docker and Compose checks |
 
@@ -35,6 +36,9 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 - README badges must point to real repository gates or static local-truth claims.
 - README test count and coverage must match the latest successful `cargo test --workspace --all-targets` and `cargo tarpaulin --workspace --engine llvm --fail-under 80` run.
 - Do not claim private customer compatibility without that organization's actual topic schemas, register maps, auth assumptions, BMS contracts, and acceptance criteria.
+- Do not describe timeline or observability artifacts as hosted observability,
+  OpenTelemetry, Grafana, InfluxDB, Prometheus, or production incident-response
+  implementations. They are export contracts only.
 - Use [`PROTOCOL_SUPPORT_MATRIX.md`](PROTOCOL_SUPPORT_MATRIX.md) as the source of truth when describing behavior-model support versus wire-protocol support.
 - Use [`PROTOCOL_CONFORMANCE_REGISTRY.md`](PROTOCOL_CONFORMANCE_REGISTRY.md) as the source of truth for protocol specification references, conformance subset claims, verification commands, and explicit rejections.
 - Do not use "compatible", "conformant", "supports", or "implements" for a protocol unless the claim maps to a registry row and a verification command.

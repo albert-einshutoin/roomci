@@ -25,6 +25,8 @@ These are implemented and tracked as `done` in phase status files:
 | Evaluator friction removal: MQTT retained subscribe, practical Modbus depth, protocol evidence automation, and source module extraction | `done` | Phase 15 |
 | Roadmap triage for future protocol and optional-depth items | `done` | Phase 16 |
 | Promoted contract depth: intercom/relay safe mock, infrastructure fault profiles, BMS hardening, comfort time-series, adapter samples | `done` | Phase 17 |
+| Release-candidate evidence hardening | `done` | Phase 18 |
+| S Tier observability and CI evidence completion | `done` | Phase 19 |
 
 ## Already Taskified For Implementation
 
@@ -74,6 +76,36 @@ These are the Phase 16 items promoted into concrete implementation tasks and com
 | Phase 17 evidence registry expansion | `tasks/phase18/02_phase17_evidence_registry_task.md` |
 | Domain-pack release scorecard refresh | `tasks/phase18/03_release_scorecard_refresh_task.md` |
 
+## Promoted And Implemented In Phase 19
+
+| Area | Task |
+|---|---|
+| GitHub Actions parity for S Tier gates | `tasks/phase19/01_github_actions_parity_task.md` |
+| Stable timeline export contract | `tasks/phase19/02_stable_timeline_export_contract_task.md` |
+| Trace metadata and run correlation | `tasks/phase19/03_trace_metadata_and_run_correlation_task.md` |
+| Observability artifact profile | `tasks/phase19/04_observability_artifact_profile_task.md` |
+| Evaluator CI documentation pack | `tasks/phase19/05_evaluator_ci_documentation_pack_task.md` |
+
+## Newly Taskified For A Tier Completion
+
+| Area | Task |
+|---|---|
+| Python SDK package and smoke | `tasks/phase20/01_python_sdk_package_task.md` |
+| Scenario debugger explain command | `tasks/phase20/02_scenario_debugger_explain_task.md` |
+| VSCode extension assets | `tasks/phase20/03_vscode_extension_assets_task.md` |
+| Developer workflow docs | `tasks/phase20/04_developer_workflow_docs_task.md` |
+| A Tier release gate | `tasks/phase20/05_a_tier_release_gate_task.md` |
+
+## Newly Taskified For B Tier Completion
+
+| Area | Task |
+|---|---|
+| Matter prototype profile | `tasks/phase21/01_matter_prototype_profile_task.md` |
+| BACnet contract profile | `tasks/phase21/02_bacnet_contract_profile_task.md` |
+| KNX contract profile | `tasks/phase21/03_knx_contract_profile_task.md` |
+| OPC UA contract profile | `tasks/phase21/04_opcua_contract_profile_task.md` |
+| B Tier evidence and docs gate | `tasks/phase21/05_b_tier_evidence_docs_gate_task.md` |
+
 ## Intentionally Not Taskified As Implementation
 
 These should stay documented non-goals unless a future product decision reverses them:
@@ -83,7 +115,7 @@ These should stay documented non-goals unless a future product decision reverses
 | Full NOT A HOTEL private compatibility | Requires private topics, payloads, register maps, BMS contracts, auth/TLS assumptions, and acceptance criteria. |
 | Production MQTT broker replacement | Outside the QA contract emulator scope. |
 | Full Modbus RTU electrical/serial behavior | Requires serial timing and hardware-level validation. |
-| Full BACnet, KNX, Matter, OPC UA, Zigbee, Thread certification | Certification-grade protocol stacks are not the current product. |
+| Full BACnet, KNX, Matter, OPC UA, Zigbee, Thread certification | B Tier profiles may be taskified as contract profiles, but certification-grade protocol stacks remain outside the product. |
 | Real lock authorization or physical access decisions | Safety-critical and outside local CI emulation. |
 | Cloud platform emulation for AWS, GCP, Cloudflare, Twilio, Slack, Zoom, Grafana, InfluxDB, UniFi, DoorBird, YAMAHA, Jamf | These should remain contracts, mocks, or evidence outputs rather than vendor replacements. |
 | CAD/BIM/construction tooling | Not a QA emulator surface. |

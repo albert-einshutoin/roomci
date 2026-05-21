@@ -56,6 +56,9 @@ pub enum CoreError {
 /// `roomci-report`.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct RunReport {
+    pub schema_version: String,
+    pub run_id: String,
+    pub generated_by: String,
     pub scenario_name: String,
     pub result: RunResult,
     pub timeline: Vec<TimelineEvent>,
@@ -147,6 +150,9 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
     };
 
     Ok(RunReport {
+        schema_version: "roomci.report.v1".to_string(),
+        run_id: scenario.scenario.name.clone(),
+        generated_by: "roomci".to_string(),
         scenario_name: scenario.scenario.name.clone(),
         result,
         timeline: runtime.timeline,

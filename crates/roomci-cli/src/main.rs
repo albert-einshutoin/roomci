@@ -23,7 +23,9 @@ use std::{
 
 use clap::{ArgGroup, Parser, Subcommand};
 use roomci_core::{run_scenario, RunReport, RunResult};
-use roomci_report::{to_json, to_junit, to_markdown};
+use roomci_report::{
+    to_json, to_junit, to_markdown, to_observability_json, to_timeline_json, to_timeline_ndjson,
+};
 use roomci_scenario::{
     load_adapter_contract, load_scenario, validate_adapter_contract, validate_scenario,
 };
@@ -58,6 +60,18 @@ enum Command {
         /// Write a JSON report for the last scenario.
         #[arg(long, alias = "report-json")]
         json: Option<PathBuf>,
+        /// Write a stable timeline JSON export for the last scenario.
+        #[arg(long)]
+        timeline_json: Option<PathBuf>,
+        /// Write a stable newline-delimited timeline JSON export for the last scenario.
+        #[arg(long)]
+        timeline_ndjson: Option<PathBuf>,
+        /// Write an observability summary JSON artifact for the last scenario.
+        #[arg(long)]
+        observability_json: Option<PathBuf>,
+        /// Override the run identifier used in JSON, timeline, and observability artifacts.
+        #[arg(long)]
+        run_id: Option<String>,
         /// Print every timeline event for each scenario.
         #[arg(long)]
         verbose: bool,
@@ -147,6 +161,10 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             junit,
             markdown,
             json,
+            timeline_json,
+            timeline_ndjson,
+            observability_json,
+            run_id,
             verbose,
             quiet,
             dry_run,
@@ -155,6 +173,10 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             junit,
             markdown,
             json,
+            timeline_json,
+            timeline_ndjson,
+            observability_json,
+            run_id,
             verbose,
             quiet,
             dry_run,
@@ -229,6 +251,10 @@ struct RunOptions {
     junit: Option<PathBuf>,
     markdown: Option<PathBuf>,
     json: Option<PathBuf>,
+    timeline_json: Option<PathBuf>,
+    timeline_ndjson: Option<PathBuf>,
+    observability_json: Option<PathBuf>,
+    run_id: Option<String>,
     verbose: bool,
     quiet: bool,
     dry_run: bool,
@@ -257,7 +283,10 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
             continue;
         }
 
-        let report = run_scenario(&scenario_file)?;
+        let mut report = run_scenario(&scenario_file)?;
+        if let Some(run_id) = &options.run_id {
+            report.run_id = run_id.clone();
+        }
         match report.result {
             RunResult::Passed => passed += 1,
             RunResult::Failed => failed += 1,
@@ -279,6 +308,15 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
         }
         if let Some(path) = &options.junit {
             write_file(path, &to_junit(report))?;
+        }
+        if let Some(path) = &options.timeline_json {
+            write_file(path, &to_timeline_json(report)?)?;
+        }
+        if let Some(path) = &options.timeline_ndjson {
+            write_file(path, &to_timeline_ndjson(report)?)?;
+        }
+        if let Some(path) = &options.observability_json {
+            write_file(path, &to_observability_json(report)?)?;
         }
     }
 

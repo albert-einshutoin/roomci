@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -82,6 +82,7 @@ verify:
 	docker compose -f compose/docker-compose.yml run --rm adapter-samples
 	docker compose -f compose/docker-compose.yml down
 	python3 scripts/protocol_evidence_check.py
+	$(MAKE) s-tier-evidence-smoke
 
 docker-demo:
 	docker build -t roomci:demo .
@@ -120,6 +121,17 @@ adapter-samples-smoke:
 	docker compose -f compose/docker-compose.yml build roomci-serve adapter-samples
 	docker compose -f compose/docker-compose.yml run --rm adapter-samples
 	docker compose -f compose/docker-compose.yml down
+
+s-tier-evidence-smoke:
+	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml \
+		--run-id phase19-smoke \
+		--report-json reports/phase19-smoke.json \
+		--report-md reports/phase19-smoke.md \
+		--junit reports/phase19-smoke.xml \
+		--timeline-json reports/phase19-smoke.timeline.json \
+		--timeline-ndjson reports/phase19-smoke.timeline.ndjson \
+		--observability-json reports/phase19-smoke.observability.json
+	python3 scripts/s_tier_evidence_check.py reports/phase19-smoke
 
 poc-generic-mqtt:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/generic_mqtt_edge_device.yaml

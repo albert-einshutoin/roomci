@@ -12,7 +12,7 @@ RELEASE_TEXT = (ROOT / "docs" / "RELEASE_CHECKLIST.md").read_text()
 MAKEFILE_TEXT = (ROOT / "Makefile").read_text()
 SOURCE_TEXT = "\n".join(
     path.read_text(errors="ignore")
-    for directory in ["crates", "examples", "adapter-contracts"]
+    for directory in ["crates", "examples", "adapter-contracts", "scripts", ".github"]
     for path in (ROOT / directory).rglob("*")
     if path.is_file()
 )

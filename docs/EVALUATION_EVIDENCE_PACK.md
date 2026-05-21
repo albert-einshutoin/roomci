@@ -8,6 +8,7 @@ This pack gives evaluators command-level evidence instead of pitch language.
 make verify
 make protocol-smoke
 make adapter-samples-smoke
+make s-tier-evidence-smoke
 make protocol-evidence
 ```
 
@@ -22,9 +23,12 @@ Current release-candidate evidence:
 - `make protocol-smoke` runs standard-client MQTT and Modbus checks.
 - `make adapter-samples-smoke` runs Go and TypeScript adapter samples against
   `roomci serve` over HTTP, MQTT, and Modbus TCP.
+- `make s-tier-evidence-smoke` generates and validates report JSON, timeline
+  JSON, timeline NDJSON, observability JSON, run correlation, and trace
+  metadata.
 - `make protocol-evidence` checks the claim registry, including Phase 17
   intercom/relay, network/control-panel, BMS hardening, comfort time-series,
-  and adapter sample evidence.
+  adapter sample evidence, and S Tier artifact evidence.
 
 ## PoC Packs
 
@@ -54,6 +58,7 @@ Generated `reports/` files are intentionally ignored by git.
 - Protocol support matrix: [`PROTOCOL_SUPPORT_MATRIX.md`](PROTOCOL_SUPPORT_MATRIX.md)
 - Adapter contract kit: [`ADAPTER_CONTRACT_KIT.md`](ADAPTER_CONTRACT_KIT.md)
 - Adapter SDK samples: [`ADAPTER_SDK_SAMPLES.md`](ADAPTER_SDK_SAMPLES.md)
+- S Tier evidence guide: [`S_TIER_EVIDENCE_GUIDE.md`](S_TIER_EVIDENCE_GUIDE.md)
 - Claim evidence manifest: [`protocol-evidence.json`](protocol-evidence.json)
 
 ## Unsupported Features Disclosed

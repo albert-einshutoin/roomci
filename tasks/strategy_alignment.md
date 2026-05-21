@@ -20,7 +20,7 @@ This file maps the current product strategy to task status.
 | MQTT 3.1.1 subset | `done` | Phase 13 plus Phase 15 QoS0 SUBSCRIBE/SUBACK retained replay for configured state topics. |
 | Modbus TCP subset | `done`, with multi-register/coil decision `todo` | Phase 13; Phase 15 Task 02. |
 | MQTT 5 unsupported boundary | `done` | Phase 13 and protocol conformance registry. |
-| BACnet / OPC UA / KNX / Matter future profiles | `done` as registry rows, selection `todo` | Phase 13 registry; Phase 16 Task 01 ranks and promotes/defers future protocols. |
+| BACnet / OPC UA / KNX / Matter future profiles | `taskified` as B Tier contract profiles | Phase 13 registry and Phase 16 triage keep these scoped; Phase 21 turns them into contract-profile evidence without certification claims. |
 | Move company-specific differences into adapter contracts | `done`, with hardening decisions `todo` | Phase 11 adapter contract kit and onboarding docs; Phase 16 Task 04 covers BMS hardening boundaries. |
 | MQTT topic | `done` | Adapter contracts and MQTT scenario contracts. |
 | Payload schema | `done` at required-field level, deeper schema remains future hardening | Adapter contracts; Phase 16 Task 04 if webhook schema versioning is promoted. |
@@ -39,7 +39,7 @@ This file maps the current product strategy to task status.
 |---|---|---|
 | Recreate the full NOT A HOTEL stack | `documented non-goal` | Phase 14 and backlog inventory. |
 | Become AWS/GCP/Cloudflare/UniFi/DoorBird/Twilio vendor emulators | `documented non-goal` | Phase 14 and backlog inventory. |
-| Implement BACnet/Matter/KNX/OPC UA all at once | `documented non-goal`; selection `todo` | Phase 13 future profiles; Phase 16 Task 01 forces ranking before implementation. |
+| Implement BACnet/Matter/KNX/OPC UA as full protocol stacks | `documented non-goal`; B Tier contract profiles `todo` | Phase 21 only targets scoped contract profiles and docs/evidence gates. |
 | Claim full protocol conformance | `blocked by release rule` | Phase 13 registry and release checklist. |
 | Enter physical safety or real lock-control territory | `documented non-goal` | Phase 14, Phase 16 Task 02, Phase 16 Task 03, and backlog inventory. |
 
@@ -47,4 +47,8 @@ This file maps the current product strategy to task status.
 
 The strategy is taskified.
 
-The implementation-complete layer is Phase 0-14. The release-candidate hardening layer is Phase 15. The optional breadth and future-profile decision layer is Phase 16. Anything outside those layers is either an explicit customer input or a documented non-goal.
+The implementation-complete base layer is Phase 0-19. Phase 19 completed the S
+Tier evidence and observability layer. Phase 20 is the A Tier
+developer-experience layer. Phase 21 is the B Tier protocol-profile layer.
+Anything beyond those layers is either an explicit customer input or a
+documented non-goal.
