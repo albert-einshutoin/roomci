@@ -40,6 +40,13 @@ The samples cover:
 - MQTT 3.1.1 CONNECT plus QoS 0 PUBLISH
 - Modbus TCP read holding registers
 
+The reproducible smoke target compiles/runs both samples against
+`roomci serve`:
+
+```bash
+make adapter-samples-smoke
+```
+
 They are not production SDKs. Treat them as adapter contract examples and copy
 only the parts that match your private topic, payload, register, and auth
 requirements.

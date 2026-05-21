@@ -26,6 +26,12 @@ go run ./examples/adapters/go-http-mqtt-modbus
 npx tsx examples/adapters/typescript-http-mqtt-modbus/index.ts
 ```
 
+Both samples are verified by the release gate:
+
+```bash
+make adapter-samples-smoke
+```
+
 ## Lua-like Hook Pseudocode
 
 For embedded or gateway teams that use Lua-like hooks, keep the hook tiny and

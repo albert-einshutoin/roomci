@@ -57,6 +57,27 @@ services:
     volumes:
       - ../examples/controllers:/controllers:ro
 
+  adapter-samples:
+    build:
+      context: ..
+      dockerfile: compose/adapter-samples.Dockerfile
+    environment:
+      ROOMCI_HTTP: http://roomci-serve:8080
+      ROOMCI_MQTT: roomci-serve:1883
+      ROOMCI_MODBUS: roomci-serve:5020
+      GO111MODULE: "off"
+    depends_on:
+      roomci-serve:
+        condition: service_healthy
+    volumes:
+      - ..:/work:ro
+    command:
+      - /bin/sh
+      - -c
+      - |
+        go run ./examples/adapters/go-http-mqtt-modbus &&
+        tsx ./examples/adapters/typescript-http-mqtt-modbus/index.ts
+
   scenario-smoke:
     build:
       context: ..

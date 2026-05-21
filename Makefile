@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -78,6 +78,8 @@ verify:
 	docker compose -f compose/docker-compose.yml build roomci-serve external-controller protocol-smoke
 	docker compose -f compose/docker-compose.yml run --rm external-controller
 	docker compose -f compose/docker-compose.yml run --rm protocol-smoke
+	docker compose -f compose/docker-compose.yml build adapter-samples
+	docker compose -f compose/docker-compose.yml run --rm adapter-samples
 	docker compose -f compose/docker-compose.yml down
 	python3 scripts/protocol_evidence_check.py
 
@@ -113,6 +115,11 @@ protocol-smoke-modbus:
 
 protocol-evidence:
 	python3 scripts/protocol_evidence_check.py
+
+adapter-samples-smoke:
+	docker compose -f compose/docker-compose.yml build roomci-serve adapter-samples
+	docker compose -f compose/docker-compose.yml run --rm adapter-samples
+	docker compose -f compose/docker-compose.yml down
 
 poc-generic-mqtt:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/generic_mqtt_edge_device.yaml

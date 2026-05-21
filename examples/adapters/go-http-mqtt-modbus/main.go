@@ -64,8 +64,8 @@ func publishMQTT(addr string) error {
 	if len(connack) != 4 || connack[0] != 0x20 || connack[3] != 0x00 {
 		return fmt.Errorf("unexpected CONNACK: %v", connack)
 	}
-	topic := "house/minakami/room/living/device/living_light/command"
-	payload := []byte(`{"power":true}`)
+	topic := "fleet/demo/site/lab/device/env_sensor_01/command"
+	payload := []byte(`{"online":true,"sample_interval_seconds":45}`)
 	if _, err := conn.Write(mqttPublishPacket(topic, payload)); err != nil {
 		return err
 	}

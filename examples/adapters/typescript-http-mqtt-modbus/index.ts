@@ -4,9 +4,16 @@ const httpBase = process.env.ROOMCI_HTTP ?? "http://127.0.0.1:8080";
 const mqttAddr = process.env.ROOMCI_MQTT ?? "127.0.0.1:1883";
 const modbusAddr = process.env.ROOMCI_MODBUS ?? "127.0.0.1:1502";
 
-await postBms();
-await publishMqtt();
-await readModbus();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+
+async function main() {
+  await postBms();
+  await publishMqtt();
+  await readModbus();
+}
 
 async function postBms() {
   const response = await fetch(`${httpBase}/external/bms/contact`, {
@@ -34,8 +41,10 @@ async function publishMqtt() {
   }
   socket.write(
     mqttPublishPacket(
-      "house/minakami/room/living/device/living_light/command",
-      Buffer.from(JSON.stringify({ power: true })),
+      "fleet/demo/site/lab/device/env_sensor_01/command",
+      Buffer.from(
+        JSON.stringify({ online: true, sample_interval_seconds: 60 }),
+      ),
     ),
   );
   socket.write(Buffer.from([0xe0, 0x00]));
