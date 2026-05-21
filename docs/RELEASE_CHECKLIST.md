@@ -20,6 +20,7 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 | Compose PoC | `make compose-poc` | External controller drives `roomci serve` over HTTP and writes reports |
 | MQTT protocol smoke | `make protocol-smoke-mqtt` | Standard MQTT client/library path publishes to `roomci serve` and observes state through HTTP reports |
 | Modbus protocol smoke | `make protocol-smoke-modbus` | Modbus TCP client path reads/writes selected registers and observes state through HTTP reports |
+| Adapter sample smoke | `make adapter-samples-smoke` | Go and TypeScript adapter samples run against `roomci serve` over HTTP, MQTT, and Modbus TCP |
 | Protocol evidence map | `make protocol-evidence` | Verified protocol claims map to commands and non-goal docs |
 | Full local CI approximation | `make verify` | Runs the same practical gate set as CI, including Docker and Compose checks |
 

@@ -55,6 +55,80 @@
       "docs": ["docs/PROTOCOL_CONFORMANCE_REGISTRY.md", "docs/PROTOCOL_SUPPORT_MATRIX.md"],
       "evidence_commands": [],
       "non_goal_docs": ["docs/PROTOCOL_CONFORMANCE_REGISTRY.md", "docs/PROTOCOL_SUPPORT_MATRIX.md"]
+    },
+    {
+      "name": "Intercom and relay safe mock",
+      "status": ["scenario_model"],
+      "docs": [
+        "docs/14_intercom_and_access_control.md",
+        "docs/HOSPITALITY_STACK_COVERAGE.md"
+      ],
+      "examples": ["examples/intercom_relay_safe_mock.yaml"],
+      "test_names": ["intercom_relay_safe_mock_passes_without_real_unlock_control"],
+      "evidence_commands": [],
+      "non_goal_docs": ["docs/14_intercom_and_access_control.md"]
+    },
+    {
+      "name": "Network and control-panel fault profiles",
+      "status": ["scenario_model"],
+      "docs": [
+        "docs/11_network_and_failover.md",
+        "docs/12_control_panel_fault_model.md",
+        "docs/HOSPITALITY_STACK_COVERAGE.md"
+      ],
+      "examples": ["examples/network_control_panel_fault_profiles.yaml"],
+      "test_names": ["network_control_panel_fault_profiles_emit_bms_evidence"],
+      "evidence_commands": [],
+      "non_goal_docs": [
+        "docs/11_network_and_failover.md",
+        "docs/12_control_panel_fault_model.md"
+      ]
+    },
+    {
+      "name": "BMS adapter contract hardening",
+      "status": ["scenario_model", "serve_endpoint"],
+      "docs": [
+        "docs/10_bms_operations_emulation.md",
+        "docs/ADAPTER_CONTRACT_KIT.md",
+        "docs/HTTP_SERVE_BEHAVIOR.md"
+      ],
+      "examples": [
+        "adapter-contracts/examples/building_automation_bms.yaml",
+        "adapter-contracts/examples/hospitality_local_first_room.yaml"
+      ],
+      "test_names": [
+        "external_bms_contact_enforces_severity_schema_and_replay_id",
+        "rejects_adapter_contract_with_invalid_bms_hardening_fields"
+      ],
+      "evidence_commands": ["cargo test -p roomci-serve --lib external_bms_contact"],
+      "non_goal_docs": ["docs/10_bms_operations_emulation.md", "docs/HTTP_SERVE_BEHAVIOR.md"]
+    },
+    {
+      "name": "Comfort time-series replay",
+      "status": ["scenario_model"],
+      "docs": [
+        "docs/13_comfort_automation.md",
+        "docs/HOSPITALITY_STACK_COVERAGE.md"
+      ],
+      "examples": ["examples/comfort_timeseries_replay.yaml"],
+      "test_names": ["comfort_timeseries_replay_updates_zone_evidence"],
+      "evidence_commands": [],
+      "non_goal_docs": ["docs/13_comfort_automation.md"]
+    },
+    {
+      "name": "Go and TypeScript adapter samples",
+      "status": ["adapter_sample_tested"],
+      "docs": [
+        "docs/ADAPTER_SDK_SAMPLES.md",
+        "examples/adapters/README.md"
+      ],
+      "examples": [
+        "examples/adapters/go-http-mqtt-modbus/main.go",
+        "examples/adapters/typescript-http-mqtt-modbus/index.ts"
+      ],
+      "test_names": [],
+      "evidence_commands": ["make adapter-samples-smoke"],
+      "non_goal_docs": ["docs/ADAPTER_SDK_SAMPLES.md", "examples/adapters/README.md"]
     }
   ]
 }

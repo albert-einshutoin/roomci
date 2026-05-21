@@ -10,6 +10,12 @@ REGISTRY_TEXT = (ROOT / "docs" / "PROTOCOL_CONFORMANCE_REGISTRY.md").read_text()
 SUPPORT_TEXT = (ROOT / "docs" / "PROTOCOL_SUPPORT_MATRIX.md").read_text()
 RELEASE_TEXT = (ROOT / "docs" / "RELEASE_CHECKLIST.md").read_text()
 MAKEFILE_TEXT = (ROOT / "Makefile").read_text()
+SOURCE_TEXT = "\n".join(
+    path.read_text(errors="ignore")
+    for directory in ["crates", "examples", "adapter-contracts"]
+    for path in (ROOT / directory).rglob("*")
+    if path.is_file()
+)
 
 
 def fail(message):
@@ -33,6 +39,11 @@ def require_command(command):
             fail(f"evidence make target is missing from Makefile: {target}")
 
 
+def require_test_name(test_name):
+    if test_name not in SOURCE_TEXT:
+        fail(f"referenced evidence test is missing from source: {test_name}")
+
+
 def main():
     manifest = json.loads(MANIFEST.read_text())
     claims = manifest.get("claims", [])
@@ -46,10 +57,20 @@ def main():
             require_file(doc)
         for doc in claim.get("non_goal_docs", []):
             require_file(doc)
+        for example in claim.get("examples", []):
+            require_file(example)
+        for test_name in claim.get("test_names", []):
+            require_test_name(test_name)
 
         commands = claim.get("evidence_commands", [])
         if statuses & {"conformance_subset", "external_client_tested"} and not commands:
             fail(f"{name} is externally verified but has no evidence command")
+        if statuses & {"scenario_model"} and not (
+            claim.get("examples") and claim.get("test_names")
+        ):
+            fail(f"{name} is a scenario model but lacks example/test evidence")
+        if statuses & {"adapter_sample_tested"} and "make adapter-samples-smoke" not in commands:
+            fail(f"{name} is adapter-sample tested but lacks make adapter-samples-smoke")
         if statuses & {"unsupported", "future_profile"} and not claim.get("non_goal_docs"):
             fail(f"{name} is unsupported/future but has no non-goal docs")
         for command in commands:
