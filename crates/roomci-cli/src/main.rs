@@ -11,25 +11,30 @@
 //!   without executing them.
 //! - `roomci adapter validate <contracts...>` — load and validate one or more
 //!   company adapter contract files without executing scenarios.
+//! - `roomci debug <scenario>` — execute one scenario and emit deterministic
+//!   debugging artifacts for timeline, state diff, and assertion review.
 //! - `roomci serve --config <scenario>` — start a localhost-bound HTTP control
 //!   and report API. With `--check`, only validates the service-mode config
 //!   without starting a long-running process.
 
 use std::{
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     process::ExitCode,
 };
 
 use clap::{ArgGroup, Parser, Subcommand};
-use roomci_core::{run_scenario, RunReport, RunResult};
+use roomci_core::{run_scenario, RunReport, RunResult, StateMap};
 use roomci_report::{
     to_json, to_junit, to_markdown, to_observability_json, to_timeline_json, to_timeline_ndjson,
 };
 use roomci_scenario::{
     load_adapter_contract, load_scenario, validate_adapter_contract, validate_scenario,
+    yaml_map_to_json, ScenarioFile,
 };
 use roomci_serve::{run_serve, ServeOptions};
+use serde::Serialize;
 use thiserror::Error;
 
 #[derive(Debug, Parser)]
@@ -86,6 +91,17 @@ enum Command {
     Validate {
         #[arg(required = true)]
         scenarios: Vec<PathBuf>,
+    },
+    /// Explain scenario execution for authoring and failure debugging.
+    Debug {
+        /// Scenario YAML file to execute and explain.
+        scenario: PathBuf,
+        /// Write deterministic debug JSON.
+        #[arg(long)]
+        debug_json: Option<PathBuf>,
+        /// Write deterministic debug Markdown.
+        #[arg(long)]
+        debug_md: Option<PathBuf>,
     },
     /// Validate company adapter contract files.
     Adapter {
@@ -189,6 +205,11 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             }
             Ok(ExitCode::SUCCESS)
         }
+        Command::Debug {
+            scenario,
+            debug_json,
+            debug_md,
+        } => debug_scenario(&scenario, debug_json.as_deref(), debug_md.as_deref()),
         Command::Adapter {
             command: AdapterCommand::Validate { contracts },
         } => {
@@ -244,6 +265,214 @@ fn serve_config(
     })
     .map_err(|error| CliError::Serve(error.to_string()))?;
     Ok(ExitCode::SUCCESS)
+}
+
+#[derive(Debug, Serialize)]
+struct DebugReport {
+    schema_version: &'static str,
+    scenario_name: String,
+    result: RunResult,
+    execution_order: Vec<DebugTimelineEvent>,
+    state_diffs: Vec<DebugStateDiff>,
+    assertions: Vec<DebugAssertion>,
+    failure_causes: Vec<String>,
+    suggested_checks: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct DebugTimelineEvent {
+    sequence: usize,
+    at: String,
+    event_type: String,
+    target: Option<String>,
+    message: String,
+}
+
+#[derive(Debug, Serialize)]
+struct DebugStateDiff {
+    target: String,
+    before: Option<StateMap>,
+    after: Option<StateMap>,
+}
+
+#[derive(Debug, Serialize)]
+struct DebugAssertion {
+    name: String,
+    assertion_type: String,
+    passed: bool,
+    message: String,
+    impact_level: Option<String>,
+    impact_message: Option<String>,
+}
+
+fn debug_scenario(
+    scenario_path: &Path,
+    debug_json: Option<&Path>,
+    debug_md: Option<&Path>,
+) -> Result<ExitCode, CliError> {
+    let scenario = load_scenario(scenario_path)?;
+    validate_scenario(&scenario)?;
+    let report = run_scenario(&scenario)?;
+    let debug = build_debug_report(&scenario, &report);
+
+    if let Some(path) = debug_json {
+        write_file(path, &serde_json::to_string_pretty(&debug)?)?;
+    }
+    if let Some(path) = debug_md {
+        write_file(path, &debug_markdown(&debug))?;
+    }
+
+    println!(
+        "debug: {} result={:?} events={} assertions={} failures={}",
+        debug.scenario_name,
+        debug.result,
+        debug.execution_order.len(),
+        debug.assertions.len(),
+        debug.failure_causes.len()
+    );
+
+    Ok(if debug.failure_causes.is_empty() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    })
+}
+
+fn build_debug_report(scenario: &ScenarioFile, report: &RunReport) -> DebugReport {
+    let initial_state = scenario
+        .devices
+        .iter()
+        .map(|device| (device.id.clone(), yaml_map_to_json(&device.state)))
+        .collect::<BTreeMap<_, _>>();
+    let mut targets = initial_state
+        .keys()
+        .chain(report.final_state.keys())
+        .cloned()
+        .collect::<Vec<_>>();
+    targets.sort();
+    targets.dedup();
+
+    let state_diffs = targets
+        .into_iter()
+        .filter_map(|target| {
+            let before = initial_state.get(&target).cloned();
+            let after = report.final_state.get(&target).cloned();
+            if before == after {
+                None
+            } else {
+                Some(DebugStateDiff {
+                    target,
+                    before,
+                    after,
+                })
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let assertions = report
+        .assertions
+        .iter()
+        .map(|assertion| DebugAssertion {
+            name: assertion.name.clone(),
+            assertion_type: assertion.assertion_type.clone(),
+            passed: assertion.passed,
+            message: assertion.message.clone(),
+            impact_level: assertion.impact_level.clone(),
+            impact_message: assertion.impact_message.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    let failure_causes = assertions
+        .iter()
+        .filter(|assertion| !assertion.passed)
+        .map(|assertion| {
+            format!(
+                "{} ({}) failed: {}",
+                assertion.name, assertion.assertion_type, assertion.message
+            )
+        })
+        .collect::<Vec<_>>();
+    let suggested_checks = if failure_causes.is_empty() {
+        vec!["No failed assertions. Review state_diffs for expected device changes.".to_string()]
+    } else {
+        vec![
+            "Check the failed assertion target and condition against final_state.".to_string(),
+            "Inspect execution_order around the failed target for missing commands, faults, or external observations.".to_string(),
+            "Use --report-json with roomci run if you need the complete runtime report.".to_string(),
+        ]
+    };
+
+    DebugReport {
+        schema_version: "roomci.debug.v1",
+        scenario_name: report.scenario_name.clone(),
+        result: report.result,
+        execution_order: report
+            .timeline
+            .iter()
+            .enumerate()
+            .map(|(sequence, event)| DebugTimelineEvent {
+                sequence,
+                at: event.at.clone(),
+                event_type: event.event_type.clone(),
+                target: event.target.clone(),
+                message: event.message.clone(),
+            })
+            .collect(),
+        state_diffs,
+        assertions,
+        failure_causes,
+        suggested_checks,
+    }
+}
+
+fn debug_markdown(debug: &DebugReport) -> String {
+    let mut output = String::new();
+    output.push_str(&format!("# roomci Debug: {}\n\n", debug.scenario_name));
+    output.push_str(&format!("- Result: `{:?}`\n", debug.result));
+    output.push_str(&format!("- Events: `{}`\n", debug.execution_order.len()));
+    output.push_str(&format!("- Assertions: `{}`\n\n", debug.assertions.len()));
+
+    output.push_str("## Execution Order\n\n");
+    for event in &debug.execution_order {
+        let target = event.target.as_deref().unwrap_or("-");
+        output.push_str(&format!(
+            "{}. `{}` `{}` `{}` - {}\n",
+            event.sequence, event.at, event.event_type, target, event.message
+        ));
+    }
+
+    output.push_str("\n## State Diffs\n\n");
+    if debug.state_diffs.is_empty() {
+        output.push_str("No state changes from initial device state.\n");
+    } else {
+        for diff in &debug.state_diffs {
+            output.push_str(&format!("- `{}` changed\n", diff.target));
+        }
+    }
+
+    output.push_str("\n## Assertions\n\n");
+    for assertion in &debug.assertions {
+        let status = if assertion.passed { "passed" } else { "failed" };
+        output.push_str(&format!(
+            "- `{}` `{}`: {}\n",
+            status, assertion.assertion_type, assertion.message
+        ));
+    }
+
+    output.push_str("\n## Failure Causes\n\n");
+    if debug.failure_causes.is_empty() {
+        output.push_str("No failed assertions.\n");
+    } else {
+        for cause in &debug.failure_causes {
+            output.push_str(&format!("- {cause}\n"));
+        }
+    }
+
+    output.push_str("\n## Suggested Checks\n\n");
+    for check in &debug.suggested_checks {
+        output.push_str(&format!("- {check}\n"));
+    }
+    output
 }
 
 struct RunOptions {

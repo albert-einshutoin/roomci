@@ -3,7 +3,8 @@
 ## Goal
 
 Create a single developer-experience guide that explains when to use CLI,
-serve mode, Python SDK, scenario debugger, and VSCode assets.
+serve mode, Python SDK, and scenario debugger. VSCode assets should be named
+as deferred work, not as a completed Phase 20 feature.
 
 ## Scope
 
@@ -14,7 +15,7 @@ serve mode, Python SDK, scenario debugger, and VSCode assets.
   - adapter contract validation
   - Python SDK smoke
   - scenario debugging
-  - VSCode authoring
+  - deferred VSCode authoring
   - CI artifact review
 - Include explicit non-goals around production SDKs and marketplace publishing.
 
@@ -28,7 +29,7 @@ serve mode, Python SDK, scenario debugger, and VSCode assets.
 ## Test Commands
 
 ```bash
-rg -n "DEVELOPER_WORKFLOW|python-sdk-smoke|roomci debug|vscode-assets-check" README.md docs Makefile tasks
+rg -n "DEVELOPER_WORKFLOW|python-sdk-smoke|roomci debug|developer-experience-smoke" README.md docs Makefile tasks
 ```
 
 ## Out Of Scope

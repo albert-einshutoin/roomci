@@ -11,11 +11,15 @@ The sample clients live in [`examples/adapters`](../examples/adapters/):
 
 - Go sample: standard-library HTTP, raw MQTT packet, raw Modbus TCP request
 - TypeScript sample: Node `fetch` and `net`
+- Python reference client: HTTP helper plus paho-mqtt and pymodbus smoke
 
 ## Commands
 
 ```bash
-cargo run -p roomci-cli -- serve examples/protocol_conformance_smoke.yaml --mqtt-port 1883 --modbus-port 1502
+cargo run -p roomci-cli -- serve \
+  --config examples/protocol_conformance_smoke.yaml \
+  --mqtt-port 1883 \
+  --modbus-port 1502
 ```
 
 ```bash
@@ -26,11 +30,23 @@ go run ./examples/adapters/go-http-mqtt-modbus
 npx tsx examples/adapters/typescript-http-mqtt-modbus/index.ts
 ```
 
-Both samples are verified by the release gate:
+```bash
+python3 examples/adapters/python-http-mqtt-modbus/smoke.py
+```
+
+Go and TypeScript are verified by:
 
 ```bash
 make adapter-samples-smoke
 ```
+
+Python is verified by:
+
+```bash
+make python-sdk-smoke
+```
+
+The Python sample is documented separately in [`PYTHON_SDK.md`](PYTHON_SDK.md).
 
 ## Lua-like Hook Pseudocode
 

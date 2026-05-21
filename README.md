@@ -174,6 +174,9 @@ intentional failure-report demo. See
 [`docs/S_TIER_EVIDENCE_GUIDE.md`](docs/S_TIER_EVIDENCE_GUIDE.md) for the
 copy-paste evaluator path.
 
+For Python automation and scenario debugging, see
+[`docs/DEVELOPER_WORKFLOW.md`](docs/DEVELOPER_WORKFLOW.md).
+
 ## CLI reference
 
 ```text
@@ -193,6 +196,10 @@ roomci run <scenarios...>
 
 roomci validate <scenarios...>
   load and validate one or more scenario files without executing them
+
+roomci debug <scenario>
+  --debug-json <path>    write deterministic debug JSON
+  --debug-md   <path>    write deterministic debug Markdown
 
 roomci serve --config <scenario> --check
   validate service-mode configuration without starting a long-running process

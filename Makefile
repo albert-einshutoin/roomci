@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -83,6 +83,7 @@ verify:
 	docker compose -f compose/docker-compose.yml down
 	python3 scripts/protocol_evidence_check.py
 	$(MAKE) s-tier-evidence-smoke
+	$(MAKE) developer-experience-smoke
 
 docker-demo:
 	docker build -t roomci:demo .
@@ -121,6 +122,22 @@ adapter-samples-smoke:
 	docker compose -f compose/docker-compose.yml build roomci-serve adapter-samples
 	docker compose -f compose/docker-compose.yml run --rm adapter-samples
 	docker compose -f compose/docker-compose.yml down
+
+python-sdk-smoke:
+	docker compose -f compose/docker-compose.yml build roomci-serve python-sdk
+	docker compose -f compose/docker-compose.yml run --rm python-sdk
+	docker compose -f compose/docker-compose.yml down
+
+developer-experience-smoke:
+	$(MAKE) python-sdk-smoke
+	cargo run -p roomci-cli -- debug examples/dali_scene_partial_failure.yaml \
+		--debug-json reports/dali.debug.json \
+		--debug-md reports/dali.debug.md; \
+		status=$$?; test "$$status" -eq 1
+	python3 -m json.tool reports/dali.debug.json >/dev/null
+	cargo run -p roomci-cli -- debug examples/local_first_cloud_outage.yaml \
+		--debug-json reports/local_first.debug.json \
+		--debug-md reports/local_first.debug.md
 
 s-tier-evidence-smoke:
 	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml \

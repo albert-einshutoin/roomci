@@ -171,6 +171,37 @@
       ],
       "evidence_commands": ["make s-tier-evidence-smoke"],
       "non_goal_docs": ["docs/HTTP_SERVE_BEHAVIOR.md"]
+    },
+    {
+      "name": "Python reference client",
+      "status": ["adapter_sample_tested"],
+      "docs": [
+        "docs/PYTHON_SDK.md",
+        "docs/DEVELOPER_WORKFLOW.md",
+        "docs/RELEASE_CHECKLIST.md"
+      ],
+      "examples": [
+        "examples/adapters/python-http-mqtt-modbus/roomci_sdk/client.py",
+        "examples/adapters/python-http-mqtt-modbus/smoke.py"
+      ],
+      "test_names": [],
+      "evidence_commands": ["make python-sdk-smoke"],
+      "non_goal_docs": ["docs/PYTHON_SDK.md", "docs/DEVELOPER_WORKFLOW.md"]
+    },
+    {
+      "name": "Scenario debugger explain artifacts",
+      "status": ["artifact_export"],
+      "docs": [
+        "docs/DEVELOPER_WORKFLOW.md",
+        "docs/RELEASE_CHECKLIST.md"
+      ],
+      "examples": ["crates/roomci-cli/tests/cli.rs"],
+      "test_names": [
+        "debug_generates_json_and_markdown_for_failing_scenario",
+        "debug_passes_for_passing_scenario"
+      ],
+      "evidence_commands": ["make developer-experience-smoke"],
+      "non_goal_docs": ["docs/DEVELOPER_WORKFLOW.md"]
     }
   ]
 }

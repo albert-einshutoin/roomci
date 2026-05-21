@@ -147,3 +147,6 @@ jobs:
 
       - name: Adapter sample smoke
         run: make adapter-samples-smoke
+
+      - name: Developer experience smoke
+        run: make developer-experience-smoke

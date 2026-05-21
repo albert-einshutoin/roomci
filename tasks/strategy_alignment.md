@@ -47,8 +47,9 @@ This file maps the current product strategy to task status.
 
 The strategy is taskified.
 
-The implementation-complete base layer is Phase 0-19. Phase 19 completed the S
-Tier evidence and observability layer. Phase 20 is the A Tier
-developer-experience layer. Phase 21 is the B Tier protocol-profile layer.
-Anything beyond those layers is either an explicit customer input or a
-documented non-goal.
+The implementation-complete base layer is Phase 0-20. Phase 19 completed the S
+Tier evidence and observability layer. Phase 20 completed the A Tier Python and
+scenario-debugger developer-experience layer, with VSCode editor assets
+deferred to Phase 22. Phase 21 is the B Tier protocol-profile layer. Anything
+beyond those layers is either an explicit customer input or a documented
+non-goal.

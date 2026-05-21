@@ -78,6 +78,24 @@ services:
         go run ./examples/adapters/go-http-mqtt-modbus &&
         tsx ./examples/adapters/typescript-http-mqtt-modbus/index.ts
 
+  python-sdk:
+    build:
+      context: ..
+      dockerfile: compose/protocol-smoke.Dockerfile
+    environment:
+      ROOMCI_HTTP: http://roomci-serve:8080
+      ROOMCI_MQTT: roomci-serve:1883
+      ROOMCI_MODBUS: roomci-serve:5020
+    depends_on:
+      roomci-serve:
+        condition: service_healthy
+    volumes:
+      - ..:/work:ro
+    working_dir: /work
+    command:
+      - python
+      - examples/adapters/python-http-mqtt-modbus/smoke.py
+
   scenario-smoke:
     build:
       context: ..

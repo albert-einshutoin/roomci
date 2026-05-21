@@ -157,6 +157,62 @@ fn run_generates_timeline_and_observability_exports_with_run_id() {
 }
 
 #[test]
+fn debug_generates_json_and_markdown_for_failing_scenario() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let json = tempdir.path().join("dali.debug.json");
+    let markdown = tempdir.path().join("dali.debug.md");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("debug")
+        .arg(fixture("examples/dali_scene_partial_failure.yaml"))
+        .arg("--debug-json")
+        .arg(&json)
+        .arg("--debug-md")
+        .arg(&markdown)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(1));
+    let debug: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(json).unwrap()).unwrap();
+    assert_eq!(debug["schema_version"], "roomci.debug.v1");
+    assert_eq!(debug["scenario_name"], "welcome_scene_partial_failure");
+    assert_eq!(debug["result"], "failed");
+    assert!(!debug["execution_order"].as_array().unwrap().is_empty());
+    assert!(!debug["failure_causes"].as_array().unwrap().is_empty());
+    assert!(std::fs::read_to_string(markdown)
+        .unwrap()
+        .contains("Failure Causes"));
+}
+
+#[test]
+fn debug_passes_for_passing_scenario() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let json = tempdir.path().join("local.debug.json");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("debug")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg("--debug-json")
+        .arg(&json)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("failures=0"));
+
+    let debug: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(json).unwrap()).unwrap();
+    assert_eq!(debug["result"], "passed");
+    assert!(!debug["state_diffs"].as_array().unwrap().is_empty());
+}
+
+#[test]
 fn run_with_missing_scenario_file_exits_with_error() {
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
         .arg("run")

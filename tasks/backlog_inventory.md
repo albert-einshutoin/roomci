@@ -27,6 +27,7 @@ These are implemented and tracked as `done` in phase status files:
 | Promoted contract depth: intercom/relay safe mock, infrastructure fault profiles, BMS hardening, comfort time-series, adapter samples | `done` | Phase 17 |
 | Release-candidate evidence hardening | `done` | Phase 18 |
 | S Tier observability and CI evidence completion | `done` | Phase 19 |
+| A Tier Python and debugger developer experience | `done` | Phase 20 |
 
 ## Already Taskified For Implementation
 
@@ -92,9 +93,14 @@ These are the Phase 16 items promoted into concrete implementation tasks and com
 |---|---|
 | Python SDK package and smoke | `tasks/phase20/01_python_sdk_package_task.md` |
 | Scenario debugger explain command | `tasks/phase20/02_scenario_debugger_explain_task.md` |
-| VSCode extension assets | `tasks/phase20/03_vscode_extension_assets_task.md` |
 | Developer workflow docs | `tasks/phase20/04_developer_workflow_docs_task.md` |
 | A Tier release gate | `tasks/phase20/05_a_tier_release_gate_task.md` |
+
+## Deferred From Phase 20
+
+| Area | Task |
+|---|---|
+| VSCode extension assets | `tasks/phase22/01_vscode_extension_assets_task.md` |
 
 ## Newly Taskified For B Tier Completion
 

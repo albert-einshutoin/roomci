@@ -4,7 +4,8 @@ Phase 20 completes the A Tier surface.
 
 After Phase 19, `roomci` should have strong CI and observability evidence. Phase
 20 makes that evidence easy to consume from normal developer workflows:
-Python automation, scenario debugging, and editor-assisted authoring.
+Python automation and scenario debugging. Editor-assisted authoring is deferred
+to Phase 22.
 
 ## A Tier Completion Definition
 
@@ -13,9 +14,8 @@ Python automation, scenario debugging, and editor-assisted authoring.
 - Python users can drive `roomci serve` without writing raw socket or curl code
 - scenario authors can inspect execution order, resolved virtual time, state
   diffs, assertion inputs, and failure causes
-- VSCode users get schema validation, snippets, tasks, and command examples
-- SDK/debugger/editor assets are verified in CI or local smoke targets
-- docs explain when to use SDK/debugger/editor support versus raw CLI/HTTP
+- SDK/debugger assets are verified in CI or local smoke targets
+- docs explain when to use SDK/debugger support versus raw CLI/HTTP
 
 ## Explicit Non-Goals
 
@@ -24,3 +24,4 @@ Python automation, scenario debugging, and editor-assisted authoring.
 - Building a full GUI debugger.
 - Building production client SDKs with auth/TLS policy.
 - Adding new protocol runtime breadth.
+- Shipping VSCode assets in this phase; they are tracked in Phase 22.

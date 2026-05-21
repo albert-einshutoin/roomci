@@ -24,8 +24,9 @@
 | Phase 17 | `done` | Promoted contract depth: safe intercom/relay mock, network/control-panel profiles, BMS hardening, comfort time-series, adapter samples | None | `phase17/phase_status.md` |
 | Phase 18 | `done` | Release-candidate sample and evidence hardening after Phase 17 | None | `phase18/phase_status.md` |
 | Phase 19 | `done` | S Tier observability and CI evidence completion | None | `phase19/phase_status.md` |
-| Phase 20 | `todo` | A Tier developer experience completion: Python SDK, scenario debugger, VSCode assets, and adoption workflow docs | None | `phase20/phase_status.md` |
+| Phase 20 | `done` | A Tier developer experience completion for Python SDK, scenario debugger, and adoption workflow docs | VSCode assets deferred to Phase 22 | `phase20/phase_status.md` |
 | Phase 21 | `todo` | B Tier protocol profile completion: Matter, BACnet, KNX, and OPC UA contract profiles | None | `phase21/phase_status.md` |
+| Phase 22 | `todo` | Deferred VSCode editor authoring assets | None | `phase22/phase_status.md` |
 
 ## Update Rules
 
@@ -53,12 +54,13 @@ The final self-review created Phase 15. Phases 15, 16, 17, and 18 are now comple
 - **Phase 19** closed the remaining S Tier gaps around GitHub Actions parity,
   timeline exports, trace metadata, observability artifacts, and evaluator CI
   documentation.
-- **Phase 20** should complete the A Tier developer-experience surface so
-  evaluators can use Python, debug scenarios, and author scenarios in VSCode
-  without reading Rust internals.
+- **Phase 20** completed the A Tier developer-experience surface for Python
+  automation and scenario debugging without reading Rust internals.
 - **Phase 21** should complete the B Tier protocol-profile surface for Matter,
   BACnet, KNX, and OPC UA as scoped contract profiles, not full protocol
   implementations.
+- **Phase 22** tracks the intentionally deferred VSCode editor authoring
+  assets.
 
 See `tasks/backlog_inventory.md` for the current split between implemented work, already taskified implementation work, newly taskified roadmap work, and intentional non-goals.
 

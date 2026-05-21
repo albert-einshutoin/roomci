@@ -1,17 +1,9 @@
-# Task 03: VSCode Extension Assets
+# Task 01: VSCode Extension Assets
 
 ## Goal
 
 Add local VSCode assets that make scenario authoring easier without requiring a
 marketplace extension.
-
-## Status
-
-`deferred`
-
-This task is intentionally moved out of Phase 20. Python automation and
-scenario debugging are enough to complete the current A Tier developer
-experience slice; editor assets are tracked in `tasks/phase22/`.
 
 ## Scope
 

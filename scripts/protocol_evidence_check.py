@@ -69,8 +69,10 @@ def main():
             claim.get("examples") and claim.get("test_names")
         ):
             fail(f"{name} is a scenario model but lacks example/test evidence")
-        if statuses & {"adapter_sample_tested"} and "make adapter-samples-smoke" not in commands:
-            fail(f"{name} is adapter-sample tested but lacks make adapter-samples-smoke")
+        if statuses & {"adapter_sample_tested"} and not (
+            {"make adapter-samples-smoke", "make python-sdk-smoke"} & set(commands)
+        ):
+            fail(f"{name} is adapter-sample tested but lacks an adapter smoke command")
         if statuses & {"unsupported", "future_profile"} and not claim.get("non_goal_docs"):
             fail(f"{name} is unsupported/future but has no non-goal docs")
         for command in commands:

@@ -35,8 +35,9 @@ The current detailed product goal is tracked in
 | Phase 17 | Promoted contract depth | Safe intercom/relay, network/control-panel, BMS hardening, comfort time-series, and adapter samples are implemented |
 | Phase 18 | Release-candidate evidence hardening | Adapter samples, Phase 17 claims, and evaluator scorecards are mechanically verifiable |
 | Phase 19 | S Tier observability and CI evidence | GitHub Actions parity, stable timeline export, trace metadata, observability artifacts, and evaluator CI docs complete the S Tier surface |
-| Phase 20 | A Tier developer experience | Python SDK, scenario debugger, VSCode assets, and developer workflow docs make adoption easier |
+| Phase 20 | A Tier developer experience | Python SDK, scenario debugger, and developer workflow docs make adoption easier |
 | Phase 21 | B Tier protocol profiles | Matter, BACnet, KNX, and OPC UA are represented as honest contract profiles without certification claims |
+| Phase 22 | Deferred editor authoring assets | VSCode schema/snippet/task assets are tracked after Python/debugger adoption work |
 
 ## Progress Management
 

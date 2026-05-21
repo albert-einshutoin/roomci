@@ -11,7 +11,6 @@ Make A Tier claims mechanically checkable.
 - Add checker support for:
   - Python SDK smoke target
   - debugger command tests
-  - VSCode asset validation
   - docs links
 - Add Makefile target:
   - `make developer-experience-smoke`
@@ -24,6 +23,7 @@ Make A Tier claims mechanically checkable.
 - Release checklist contains A Tier gates.
 - Evidence pack distinguishes S Tier evidence from A Tier developer-experience
   evidence.
+- VSCode validation remains outside this gate and is tracked in Phase 22.
 
 ## Test Commands
 
