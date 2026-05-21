@@ -19,6 +19,7 @@ its own.
 | Coverage | [Hospitality stack coverage](HOSPITALITY_STACK_COVERAGE.md) | What roomci covers, mocks, defers, or rejects from a hospitality smart-home stack |
 | Journey | [Core QA journey](CORE_QA_JOURNEY.md) | End-to-end local MQTT, edge, device, fault, BMS, comfort, and evidence path |
 | Adapters | [Adapter contract kit](ADAPTER_CONTRACT_KIT.md) | Templates, examples, and validation for company-specific protocol contracts |
+| Adapters | [Adapter SDK samples](ADAPTER_SDK_SAMPLES.md) | Small Go, TypeScript, and Lua-like examples for HTTP, MQTT, and Modbus adapter wiring |
 | Evidence | [Evaluation evidence pack](EVALUATION_EVIDENCE_PACK.md) | Commands, PoC packs, scorecards, report artifacts, and unsupported-feature disclosure |
 | Onboarding | [Integration onboarding](INTEGRATION_ONBOARDING.md) | 15-minute path, HTTP API, troubleshooting, and client snippets |
 | Category | [Category readiness](CATEGORY_READINESS.md) | Comparison against real-device staging, brokers, mocks, Home Assistant, cloud emulators, and HIL |

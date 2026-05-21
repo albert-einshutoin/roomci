@@ -20,6 +20,10 @@ make poc-building-automation
 make protocol-smoke
 ```
 
+If you want to wire a controller-shaped client instead of only running Make
+targets, start from the small Go and TypeScript samples in
+[`examples/adapters`](../examples/adapters/).
+
 ## What To Inspect
 
 - `docs/PROTOCOL_SUPPORT_MATRIX.md`

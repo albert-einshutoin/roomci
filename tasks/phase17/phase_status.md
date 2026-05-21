@@ -10,7 +10,7 @@ Status: `in_progress`
 | 02 Network and control-panel fault profiles | `done` | Added network/firewall/local-broker/control-panel fault profiles, BMS evidence assertion, example, and docs. |
 | 03 BMS contract hardening | `done` | Adapter schema/content-type/severity/HMAC/replay validation plus serve severity and replay-id negative tests added. |
 | 04 Comfort time-series domain pack | `done` | Added sensor-reading steps, comfort time-series assertion, zone final-state evidence, executable example, and docs. |
-| 05 Adapter SDK samples | `todo` | Small Go/TypeScript examples plus docs-only Lua-like hook guidance. |
+| 05 Adapter SDK samples | `done` | Added Go and TypeScript sample clients, Lua-like hook pseudocode, evaluator docs, and docs index links. |
 
 ## Current Blocker
 
