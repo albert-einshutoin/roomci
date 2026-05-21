@@ -55,12 +55,10 @@ jobs:
 
       - name: Validate adapter contracts
         run: |
-          docker run --rm \
+          docker run --rm --entrypoint /bin/sh \
             -v $PWD/adapter-contracts:/adapter-contracts:ro \
             roomci:ci \
-            adapter validate \
-            /adapter-contracts/templates/company_adapter_contract.yaml \
-            /adapter-contracts/examples/*.yaml
+            -c "roomci adapter validate /adapter-contracts/templates/company_adapter_contract.yaml /adapter-contracts/examples/*.yaml"
 
       - name: Validate public scenarios
         run: |
