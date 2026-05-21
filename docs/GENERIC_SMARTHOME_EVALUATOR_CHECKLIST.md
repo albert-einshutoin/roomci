@@ -18,6 +18,8 @@ Use this checklist when evaluating `roomci` for a non-hospitality smart-home, Io
 make poc-generic-mqtt
 make poc-building-automation
 make protocol-smoke
+make adapter-samples-smoke
+make protocol-evidence
 ```
 
 If you want to wire a controller-shaped client instead of only running Make
@@ -28,6 +30,7 @@ targets, start from the small Go and TypeScript samples in
 
 - `docs/PROTOCOL_SUPPORT_MATRIX.md`
 - `docs/PROTOCOL_CONFORMANCE_REGISTRY.md`
+- `docs/protocol-evidence.json`
 - `adapter-contracts/templates/company_adapter_contract.yaml`
 - generated reports under `reports/`
 
@@ -39,6 +42,8 @@ targets, start from the small Go and TypeScript samples in
 | Building automation QA | Register maps and alert flows can be represented | You need electrical commissioning certification |
 | Local/CI workflow | Docker/Compose evidence is useful | Only real-device HIL is acceptable |
 | Operations evidence | Reports and mocked escalation are enough for pre-adoption QA | Real Slack/phone/ticket side effects are required by default |
+| Safety-sensitive access flows | Safe scenario evidence for intercom/relay is enough | Real unlock authorization or relay control must be validated |
+| Comfort and field faults | Deterministic time-series, network, and control-panel profiles are useful | Thermal physics, electrical timing, or live network chaos is required |
 | Protocol depth | Narrow conformance subsets are acceptable | Full protocol certification is required |
 
 ## Boundary

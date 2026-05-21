@@ -29,6 +29,8 @@ Local-first Smart Home QA & Operations Emulator for CI
 | Phase 14 | Hospitality smart-home QA core coverage | The product boundary is fixed around core QA flows instead of the full reported technology stack |
 | Phase 15 | Evaluator friction removal | The release-candidate evaluation surface is hardened around MQTT/Modbus depth, Docker reproducibility, maintainability, and claim evidence |
 | Phase 16 | Roadmap triage for optional depth | Implied future work is explicitly promoted, deferred, or rejected before new breadth is added |
+| Phase 17 | Promoted contract depth | Safe intercom/relay, network/control-panel, BMS hardening, comfort time-series, and adapter samples are implemented |
+| Phase 18 | Release-candidate evidence hardening | Adapter samples, Phase 17 claims, and evaluator scorecards are mechanically verifiable |
 
 ## Progress Management
 

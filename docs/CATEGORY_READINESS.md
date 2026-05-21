@@ -17,9 +17,12 @@
 
 - Contract-first local and CI emulation.
 - External HTTP and MQTT subset surface for black-box PoCs.
+- Modbus TCP practical subset for standard-client smoke checks.
 - JSON, Markdown, and JUnit evidence.
 - Adapter templates for private company specs.
-- Hospitality local-first domain pack with concrete field and operations risks.
+- Go and TypeScript adapter samples that run against `roomci serve`.
+- Hospitality local-first domain pack with concrete field, comfort, network,
+  control-panel, access/intercom, and operations risks.
 - Explicit support matrix that separates behavior modeling from wire compatibility.
 
 ## Where roomci Does Not Win Yet
@@ -28,7 +31,8 @@
 - Hardware timing, electrical behavior, and real device commissioning.
 - Production control-plane replacement.
 - Unknown private vendor features without supplied contracts.
-- Full Modbus TCP, DALI, KNX, BACnet, Matter, SIP, or production BMS behavior.
+- Full DALI, KNX, BACnet, Matter, SIP, OPC UA, Zigbee, Thread, or production BMS behavior.
+- Vendor cloud, intercom, access-control, networking, or notification platform emulation.
 
 ## Evaluator Checklist
 
@@ -39,6 +43,8 @@ Use `roomci` when:
 - Your private specs can be represented as contracts.
 - CI reports are useful to both software and field teams.
 - You want a reusable harness instead of another one-off mock.
+- You want a pre-adoption PoC surface that can be driven by standard MQTT,
+  Modbus, HTTP, Docker Compose, and small adapter samples.
 
 Do not use `roomci` as the final gate when:
 

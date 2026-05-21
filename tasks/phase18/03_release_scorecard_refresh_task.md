@@ -9,7 +9,7 @@ and still avoid overstating production readiness.
 
 - Update readiness/category/evidence docs with Phase 17 coverage.
 - State remaining gaps bluntly:
-  - samples need reproducible CI until Task 01 is complete
+  - samples are reproducibly CI-verified by Task 01
   - adapter contracts still need customer-specific topics, payloads, registers, auth, and acceptance criteria
   - BACnet, KNX, Matter, OPC UA, Zigbee, Thread remain future profiles or non-goals
 - Re-score release readiness if the docs currently include a numeric estimate.

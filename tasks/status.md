@@ -22,7 +22,7 @@
 | Phase 15 | `done` | Evaluator friction removal: retained subscribe loop, practical Modbus depth, reproducible Docker smoke, serve/core/scenario maintainability, and protocol evidence automation | None | `phase15/phase_status.md` |
 | Phase 16 | `done` | Roadmap triage for optional depth with promote/defer/non-goal decisions recorded | None | `phase16/phase_status.md` |
 | Phase 17 | `done` | Promoted contract depth: safe intercom/relay mock, network/control-panel profiles, BMS hardening, comfort time-series, adapter samples | None | `phase17/phase_status.md` |
-| Phase 18 | `todo` | Release-candidate sample and evidence hardening after Phase 17 | None | `phase18/phase_status.md` |
+| Phase 18 | `done` | Release-candidate sample and evidence hardening after Phase 17 | None | `phase18/phase_status.md` |
 
 ## Update Rules
 
@@ -41,12 +41,12 @@ Phases 11-14 are complete. The product now has the integration surface, runtime 
 - **Phase 13** completed official-spec-backed MQTT and Modbus conformance subsets.
 - **Phase 14** completed the hospitality-like core QA boundary and full-stack non-goals.
 
-The final self-review created Phase 15. Phases 15, 16, and 17 are now complete. Next work should harden sample verification and public evidence without expanding into full-stack or vendor emulation.
+The final self-review created Phase 15. Phases 15, 16, 17, and 18 are now complete. The current product is best treated as a release-candidate pre-adoption PoC surface, not a production controller or vendor emulator.
 
 - **Phase 15** hardened the release-candidate surface without expanding into a full smart-home stack emulator.
 - **Phase 16** recorded previously implied roadmap items and forced explicit promote/defer/reject decisions before implementation breadth expands.
 - **Phase 17** implemented the promoted contract-depth work.
-- **Phase 18** should focus on release-candidate sample and evidence hardening.
+- **Phase 18** made adapter samples, Phase 17 evidence, and public scorecards mechanically checkable.
 
 See `tasks/backlog_inventory.md` for the current split between implemented work, already taskified implementation work, newly taskified roadmap work, and intentional non-goals.
 
