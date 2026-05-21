@@ -125,6 +125,18 @@ services:
           --junit /reports/generic_mqtt_duplicate_delivery.xml \
           --report-md /reports/generic_mqtt_duplicate_delivery.md \
           --report-json /reports/generic_mqtt_duplicate_delivery.json &&
+        roomci run /scenarios/intercom_relay_safe_mock.yaml \
+          --junit /reports/intercom_relay_safe_mock.xml \
+          --report-md /reports/intercom_relay_safe_mock.md \
+          --report-json /reports/intercom_relay_safe_mock.json &&
+        roomci run /scenarios/network_control_panel_fault_profiles.yaml \
+          --junit /reports/network_control_panel_fault_profiles.xml \
+          --report-md /reports/network_control_panel_fault_profiles.md \
+          --report-json /reports/network_control_panel_fault_profiles.json &&
+        roomci run /scenarios/comfort_timeseries_replay.yaml \
+          --junit /reports/comfort_timeseries_replay.xml \
+          --report-md /reports/comfort_timeseries_replay.md \
+          --report-json /reports/comfort_timeseries_replay.json &&
         roomci serve --config /scenarios/local_first_cloud_outage.yaml --check &&
         set +e &&
         roomci run /scenarios/dali_scene_partial_failure.yaml \
