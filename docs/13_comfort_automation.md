@@ -34,6 +34,38 @@ sensors:
     humidity: 49.4
 ```
 
+## Deterministic time-series replay
+
+Phase 17 adds executable sensor-reading steps for deterministic CI replay.
+This is not a hardware or thermal simulation; it is a contract-level replay of
+sensor-zone observations that downstream comfort automation can use as
+evidence.
+
+```yaml
+steps:
+  - at: T
+    sensor_reading:
+      target: living_area
+      zone: living
+      temperature: 25.0
+      humidity: 55.0
+      occupancy: true
+  - at: T+30s
+    sensor_reading:
+      target: ceiling_area
+      zone: ceiling
+      temperature: 27.0
+      humidity: 50.0
+      occupancy: false
+assertions:
+  - at: T+31s
+    assert:
+      comfort_timeseries: observed
+```
+
+Each reading updates `comfort.<target>` in final state with temperature,
+humidity, occupancy, zone, discomfort index, and a simple oscillation flag.
+
 ## Comfort target
 
 Room-specific target:
@@ -134,7 +166,7 @@ Possible causes:
 - humidity spike not handled
 ```
 
-## Future: data replay
+## Future: external data replay
 
 A future version can ingest real time-series data and replay conditions in CI.
 

@@ -355,6 +355,33 @@ fn network_control_panel_fault_profiles_emit_bms_evidence() {
 }
 
 #[test]
+fn comfort_timeseries_replay_updates_zone_evidence() {
+    let scenario = load_scenario(fixture("examples/comfort_timeseries_replay.yaml")).unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    assert!(report
+        .timeline
+        .iter()
+        .filter(|event| event.event_type == "comfort_sensor_reading_recorded")
+        .count()
+        >= 3);
+    assert!(report
+        .assertions
+        .iter()
+        .any(|assertion| assertion.assertion_type == "comfort_timeseries" && assertion.passed));
+    assert_eq!(
+        report
+            .final_state
+            .get("comfort.living_area")
+            .and_then(|state| state.get("zone"))
+            .and_then(|value| value.as_str()),
+        Some("living")
+    );
+}
+
+#[test]
 fn commissioning_checklist_generation_passes() {
     let scenario = load_scenario(fixture("examples/commissioning_checklist.yaml")).unwrap();
 

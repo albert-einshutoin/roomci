@@ -1,0 +1,37 @@
+version: "0.1"
+scenario:
+  name: comfort_timeseries_replay
+  tags: [hospitality, comfort, time-series]
+comfort:
+  acceptable_discomfort_index:
+    min: 70
+    max: 75
+steps:
+  - at: T
+    sensor_reading:
+      target: living_area
+      zone: living
+      temperature: 25.0
+      humidity: 55.0
+      occupancy: true
+  - at: T+30s
+    sensor_reading:
+      target: living_area
+      zone: living
+      temperature: 24.5
+      humidity: 52.0
+      occupancy: true
+  - at: T+60s
+    sensor_reading:
+      target: ceiling_area
+      zone: ceiling
+      temperature: 27.0
+      humidity: 50.0
+      occupancy: false
+assertions:
+  - at: T+61s
+    assert:
+      comfort_timeseries: observed
+  - at: T+62s
+    target: living_area.discomfort_index
+    condition: between 70 and 75

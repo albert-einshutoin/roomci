@@ -148,6 +148,8 @@ pub struct ScenarioStep {
     #[serde(default)]
     pub intercom: Option<IntercomStep>,
     #[serde(default)]
+    pub sensor_reading: Option<SensorReadingStep>,
+    #[serde(default)]
     pub ops: Option<BTreeMap<String, serde_yaml::Value>>,
     #[serde(default)]
     pub automation: Option<BTreeMap<String, serde_yaml::Value>>,
@@ -206,6 +208,17 @@ pub struct IntercomStep {
     pub outcome: String,
     #[serde(default)]
     pub fallback: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct SensorReadingStep {
+    pub target: String,
+    pub temperature: f64,
+    pub humidity: f64,
+    #[serde(default)]
+    pub occupancy: Option<bool>,
+    #[serde(default)]
+    pub zone: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]

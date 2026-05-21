@@ -7,6 +7,7 @@ use roomci_mqtt::{device_id_from_command_topic, BrokerModel};
 use roomci_ops::{OpsEvent, OpsModel};
 use roomci_scenario::{
     parse_duration, yaml_map_to_json, IntercomStep, MqttPublishStep, ScenarioError, ScenarioFile,
+    SensorReadingStep,
 };
 
 use crate::{AssertionResult, CoreError, ScheduledEvent, StateMap, TimelineEvent};
@@ -32,6 +33,7 @@ pub(crate) struct RuntimeState {
     pub(crate) comfort_target: Option<f64>,
     pub(crate) comfort_range: Option<(f64, f64)>,
     pub(crate) discomfort_by_target: BTreeMap<String, f64>,
+    pub(crate) comfort_reading_history: BTreeMap<String, Vec<f64>>,
     pub(crate) user_override_count: u32,
     pub(crate) unexpected_access_users: Vec<String>,
     pub(crate) commissioning_check_count: usize,
@@ -79,6 +81,7 @@ impl RuntimeState {
             comfort_target: yaml_mapping_number(&scenario.comfort, "target_discomfort_index"),
             comfort_range: comfort_range(&scenario.comfort),
             discomfort_by_target: discomfort_by_target(&scenario.sensors),
+            comfort_reading_history: BTreeMap::new(),
             user_override_count: 0,
             unexpected_access_users: unexpected_access_users(&scenario.inputs),
             commissioning_check_count: commissioning_check_count(&scenario.commissioning),
@@ -146,6 +149,9 @@ impl RuntimeState {
                 if let Some(intercom) = step.intercom {
                     self.apply_intercom_step(at, &intercom);
                 }
+                if let Some(sensor_reading) = step.sensor_reading {
+                    self.apply_sensor_reading(at, &sensor_reading);
+                }
                 if let Some(ops) = step.ops {
                     self.apply_ops_step(at, &ops);
                 }
@@ -157,6 +163,60 @@ impl RuntimeState {
             ScheduledEvent::Assertion(_, assertion) => {
                 Ok(Some(self.evaluate_assertion(&assertion)))
             }
+        }
+    }
+
+    fn apply_sensor_reading(&mut self, at: Duration, reading: &SensorReadingStep) {
+        let discomfort = discomfort_index(reading.temperature, reading.humidity);
+        let discomfort_key = format!("{}.discomfort_index", reading.target);
+        self.discomfort_by_target
+            .insert(discomfort_key, discomfort);
+
+        let mut state = StateMap::new();
+        state.insert(
+            "temperature".to_string(),
+            serde_json::Value::from(reading.temperature),
+        );
+        state.insert("humidity".to_string(), serde_json::Value::from(reading.humidity));
+        state.insert(
+            "discomfort_index".to_string(),
+            serde_json::Value::from(discomfort),
+        );
+        if let Some(occupancy) = reading.occupancy {
+            state.insert("occupancy".to_string(), serde_json::Value::Bool(occupancy));
+        }
+        if let Some(zone) = &reading.zone {
+            state.insert("zone".to_string(), serde_json::Value::String(zone.clone()));
+        }
+
+        let history = self
+            .comfort_reading_history
+            .entry(reading.target.clone())
+            .or_default();
+        history.push(discomfort);
+        let oscillation_detected = has_recent_oscillation(history);
+        state.insert(
+            "oscillation_detected".to_string(),
+            serde_json::Value::Bool(oscillation_detected),
+        );
+        self.states
+            .insert(format!("comfort.{}", reading.target), state);
+        self.push(
+            at,
+            "comfort_sensor_reading_recorded",
+            Some(reading.target.clone()),
+            format!(
+                "temperature {} humidity {} discomfort {}",
+                reading.temperature, reading.humidity, discomfort
+            ),
+        );
+        if oscillation_detected {
+            self.push(
+                at,
+                "comfort_oscillation_detected",
+                Some(reading.target.clone()),
+                "recent comfort readings changed direction repeatedly".to_string(),
+            );
         }
     }
 
@@ -781,6 +841,22 @@ fn discomfort_by_target(sensors: &BTreeMap<String, serde_yaml::Value>) -> BTreeM
 
 fn discomfort_index(temperature: f64, humidity: f64) -> f64 {
     0.81 * temperature + 0.01 * humidity * (0.99 * temperature - 14.3) + 46.3
+}
+
+fn has_recent_oscillation(history: &[f64]) -> bool {
+    if history.len() < 4 {
+        return false;
+    }
+    let recent = &history[history.len() - 4..];
+    let mut directions = Vec::new();
+    for pair in recent.windows(2) {
+        let delta = pair[1] - pair[0];
+        if delta.abs() < f64::EPSILON {
+            continue;
+        }
+        directions.push(delta.signum());
+    }
+    directions.len() >= 3 && directions.windows(2).all(|pair| pair[0] != pair[1])
 }
 
 fn parse_between_condition(condition_text: &str) -> Option<(f64, f64)> {

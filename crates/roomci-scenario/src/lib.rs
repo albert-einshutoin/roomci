@@ -39,6 +39,8 @@ pub enum ScenarioError {
     InvalidStepKind,
     #[error("assertion must contain a supported condition")]
     InvalidAssertionKind,
+    #[error("invalid sensor reading: {0}")]
+    InvalidSensorReading(String),
     #[error("unsupported MQTT adapter declaration {0}")]
     UnsupportedMqttAdapter(String),
     #[error("MQTT contract {0} is missing command_topic or state_topic")]
@@ -254,6 +256,7 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
             step.fault.is_some(),
             step.contact.is_some(),
             step.intercom.is_some(),
+            step.sensor_reading.is_some(),
             step.ops.is_some(),
             step.automation.is_some(),
         ]
@@ -286,6 +289,14 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
             require_non_empty("steps[].intercom.id", &intercom.id)?;
             require_non_empty("steps[].intercom.event", &intercom.event)?;
             require_non_empty("steps[].intercom.outcome", &intercom.outcome)?;
+        }
+        if let Some(sensor_reading) = &step.sensor_reading {
+            require_non_empty("steps[].sensor_reading.target", &sensor_reading.target)?;
+            if !(0.0..=100.0).contains(&sensor_reading.humidity) {
+                return Err(ScenarioError::InvalidSensorReading(
+                    "steps[].sensor_reading.humidity must be between 0 and 100".to_string(),
+                ));
+            }
         }
     }
 

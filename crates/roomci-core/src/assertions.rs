@@ -353,6 +353,13 @@ pub(crate) fn evaluate_assertion(
         {
             return evaluate_network_control_panel_faults(runtime);
         }
+        if inline_assert
+            .get("comfort_timeseries")
+            .and_then(|value| value.as_str())
+            == Some("observed")
+        {
+            return evaluate_comfort_timeseries(runtime);
+        }
     }
 
     AssertionResult {
@@ -478,6 +485,39 @@ fn evaluate_network_control_panel_faults(runtime: &RuntimeState) -> AssertionRes
             None
         } else {
             Some("Infrastructure fault QA evidence is incomplete.".to_string())
+        },
+    }
+}
+
+fn evaluate_comfort_timeseries(runtime: &RuntimeState) -> AssertionResult {
+    let reading_count = runtime
+        .timeline
+        .iter()
+        .filter(|event| event.event_type == "comfort_sensor_reading_recorded")
+        .count();
+    let has_comfort_state = runtime
+        .states
+        .keys()
+        .any(|key| key.starts_with("comfort."));
+    let passed = reading_count >= 2 && has_comfort_state;
+    AssertionResult {
+        name: "comfort_timeseries".to_string(),
+        assertion_type: "comfort_timeseries".to_string(),
+        passed,
+        message: if passed {
+            format!("{reading_count} comfort sensor readings were replayed")
+        } else {
+            "comfort time-series replay did not produce enough sensor evidence".to_string()
+        },
+        impact_level: if passed {
+            None
+        } else {
+            Some("medium".to_string())
+        },
+        impact_message: if passed {
+            None
+        } else {
+            Some("Comfort automation QA lacks deterministic sensor-zone evidence.".to_string())
         },
     }
 }
