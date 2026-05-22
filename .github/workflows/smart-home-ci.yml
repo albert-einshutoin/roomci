@@ -188,3 +188,6 @@ jobs:
 
       - name: Protocol profile smoke
         run: make protocol-profile-smoke
+
+      - name: VSCode authoring assets
+        run: make vscode-assets-check

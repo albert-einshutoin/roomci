@@ -1,0 +1,35 @@
+{
+  "name": "roomci-local-authoring-assets",
+  "displayName": "roomci Local Authoring Assets",
+  "description": "Local-only VSCode assets for authoring roomci YAML scenarios.",
+  "version": "0.0.1",
+  "publisher": "roomci",
+  "license": "Apache-2.0",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "contributes": {
+    "yamlValidation": [
+      {
+        "fileMatch": [
+          "*.roomci.yaml",
+          "examples/*.yaml"
+        ],
+        "url": "./schemas/scenario.schema.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "yaml",
+        "path": "./snippets/roomci.code-snippets"
+      }
+    ]
+  }
+}

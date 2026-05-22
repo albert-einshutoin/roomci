@@ -44,8 +44,8 @@ It provides the pre-adoption and pre-site layer:
 3. **Developer workflow**
    - use SDK samples or SDK packages from Go, TypeScript, and Python
    - debug scenario execution without reading Rust internals
-   - use deferred editor support for schema validation, snippets, and task
-     commands once Phase 22 lands
+   - use local editor support for schema validation, snippets, and task
+     commands while authoring scenarios
 
 4. **Protocol-profile evaluation**
    - evaluate MQTT and Modbus through implemented official-spec-backed subsets
@@ -70,8 +70,8 @@ curl scripts or reading Rust code:
 - SDK and debugger CI examples
 - copy-paste evaluator workflows
 
-This is tracked in Phase 20. VSCode extension assets are intentionally deferred
-to Phase 22.
+This is tracked in Phase 20 and Phase 22. Phase 20 ships SDK/debugger/docs;
+Phase 22 adds local VSCode authoring assets without Marketplace publishing.
 
 ### B Tier: Future Protocol Profile Surface
 

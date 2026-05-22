@@ -11,6 +11,7 @@ make adapter-samples-smoke
 make s-tier-evidence-smoke
 make developer-experience-smoke
 make protocol-profile-smoke
+make vscode-assets-check
 make protocol-evidence
 ```
 
@@ -32,6 +33,8 @@ Current release-candidate evidence:
   generates debugger JSON/Markdown artifacts.
 - `make protocol-profile-smoke` validates Matter, BACnet, KNX, and OPC UA
   contract-profile examples and dry-run scenario fixtures.
+- `make vscode-assets-check` validates local VSCode schema associations,
+  snippets, tasks, and schema sync for scenario authoring.
 - `make protocol-evidence` checks the claim registry, including Phase 17
   intercom/relay, network/control-panel, BMS hardening, comfort time-series,
   adapter sample evidence, S Tier artifact evidence, and A Tier developer
@@ -83,6 +86,8 @@ Generated `reports/` files are intentionally ignored by git.
 - Drop-in compatibility with any private customer environment without their supplied contracts.
 - Production SDK guarantees or PyPI packaging for the Python reference client.
 - VSCode Marketplace extension publishing.
+- Language server or graphical debugger behavior for the local VSCode authoring
+  bundle.
 
 ## Next Adoption Work
 

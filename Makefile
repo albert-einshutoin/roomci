@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke protocol-profile-smoke s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke protocol-profile-smoke vscode-assets-check s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -92,6 +92,7 @@ verify:
 	$(MAKE) s-tier-evidence-smoke
 	$(MAKE) developer-experience-smoke
 	$(MAKE) protocol-profile-smoke
+	$(MAKE) vscode-assets-check
 
 docker-demo:
 	docker build -t roomci:demo .
@@ -166,6 +167,12 @@ protocol-profile-smoke:
 		--report-json reports/protocol_profiles.json \
 		--report-md reports/protocol_profiles.md \
 		--junit reports/protocol_profiles.xml
+
+vscode-assets-check:
+	find tools/vscode-roomci -name '*.json' -print0 | xargs -0 -n1 python3 -m json.tool >/dev/null
+	cmp -s schemas/scenario.schema.json tools/vscode-roomci/schemas/scenario.schema.json
+	rg -n "roomci validate|roomci run|make verify|protocol-evidence" tools/vscode-roomci >/dev/null
+	rg -n "scenario:|mqtt:|modbus_write:|alerts:|sensor_reading:|assertions:" tools/vscode-roomci/snippets >/dev/null
 
 s-tier-evidence-smoke:
 	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml \

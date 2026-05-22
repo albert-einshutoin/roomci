@@ -1,14 +1,14 @@
 # Phase 22 Status: Deferred Editor Authoring Assets
 
-Status: `todo`
+Status: `done`
 
 ## Tasks
 
 | Task | Status | Notes |
 |---|---|---|
-| 01 VSCode extension assets | `todo` | Add local schema association, snippets, tasks, README, and validation target without marketplace publishing. |
+| 01 VSCode extension assets | `done` | Added local schema association, snippets, tasks, README, and validation target without marketplace publishing. |
 
 ## Current Blocker
 
-None. This phase is deliberately lower priority than Python/debugger adoption
-and B Tier protocol-profile work.
+None. Marketplace publishing, a language server, and a graphical debugger remain
+explicit non-goals.

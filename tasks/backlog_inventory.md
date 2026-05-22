@@ -29,6 +29,7 @@ These are implemented and tracked as `done` in phase status files:
 | S Tier observability and CI evidence completion | `done` | Phase 19 |
 | A Tier Python and debugger developer experience | `done` | Phase 20 |
 | B Tier protocol profiles for Matter, BACnet, KNX, and OPC UA | `done` | Phase 21 |
+| Local VSCode authoring assets | `done` | Phase 22 |
 
 ## Already Taskified For Implementation
 
@@ -97,7 +98,7 @@ These are the Phase 16 items promoted into concrete implementation tasks and com
 | Developer workflow docs | `tasks/phase20/04_developer_workflow_docs_task.md` |
 | A Tier release gate | `tasks/phase20/05_a_tier_release_gate_task.md` |
 
-## Deferred From Phase 20
+## Deferred From Phase 20 And Implemented In Phase 22
 
 | Area | Task |
 |---|---|

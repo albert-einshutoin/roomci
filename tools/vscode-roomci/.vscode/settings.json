@@ -1,0 +1,8 @@
+{
+  "yaml.schemas": {
+    "schemas/scenario.schema.json": [
+      "*.roomci.yaml",
+      "examples/*.yaml"
+    ]
+  }
+}

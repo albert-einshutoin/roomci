@@ -23,6 +23,7 @@ its own.
 | Adapters | [Adapter SDK samples](ADAPTER_SDK_SAMPLES.md) | Small Go, TypeScript, and Lua-like examples for HTTP, MQTT, and Modbus adapter wiring |
 | Developers | [Developer workflow](DEVELOPER_WORKFLOW.md) | First run, Python automation, scenario debugging, and CI artifact review |
 | Developers | [Python reference client](PYTHON_SDK.md) | Python HTTP reference client and MQTT/Modbus smoke path |
+| Developers | [VSCode local authoring assets](../tools/vscode-roomci/README.md) | Local schema associations, snippets, and tasks for scenario authoring |
 | Evidence | [Evaluation evidence pack](EVALUATION_EVIDENCE_PACK.md) | Commands, PoC packs, scorecards, report artifacts, and unsupported-feature disclosure |
 | Onboarding | [Integration onboarding](INTEGRATION_ONBOARDING.md) | 15-minute path, HTTP API, troubleshooting, and client snippets |
 | Category | [Category readiness](CATEGORY_READINESS.md) | Comparison against real-device staging, brokers, mocks, Home Assistant, cloud emulators, and HIL |

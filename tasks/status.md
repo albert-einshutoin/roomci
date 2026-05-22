@@ -24,9 +24,9 @@
 | Phase 17 | `done` | Promoted contract depth: safe intercom/relay mock, network/control-panel profiles, BMS hardening, comfort time-series, adapter samples | None | `phase17/phase_status.md` |
 | Phase 18 | `done` | Release-candidate sample and evidence hardening after Phase 17 | None | `phase18/phase_status.md` |
 | Phase 19 | `done` | S Tier observability and CI evidence completion | None | `phase19/phase_status.md` |
-| Phase 20 | `done` | A Tier developer experience completion for Python SDK, scenario debugger, and adoption workflow docs | VSCode assets deferred to Phase 22 | `phase20/phase_status.md` |
+| Phase 20 | `done` | A Tier developer experience completion for Python SDK, scenario debugger, and adoption workflow docs | Editor assets completed in Phase 22 | `phase20/phase_status.md` |
 | Phase 21 | `done` | B Tier protocol profile completion: Matter, BACnet, KNX, and OPC UA contract profiles | Real customer maps needed before any profile is promoted beyond contract_profile | `phase21/phase_status.md` |
-| Phase 22 | `todo` | Deferred VSCode editor authoring assets | None | `phase22/phase_status.md` |
+| Phase 22 | `done` | Deferred VSCode editor authoring assets | None | `phase22/phase_status.md` |
 
 ## Update Rules
 
@@ -59,8 +59,8 @@ The final self-review created Phase 15. Phases 15, 16, 17, and 18 are now comple
 - **Phase 21** completed the B Tier protocol-profile surface for Matter,
   BACnet, KNX, and OPC UA as scoped contract profiles, not full protocol
   implementations.
-- **Phase 22** tracks the intentionally deferred VSCode editor authoring
-  assets.
+- **Phase 22** completed the intentionally deferred VSCode editor authoring
+  assets as a local bundle, not a Marketplace extension.
 
 See `tasks/backlog_inventory.md` for the current split between implemented work, already taskified implementation work, newly taskified roadmap work, and intentional non-goals.
 

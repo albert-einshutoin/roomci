@@ -24,6 +24,7 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 | Python SDK smoke | `make python-sdk-smoke` | Python reference client drives HTTP, MQTT, and Modbus TCP against `roomci serve` |
 | Developer experience smoke | `make developer-experience-smoke` | Python SDK smoke and `roomci debug` JSON/Markdown artifacts pass |
 | Protocol profile smoke | `make protocol-profile-smoke` | Matter, BACnet, KNX, and OPC UA contract-profile examples and dry-run scenarios validate |
+| VSCode authoring assets | `make vscode-assets-check` | Local editor package JSON, snippets, tasks, schema copy, and command references validate |
 | S Tier evidence smoke | `make s-tier-evidence-smoke` | JSON report, timeline JSON, timeline NDJSON, observability JSON, run id, and trace metadata are generated and validated |
 | Protocol evidence map | `make protocol-evidence` | Verified protocol claims map to commands and non-goal docs |
 | Full local CI approximation | `make verify` | Runs the same practical gate set as CI, including Docker and Compose checks |
@@ -50,3 +51,5 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 - Matter, BACnet, KNX, and OPC UA are B Tier `contract_profile` entries only;
   do not describe them as wire-level support, full protocol implementations, or
   certification evidence.
+- The local VSCode authoring bundle is not a Marketplace extension, language
+  server, or graphical debugger.

@@ -37,7 +37,7 @@ The current detailed product goal is tracked in
 | Phase 19 | S Tier observability and CI evidence | GitHub Actions parity, stable timeline export, trace metadata, observability artifacts, and evaluator CI docs complete the S Tier surface |
 | Phase 20 | A Tier developer experience | Python SDK, scenario debugger, and developer workflow docs make adoption easier |
 | Phase 21 | B Tier protocol profiles | Matter, BACnet, KNX, and OPC UA are represented as honest contract profiles without certification claims |
-| Phase 22 | Deferred editor authoring assets | VSCode schema/snippet/task assets are tracked after Python/debugger adoption work |
+| Phase 22 | Deferred editor authoring assets | VSCode schema/snippet/task assets are implemented as a local-only authoring bundle |
 
 ## Progress Management
 

@@ -165,6 +165,14 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 
 `make protocol-profile-smoke` で実行します。
 
+## ローカル VSCode オーサリング アセット
+
+`tools/vscode-roomci/` には、シナリオ作成向けのローカル専用 VSCode
+アセット バンドルがあります。YAML schema association、snippets、
+`roomci validate`、`roomci run`、`make verify`、`make protocol-evidence`
+向け task 定義を含みます。Marketplace extension ではありません。
+`make vscode-assets-check` で検証します。
+
 ## 障害レポート デモシナリオ
 
 | シナリオ | 説明 |

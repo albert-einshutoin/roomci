@@ -1,0 +1,127 @@
+{
+  "roomci scenario": {
+    "scope": "yaml",
+    "prefix": "roomci-scenario",
+    "description": "Minimal roomci scenario with one device and one assertion.",
+    "body": [
+      "version: \"1\"",
+      "scenario:",
+      "  name: ${1:local_first_contract}",
+      "  description: ${2:Contract-level scenario for CI.}",
+      "  tags: [${3:smoke}]",
+      "devices:",
+      "  - id: ${4:device_01}",
+      "    type: ${5:light}",
+      "    protocol: ${6:mqtt}",
+      "    state:",
+      "      ${7:on}: ${8:false}",
+      "steps:",
+      "  - at: T",
+      "    command:",
+      "      target: ${4:device_01}",
+      "      action: ${9:set}",
+      "      value:",
+      "        ${7:on}: ${10:true}",
+      "assertions:",
+      "  - at: T+1s",
+      "    name: ${11:device_state_updated}",
+      "    impact_level: none",
+      "    impact_message: ${12:Device reached expected state.}"
+    ]
+  },
+  "roomci MQTT contract": {
+    "scope": "yaml",
+    "prefix": "roomci-mqtt",
+    "description": "MQTT local/cloud broker contract block.",
+    "body": [
+      "mqtt:",
+      "  local:",
+      "    enabled: true",
+      "    retained: true",
+      "  cloud:",
+      "    enabled: ${1:false}",
+      "    retained: true",
+      "  contracts:",
+      "    - name: ${2:room_command_state}",
+      "      adapter: mqtt_v3_qos0_subset",
+      "      command_topic: ${3:roomci/devices/{device_id}/set}",
+      "      state_topic: ${4:roomci/devices/{device_id}/state}",
+      "      device_id_from_topic: placeholder:{device_id}",
+      "      payload:",
+      "        required_fields: [${5:state}]"
+    ]
+  },
+  "roomci Modbus register": {
+    "scope": "yaml",
+    "prefix": "roomci-modbus",
+    "description": "Modbus device/register and write step.",
+    "body": [
+      "modbus:",
+      "  devices:",
+      "    ${1:floor_heating_controller}:",
+      "      unit_id: ${2:1}",
+      "      registers:",
+      "        ${3:40001}:",
+      "          name: ${4:setpoint_deci_c}",
+      "          access: read_write",
+      "          scale: ${5:0.1}",
+      "steps:",
+      "  - at: T",
+      "    modbus_write:",
+      "      device: ${1:floor_heating_controller}",
+      "      register: ${3:40001}",
+      "      value: ${6:245}"
+    ]
+  },
+  "roomci BMS alert": {
+    "scope": "yaml",
+    "prefix": "roomci-bms",
+    "description": "BMS/contact alert block and contact transition step.",
+    "body": [
+      "contacts:",
+      "  ${1:sauna_emergency_button}:",
+      "    normal_state: closed",
+      "alerts:",
+      "  - id: ${2:sauna_emergency}",
+      "    source: ${1:sauna_emergency_button}",
+      "    severity: ${3:critical}",
+      "    channels: [slack, phone, ticket]",
+      "    runbook: ${4:https://example.invalid/runbooks/sauna}",
+      "steps:",
+      "  - at: T",
+      "    contact:",
+      "      id: ${1:sauna_emergency_button}",
+      "      state: open"
+    ]
+  },
+  "roomci comfort reading": {
+    "scope": "yaml",
+    "prefix": "roomci-comfort",
+    "description": "Comfort sensor reading step.",
+    "body": [
+      "comfort:",
+      "  zones:",
+      "    ${1:living_area}:",
+      "      target_discomfort_index: ${2:70}",
+      "steps:",
+      "  - at: T",
+      "    sensor_reading:",
+      "      target: ${1:living_area}",
+      "      temperature: ${3:27.2}",
+      "      humidity: ${4:62.0}",
+      "      occupancy: ${5:true}"
+    ]
+  },
+  "roomci assertion": {
+    "scope": "yaml",
+    "prefix": "roomci-assertion",
+    "description": "Common assertion block.",
+    "body": [
+      "assertions:",
+      "  - at: ${1:T+1s}",
+      "    name: ${2:contract_observed}",
+      "    impact_level: ${3:none}",
+      "    impact_message: ${4:Expected contract evidence was observed.}"
+    ]
+  }
+}

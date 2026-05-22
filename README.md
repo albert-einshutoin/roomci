@@ -167,6 +167,13 @@ certification evidence.
 
 Run them with `make protocol-profile-smoke`.
 
+## Local VSCode Authoring Assets
+
+`tools/vscode-roomci/` contains a local-only VSCode asset bundle for scenario
+authoring: YAML schema association, snippets, and task definitions for `roomci
+validate`, `roomci run`, `make verify`, and `make protocol-evidence`. It is not
+a Marketplace extension. Validate it with `make vscode-assets-check`.
+
 ## Failure-report demo scenario
 
 | Scenario | What it shows |
