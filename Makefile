@@ -171,8 +171,8 @@ protocol-profile-smoke:
 vscode-assets-check:
 	find tools/vscode-roomci -name '*.json' -print0 | xargs -0 -n1 python3 -m json.tool >/dev/null
 	cmp -s schemas/scenario.schema.json tools/vscode-roomci/schemas/scenario.schema.json
-	rg -n "roomci validate|roomci run|make verify|protocol-evidence" tools/vscode-roomci >/dev/null
-	rg -n "scenario:|mqtt:|modbus_write:|alerts:|sensor_reading:|assertions:" tools/vscode-roomci/snippets >/dev/null
+	grep -R -E "roomci validate|roomci run|make verify|protocol-evidence" tools/vscode-roomci >/dev/null
+	grep -R -E "scenario:|mqtt:|modbus_write:|alerts:|sensor_reading:|assertions:" tools/vscode-roomci/snippets >/dev/null
 
 s-tier-evidence-smoke:
 	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml \
