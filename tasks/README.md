@@ -38,6 +38,8 @@ The current detailed product goal is tracked in
 | Phase 20 | A Tier developer experience | Python SDK, scenario debugger, and developer workflow docs make adoption easier |
 | Phase 21 | B Tier protocol profiles | Matter, BACnet, KNX, and OPC UA are represented as honest contract profiles without certification claims |
 | Phase 22 | Deferred editor authoring assets | VSCode schema/snippet/task assets are implemented as a local-only authoring bundle |
+| Phase 23 | OSS trust and positioning cleanup | Public license, repository, provenance, positioning, and debranding issues are made coherent |
+| Phase 24 | Core architecture hardening | Typed assertions, domain runtime state, parser/property tests, concurrency tests, and protocol-server ADR are tracked |
 
 ## Progress Management
 
