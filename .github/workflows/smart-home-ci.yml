@@ -11,7 +11,7 @@ jobs:
     name: Rust quality gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -45,7 +45,7 @@ jobs:
     name: Docker scenario suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Create reports directory
         run: mkdir -p reports && chmod 777 reports
@@ -157,7 +157,7 @@ jobs:
           docker compose -f compose/docker-compose.yml down
 
       - name: Upload roomci reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: roomci-reports
           path: reports
@@ -166,7 +166,7 @@ jobs:
     name: Release evidence gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install stable Rust toolchain
         uses: dtolnay/rust-toolchain@stable
