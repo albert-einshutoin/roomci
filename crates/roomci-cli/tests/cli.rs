@@ -419,6 +419,12 @@ fn external_mqtt_publish_updates_retained_state_through_serve() {
         "fleet/demo/site/lab/device/env_sensor_01/command",
         r#"{"online":true,"sample_interval_seconds":15}"#,
     );
+    wait_for_http_contains(
+        &http_address,
+        "GET",
+        "/state",
+        "\"sample_interval_seconds\":15",
+    );
     let finish = http_request(&http_address, "POST", "/finish", "");
     assert!(finish.contains("\"finished\":true"));
     assert!(finish.contains("\"external_publish_count\":1"));
@@ -561,6 +567,19 @@ fn http_request(address: &str, method: &str, path: &str, body: &str) -> String {
             Err(error) => panic!("failed to connect to {address}: {error}"),
         }
     }
+}
+
+fn wait_for_http_contains(address: &str, method: &str, path: &str, expected: &str) -> String {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut last_response = String::new();
+    while Instant::now() < deadline {
+        last_response = http_request(address, method, path, "");
+        if last_response.contains(expected) {
+            return last_response;
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    }
+    panic!("timed out waiting for {path} to contain {expected}; last response: {last_response}");
 }
 
 fn publish_mqtt_json(address: &str, topic: &str, payload: &str) {
