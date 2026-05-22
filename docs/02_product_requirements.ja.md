@@ -82,7 +82,7 @@ Make smart-home field failures reproducible in Docker and CI.
 | FR-014 | Simulate edge server failover | Should |
 | FR-015 | BMS Slack/phone/ticket mock | Should |
 | FR-016 | Comfort automation module | Could |
-| FR-017 | Intercom / DoorBird / SIP mock | Later |
+| FR-017 | Intercom / intercom API / SIP mock | Later |
 
 ### 非機能要件
 
@@ -101,7 +101,7 @@ Make smart-home field failures reproducible in Docker and CI.
 - Production device control
 - Full KNX / DALI / BACnet protocol certification
 - Real SIP trunking
-- Real Twilio / Slack / PagerDuty calls in default mode
+- Real phone provider / Slack / PagerDuty calls in default mode
 - Replacing a production BMS
 - Replacing real commissioning
 

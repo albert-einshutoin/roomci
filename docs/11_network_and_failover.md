@@ -52,7 +52,7 @@ wan:
     type: cable
     status: up
   backup:
-    id: starlink
+    id: backup_satellite
     type: satellite
     status: standby
   failover:
@@ -71,7 +71,7 @@ dns_failure
 vlan_leak
 router_reboot
 l3_switch_failure
-starlink_degraded
+backup_wan_degraded
 power_domain_outage
 ```
 
@@ -98,7 +98,7 @@ assertions:
       network_control_panel_faults: observed
 ```
 
-## Demo: Starlink failover
+## Demo: backup WAN failover
 
 ```yaml
 scenario:
@@ -133,7 +133,7 @@ Primary WAN:
 - mcat_cable down
 
 Backup WAN:
-- Starlink active within 20s
+- backup WAN active within 20s
 
 Guest impact:
 - local smart-home controls unaffected
@@ -153,18 +153,18 @@ When WAN is down:
 - cloud sync may be delayed
 - ops notification may use local fallback or queue
 
-## Future: UniFi-like and YAMAHA-like profiles
+## Future: network-vendor profiles
 
 Future modules can emulate vendor-style health data:
 
 ```yaml
 network_profiles:
-  unifi:
+  wifi_controller:
     aps:
       - id: ap_living
         packet_loss: 0.01
         clients: 12
-  yamaha:
+  edge_router:
     routers:
       - id: rtx_main
         cpu: 20

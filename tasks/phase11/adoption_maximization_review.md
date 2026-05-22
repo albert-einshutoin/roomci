@@ -36,7 +36,7 @@ The product is directionally strong because it combines a generic MQTT/edge/devi
 Commands/evidence:
 
 - `make compose-poc` passed.
-- README badge endpoint `https://github.com/albert-einshutoin/roomci/actions/workflows/smart-home-ci.yml/badge.svg` returns `HTTP/2 404`.
+- README badge endpoint `https://github.com/OWNER/roomci/actions/workflows/smart-home-ci.yml/badge.svg` returns `HTTP/2 404`.
 - `wc -l crates/roomci-cli/src/main.rs` reports `1093`, confirming the Phase 12 crate-extraction task is justified.
 - `rg 'expect\("serve state mutex poisoned"\)' crates/roomci-cli/src/main.rs` confirms serve-state poison handling is still panic-based.
 - `/health` currently returns `"status":"ok"` regardless of run state.

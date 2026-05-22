@@ -12,10 +12,10 @@ v0.1 should include:
 
 v0.3 may include:
 
-- DoorBird-like API
+- intercom API
 - SIP call mock
 - DTMF relay trigger
-- Twilio outage simulation
+- phone provider outage simulation
 - Zoom Phone mock
 - local PBX fallback
 - ONVIF-like camera event
@@ -97,12 +97,12 @@ steps:
         pulsed: true
 ```
 
-## Twilio outage scenario future
+## phone provider outage scenario future
 
 ```yaml
 faults:
   - at: T
-    target: twilio_sip_trunk
+    target: sip_trunk_provider
     type: offline
 
 assertions:
@@ -113,7 +113,7 @@ assertions:
 
 ## Access control drift scenario
 
-A lightweight module can emulate UniFi/Okta style access drift by comparing identity-group membership with access-system users.
+A lightweight module can emulate access-control drift by comparing identity-provider group membership with access-system users.
 
 ```yaml
 scenario:

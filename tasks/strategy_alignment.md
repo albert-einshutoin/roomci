@@ -6,7 +6,7 @@ This file maps the current product strategy to task status.
 
 | Strategy Item | Task State | Where It Lives |
 |---|---|---|
-| Make the NOT A HOTEL-like core QA journey the center of the product demo | `done` | Phase 14 defines the core journey; `make poc-core-qa` is the demo path. Control-panel fault depth was promoted in Phase 17. |
+| Make the hospitality-like core QA journey the center of the product demo | `done` | Phase 14 defines the core journey; `make poc-core-qa` is the demo path. Control-panel fault depth was promoted in Phase 17. |
 | Local MQTT | `done` | Phase 1, Phase 10, Phase 13, and Phase 15 retained subscribe/replay. |
 | Edge server | `done` | Phase 2 and Phase 14. |
 | Modbus | `done` | Phase 3 scenario model, Phase 13 Modbus TCP subset, and Phase 15 practical multi-register reads. |
@@ -29,7 +29,7 @@ This file maps the current product strategy to task status.
 | Auth/TLS | `done` as explicit customer input / unsupported runtime boundary | Onboarding, release checklist, MQTT subset docs. |
 | Acceptance criteria | `done` | Adapter contracts, PoC packs, evaluator docs. |
 | Device identity | `done` | Adapter contracts and MQTT placeholder mapping. |
-| Keep NOT A HOTEL-specific language inside the hospitality domain pack/evaluator path | `done` | Phase 8, Phase 9, Phase 11, Phase 14. Core positioning is Smart Home / Building Automation QA Contract Emulator. |
+| Keep private hospitality operator-specific language inside the hospitality domain pack/evaluator path | `done` | Phase 8, Phase 9, Phase 11, Phase 14. Core positioning is Smart Home / Building Automation QA Contract Emulator. |
 | Ship multiple domain packs | `done` | Generic MQTT edge, hospitality smart home, building automation, and BMS ops PoC packs exist in Phase 11. |
 | Verify with standard clients and black-box Docker smoke | `done` | Phase 13 standard MQTT/Modbus smoke; Phase 15 Task 03 replaced runtime package install with a pinned protocol-smoke image build. |
 
@@ -37,8 +37,8 @@ This file maps the current product strategy to task status.
 
 | Non-Goal | Task State | Where It Lives |
 |---|---|---|
-| Recreate the full NOT A HOTEL stack | `documented non-goal` | Phase 14 and backlog inventory. |
-| Become AWS/GCP/Cloudflare/UniFi/DoorBird/Twilio vendor emulators | `documented non-goal` | Phase 14 and backlog inventory. |
+| Recreate the full private hospitality operator stack | `documented non-goal` | Phase 14 and backlog inventory. |
+| Become cloud, network, access-control, intercom, phone, notification, or observability vendor emulators | `documented non-goal` | Phase 14 and backlog inventory. |
 | Implement BACnet/Matter/KNX/OPC UA as full protocol stacks | `documented non-goal`; B Tier contract profiles `done` | Phase 21 only targets scoped contract profiles and docs/evidence gates. |
 | Claim full protocol conformance | `blocked by release rule` | Phase 13 registry and release checklist. |
 | Enter physical safety or real lock-control territory | `documented non-goal` | Phase 14, Phase 16 Task 02, Phase 16 Task 03, and backlog inventory. |

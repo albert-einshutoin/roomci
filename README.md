@@ -56,8 +56,8 @@ DALI-like scene consistency violation: D411S10 expected level 60, actual 0
 Guest impact: Lighting scene did not match intended guest ambience.
 ```
 
-For the full interview walkthrough, see [`docs/INTERVIEW_DEMO.md`](docs/INTERVIEW_DEMO.md). For product positioning, see [`docs/PRODUCT_POSITIONING.md`](docs/PRODUCT_POSITIONING.md), [`docs/DOMAIN_PACKS.md`](docs/DOMAIN_PACKS.md), and [`docs/GENERIC_MQTT_CONTRACTS.md`](docs/GENERIC_MQTT_CONTRACTS.md).
-For the product boundary, see [`docs/HOSPITALITY_STACK_COVERAGE.md`](docs/HOSPITALITY_STACK_COVERAGE.md) and [`docs/CORE_QA_JOURNEY.md`](docs/CORE_QA_JOURNEY.md). For protocol subset claims, see [`docs/PROTOCOL_CONFORMANCE_REGISTRY.md`](docs/PROTOCOL_CONFORMANCE_REGISTRY.md).
+For the full interview walkthrough, see [`docs/INTERVIEW_DEMO.md`](docs/INTERVIEW_DEMO.md). For canonical product positioning, see [`docs/PRODUCT_GUIDE.md`](docs/PRODUCT_GUIDE.md), [`docs/DOMAIN_PACKS.md`](docs/DOMAIN_PACKS.md), and [`docs/GENERIC_MQTT_CONTRACTS.md`](docs/GENERIC_MQTT_CONTRACTS.md).
+For protocol subset claims, see [`docs/PROTOCOL_CONFORMANCE_REGISTRY.md`](docs/PROTOCOL_CONFORMANCE_REGISTRY.md).
 
 For evaluator onboarding, use [`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md), [`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md), and [`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md).
 
@@ -142,7 +142,7 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 | `examples/edge_server_failover.yaml` | Primary edge loses power; standby is promoted and routes the next command. |
 | `examples/modbus_floor_heating.yaml` | Floor-heating setpoint reaches the Modbus register with 0.1 °C precision. |
 | `examples/bms_sauna_emergency_alert.yaml` | Sauna over-temperature contact opens; BMS escalates to Slack, phone, and ticket runbook. |
-| `examples/starlink_failover.yaml` | WAN failover to Starlink within the configured budget. |
+| `examples/starlink_failover.yaml` | Backup WAN failover within the configured budget. |
 | `examples/comfort_auto_mode.yaml` | Discomfort index drives HVAC auto-mode; user override is respected. |
 | `examples/comfort_timeseries_replay.yaml` | Deterministic sensor-zone readings update discomfort-index evidence. |
 | `examples/access_permission_drift.yaml` | Detect stale access-system users who no longer exist in the identity group. |
@@ -343,7 +343,7 @@ Hospitality smart homes are a high-signal domain pack on top of that core. They 
 - cloud MQTT brokers and cloud event pipelines
 - DALI / KNX / Modbus / contact I/O / HVAC / lighting devices
 - BMS alerts, Slack notifications, phone escalation, and runbooks
-- network segmentation, WAN failover, Starlink-style backup paths
+- network segmentation, WAN failover, backup-link paths
 - commissioning, field QA, maintenance, and continuous operation
 
 `roomci` makes these dependencies reproducible in CI so teams can test failure scenarios before users or guests experience them.
@@ -355,7 +355,7 @@ Hospitality smart homes are a high-signal domain pack on top of that core. They 
 3. **Commissioning QA** — turn field commissioning checks into reusable YAML scenarios.
 4. **Building-automation protocol simulation** — DALI-like lighting, Modbus registers, contact I/O alerts, HVAC, KNX-like legacy bus behavior.
 5. **BMS / operations alert simulation** — verify Slack / phone-call / ticket / runbook flows for emergency alerts and recoveries.
-6. **Network failure simulation** — ISP outage, Starlink-style failover, VLAN isolation issues, local-only operation.
+6. **Network failure simulation** — ISP outage, backup-WAN failover, VLAN isolation issues, local-only operation.
 7. **Comfort automation simulation** — discomfort-index targets, HVAC auto mode, user override, room-specific tuning.
 
 ## What this is not

@@ -48,7 +48,7 @@ Phase 21 adds a BACnet contract_profile for evaluator-supplied object/property
 maps. It does not implement a BACnet/IP endpoint, object services, COV, BBMD,
 routing, or certification.
 
-## DoorBird / ONVIF / SIP / DTMF
+## intercom API / ONVIF / SIP / DTMF
 
 Future module:
 
@@ -60,7 +60,7 @@ Future module:
 - local PBX fallback
 - ONVIF recording event
 
-## UniFi / Okta access-control drift
+## Access-control and identity-provider drift
 
 Future module:
 
@@ -78,7 +78,7 @@ MVP can export JSON/Prometheus-like metrics. Later versions can provide:
 - Grafana dashboard JSON
 - alert rule templates
 
-## Rebro / CAD / floorplan
+## CAD/BIM and floorplan
 
 Future direction:
 

@@ -123,10 +123,10 @@ These should stay documented non-goals unless a future product decision reverses
 
 | Area | Reason |
 |---|---|
-| Full NOT A HOTEL private compatibility | Requires private topics, payloads, register maps, BMS contracts, auth/TLS assumptions, and acceptance criteria. |
+| Full private hospitality-operator compatibility | Requires private topics, payloads, register maps, BMS contracts, auth/TLS assumptions, and acceptance criteria. |
 | Production MQTT broker replacement | Outside the QA contract emulator scope. |
 | Full Modbus RTU electrical/serial behavior | Requires serial timing and hardware-level validation. |
 | Full BACnet, KNX, Matter, OPC UA, Zigbee, Thread certification | B Tier profiles may be taskified as contract profiles, but certification-grade protocol stacks remain outside the product. |
 | Real lock authorization or physical access decisions | Safety-critical and outside local CI emulation. |
-| Cloud platform emulation for AWS, GCP, Cloudflare, Twilio, Slack, Zoom, Grafana, InfluxDB, UniFi, DoorBird, YAMAHA, Jamf | These should remain contracts, mocks, or evidence outputs rather than vendor replacements. |
+| Vendor platform emulation for cloud, phone, notification, observability, network, intercom, access-control, or device-management systems | These should remain contracts, mocks, or evidence outputs rather than vendor replacements. |
 | CAD/BIM/construction tooling | Not a QA emulator surface. |

@@ -9,7 +9,8 @@ its own.
 | # | Document | What it covers |
 |---|---|---|
 | 00 | [Executive summary](00_executive_summary.md) | One-page overview of roomci, who it is for, and how it is used |
-| Positioning | [Product positioning](PRODUCT_POSITIONING.md) | QA contract emulator category, audience, and scope boundaries |
+| Guide | [Product guide](PRODUCT_GUIDE.md) | Canonical category, audience, domain packs, evaluator journey, comparisons, and non-goals |
+| Positioning | [Product positioning](PRODUCT_POSITIONING.md) | Stable link that points to the canonical product guide |
 | Domains | [Domain packs](DOMAIN_PACKS.md) | Core emulator modules and reusable domain packs |
 | MQTT | [Generic MQTT contracts](GENERIC_MQTT_CONTRACTS.md) | Generic MQTT command/state examples and current supported subset |
 | MQTT serve | [MQTT serve subset](MQTT_SERVE_SUBSET.md) | Minimal MQTT 3.1.1 CONNECT + QoS0 PUBLISH ingress for PoC tests |
@@ -17,8 +18,8 @@ its own.
 | Protocols | [Protocol support matrix](PROTOCOL_SUPPORT_MATRIX.md) | Source of truth for behavior models, serve endpoints, tested external surfaces, and non-goals |
 | Protocols | [Protocol conformance registry](PROTOCOL_CONFORMANCE_REGISTRY.md) | Official references, implemented subsets, black-box verification commands, and explicit rejections |
 | Protocols | [B Tier protocol profiles](B_TIER_PROTOCOL_PROFILES.md) | Matter, BACnet, KNX, and OPC UA contract-profile fixtures and non-goals |
-| Coverage | [Hospitality stack coverage](HOSPITALITY_STACK_COVERAGE.md) | What roomci covers, mocks, defers, or rejects from a hospitality smart-home stack |
-| Journey | [Core QA journey](CORE_QA_JOURNEY.md) | End-to-end local MQTT, edge, device, fault, BMS, comfort, and evidence path |
+| Coverage | [Hospitality domain pack coverage](HOSPITALITY_STACK_COVERAGE.md) | Stable link for the hospitality domain-pack scope boundary |
+| Journey | [Core QA journey](CORE_QA_JOURNEY.md) | Stable link for the evaluator journey now maintained in the product guide |
 | Adapters | [Adapter contract kit](ADAPTER_CONTRACT_KIT.md) | Templates, examples, and validation for company-specific protocol contracts |
 | Adapters | [Adapter SDK samples](ADAPTER_SDK_SAMPLES.md) | Small Go, TypeScript, and Lua-like examples for HTTP, MQTT, and Modbus adapter wiring |
 | Developers | [Developer workflow](DEVELOPER_WORKFLOW.md) | First run, Python automation, scenario debugging, and CI artifact review |
@@ -26,8 +27,8 @@ its own.
 | Developers | [VSCode local authoring assets](../tools/vscode-roomci/README.md) | Local schema associations, snippets, and tasks for scenario authoring |
 | Evidence | [Evaluation evidence pack](EVALUATION_EVIDENCE_PACK.md) | Commands, PoC packs, scorecards, report artifacts, and unsupported-feature disclosure |
 | Onboarding | [Integration onboarding](INTEGRATION_ONBOARDING.md) | 15-minute path, HTTP API, troubleshooting, and client snippets |
-| Category | [Category readiness](CATEGORY_READINESS.md) | Comparison against real-device staging, brokers, mocks, Home Assistant, cloud emulators, and HIL |
-| Positioning | [Dual-track positioning](DUAL_TRACK_POSITIONING.md) | Industry-wide product story plus hospitality domain-pack story |
+| Category | [Category readiness](CATEGORY_READINESS.md) | Stable link for comparisons now maintained in the product guide |
+| Positioning | [Dual-track positioning](DUAL_TRACK_POSITIONING.md) | Stable link for industry/domain-pack positioning now maintained in the product guide |
 | Principles | [Design principles](DESIGN_PRINCIPLES.md) | Product philosophy and scope boundaries |
 
 ## Product
@@ -55,7 +56,7 @@ its own.
 | 08 | [Modbus strategy](08_modbus_strategy.md) | Register-map shape, read-only enforcement, decimal types |
 | 09 | [DALI lighting strategy](09_dali_lighting_strategy.md) | Scene targets, per-fixture levels, command-drop faults |
 | 10 | [BMS operations emulation](10_bms_operations_emulation.md) | Alert pipeline, Slack/phone escalation, runbook URLs |
-| 14 | [Intercom and access control](14_intercom_and_access_control.md) | Future Aiphone / access-control integration |
+| 14 | [Intercom and access control](14_intercom_and_access_control.md) | Future intercom and access-control integration |
 
 ## Scenarios and faults
 

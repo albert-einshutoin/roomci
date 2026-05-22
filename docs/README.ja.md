@@ -54,7 +54,7 @@ its own.
 | 08 | [Modbus strategy](08_modbus_strategy.md) | Register-map shape, read-only enforcement, decimal types |
 | 09 | [DALI lighting strategy](09_dali_lighting_strategy.md) | Scene targets, per-fixture levels, command-drop faults |
 | 10 | [BMS operations emulation](10_bms_operations_emulation.md) | Alert pipeline, Slack/phone escalation, runbook URLs |
-| 14 | [Intercom and access control](14_intercom_and_access_control.md) | Future Aiphone / access-control integration |
+| 14 | [Intercom and access control](14_intercom_and_access_control.md) | Future intercom and access-control integration |
 
 ## Scenarios and faults
 

@@ -4,6 +4,10 @@ All notable changes to `roomci` are documented in this file.
 
 The format follows Keep a Changelog, and this project currently uses pre-1.0 phase-based releases.
 
+Entries from `0.0.0` through the early pre-1.0 phase checkpoints were created
+during rapid product development. Treat them as design/release-log checkpoints,
+not as separately published calendar releases.
+
 ## [Unreleased]
 
 ### Added
@@ -62,7 +66,7 @@ The format follows Keep a Changelog, and this project currently uses pre-1.0 pha
 ### Added
 
 - Public release and interview polish tasks.
-- MIT license file and release-readiness gates.
+- Apache 2.0 license file and release-readiness gates.
 
 ### Changed
 

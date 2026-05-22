@@ -60,7 +60,7 @@ Long-running `roomci serve` adapters are post-v0.1. The current MVP includes `ro
 - KNX throughput bottleneck simulation
 - DALI layout/group validation
 - VLAN isolation checker
-- Starlink failover profile
+- backup WAN failover profile
 - control-panel power model
 - UPS/circuit protector simulation
 - comfort automation module
@@ -71,7 +71,7 @@ Long-running `roomci serve` adapters are post-v0.1. The current MVP includes `ro
 
 - KNX lighting throughput delay
 - VLAN leak exposes device-control network
-- Starlink backup activates
+- backup WAN backup activates
 - HVAC auto mode reaches DI target
 - circuit short isolated by circuit protector
 
@@ -79,12 +79,12 @@ Long-running `roomci serve` adapters are post-v0.1. The current MVP includes `ro
 
 ### Features
 
-- DoorBird-like API mock
+- intercom API mock
 - PIN check-in flow
 - SIP/DTMF event simulation
-- Twilio outage / local PBX fallback
-- UniFi access-control drift checker
-- Okta LDAP group sync mock
+- phone provider outage / local PBX fallback
+- access-control drift checker
+- identity-provider group sync mock
 - ONVIF-like camera event
 - PoE speaker webhook mock
 - floorplan-based BMS view concept
@@ -103,7 +103,7 @@ Long-running `roomci serve` adapters are post-v0.1. The current MVP includes `ro
 - real time-series replay
 - AI-assisted incident summary
 - predictive anomaly detection sample
-- CAD/Rebro export concept
+- CAD/BIM export concept
 - device inventory and spare parts model
 - commissioning checklist generator
 - dogfooding feedback replay

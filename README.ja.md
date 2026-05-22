@@ -142,7 +142,7 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 | `examples/edge_server_failover.yaml` | プライマリ エッジの電源が切れます。スタンバイが昇格され、次のコマンドをルーティングします。 |
 | `examples/modbus_floor_heating.yaml` | 床暖房設定値は Modbus レジスターに 0.1 °C 精度で到達します。 |
 | `examples/bms_sauna_emergency_alert.yaml` | サウナ過温度コンタクトが開きます。BMS は Slack、電話、チケット ランブックにエスカレートします。 |
-| `examples/starlink_failover.yaml` | 設定された予算内での Starlink への WAN フェイルオーバー。 |
+| `examples/starlink_failover.yaml` | 設定された予算内でのバックアップ WAN フェイルオーバー。 |
 | `examples/comfort_auto_mode.yaml` | 不快指数が HVAC 自動モードを駆動します。ユーザーオーバーライドは尊重されます。 |
 | `examples/comfort_timeseries_replay.yaml` | 決定論的なセンサーゾーン読み取りが不快指数エビデンスを更新します。 |
 | `examples/access_permission_drift.yaml` | ID グループに存在しなくなった古いアクセス システム ユーザーを検出します。 |
@@ -337,7 +337,7 @@ make poc-bms-ops
 - クラウド MQTT ブローカーおよびクラウド イベント パイプライン
 - DALI / KNX / Modbus / コンタクト I/O / HVAC / ライティング デバイス
 - BMS アラート、Slack 通知、電話 エスカレーション、ランブック
-- ネットワーク セグメンテーション、WAN フェイルオーバー、Starlink スタイル バックアップ パス
+- ネットワーク セグメンテーション、WAN フェイルオーバー、バックアップ回線パス
 - コミッショニング、フィールド QA、メンテナンス、継続運用
 
 `roomci` はこれらの依存関係を CI で再現可能にして、ユーザーまたはゲストが経験する前にチームが障害シナリオをテストできるようにします。
@@ -349,7 +349,7 @@ make poc-bms-ops
 3. **コミッショニング QA** — フィールド コミッショニング チェックを再利用可能な YAML シナリオに変換します。
 4. **建築オートメーション プロトコル シミュレーション** — DALI 型ライティング、Modbus レジスター、コンタクト I/O アラート、HVAC、KNX 型レガシー バス動作。
 5. **BMS / オペレーション アラート シミュレーション** — 緊急アラートおよび復旧に対する Slack / 電話通話 / チケット / ランブック フローを検証します。
-6. **ネットワーク 障害 シミュレーション** — ISP 停止、Starlink スタイル フェイルオーバー、VLAN 分離問題、ローカル のみの運用。
+6. **ネットワーク 障害 シミュレーション** — ISP 停止、バックアップ WAN フェイルオーバー、VLAN 分離問題、ローカル のみの運用。
 7. **快適性自動化 シミュレーション** — 不快指数ターゲット、HVAC 自動モード、ユーザー オーバーライド、ルーム固有の調整。
 
 ## これではないもの

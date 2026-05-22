@@ -60,7 +60,7 @@ Starts multiple service containers to reproduce a full smart-home stack.
 docker compose -f compose/docker-compose.yml up
 ```
 
-Use this when demonstrating Floci-like service emulation.
+Use this when demonstrating service-emulation style local reproduction.
 
 ## コアモジュール
 
@@ -109,7 +109,7 @@ Use this when demonstrating Floci-like service emulation.
 - local network partition
 - WAN outage
 - ISP degradation
-- Starlink-style failover
+- backup-WAN failover
 - VLAN segmentation checks
 
 ### roomci-ops

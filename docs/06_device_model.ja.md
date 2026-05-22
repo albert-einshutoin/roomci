@@ -47,7 +47,7 @@ devices:
 | power_meter | electricity metering | Should |
 | humidity_sensor | comfort automation | Should |
 | temperature_sensor | comfort automation | Should |
-| intercom | DoorBird-like future | Later |
+| intercom | intercom API future | Later |
 
 ## Device state principles
 

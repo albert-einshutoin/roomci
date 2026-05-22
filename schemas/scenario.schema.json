@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/albert-einshutoin/roomci/schemas/scenario.schema.json",
+  "$id": "https://github.com/shutoide/roomci/schemas/scenario.schema.json",
   "title": "roomci scenario schema",
   "description": "Schema for roomci YAML scenarios consumed by `roomci run` and `roomci validate`.",
   "type": "object",

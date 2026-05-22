@@ -93,6 +93,7 @@ is tracked in Phase 21.
 - Full protocol certification.
 - Real lock authorization, physical relay authority, or security authority.
 - Production orchestration.
-- Vendor cloud emulation for AWS, GCP, Cloudflare, UniFi, DoorBird, Twilio,
-  Slack, Zoom, Grafana, InfluxDB, Jamf, or similar systems.
-- Full NOT A HOTEL private compatibility without supplied private contracts.
+- Vendor cloud, network, access-control, intercom, phone, notification,
+  observability, device-management, or similar platform emulation.
+- Full private hospitality-operator compatibility without supplied private
+  contracts.

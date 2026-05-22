@@ -56,7 +56,7 @@ The recommended MVP is intentionally narrow:
 - `roomci-edge`: edge server emulator
 - `roomci-devices`: Modbus TCP mock, DALI-like lighting, contact I/O, HVAC mock
 - `roomci-ops`: BMS alert, Slack/phone/ticket/runbook mock
-- `roomci-network`: cloud outage, WAN outage, Starlink failover, VLAN model
+- `roomci-network`: cloud outage, WAN outage, backup WAN failover, VLAN model
 - Docker Compose and GitHub Actions examples
 
 ## Strongest demos
@@ -66,7 +66,7 @@ The recommended MVP is intentionally narrow:
 3. DALI scene partial failure detection
 4. Sauna emergency button contact input triggers Slack + phone escalation
 5. Edge server primary failure switches to secondary
-6. Starlink-style WAN failover preserves operational communication
+6. backup-WAN WAN failover preserves operational communication
 7. HVAC auto mode maintains target discomfort index without user override
 
 ## Non-goals

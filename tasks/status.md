@@ -18,7 +18,7 @@
 | Phase 11 | `done` | External protocol depth after completed PoC/evidence/onboarding/positioning work | Real customer/vendor specs are required only for compatibility claims, not for generic platform progress | `phase11/phase_status.md` |
 | Phase 12 | `done` | Serve runtime hardening, health semantics, MQTT CONNECT validation, and release plumbing | None | `phase12/phase_status.md` |
 | Phase 13 | `done` | Official-spec-backed protocol conformance subsets for MQTT and Modbus first, with future protocol profiles tracked honestly | Full certification-grade conformance remains out of scope | `phase13/phase_status.md` |
-| Phase 14 | `done` | Hospitality smart-home QA core coverage: local MQTT, edge, device protocols, network/control faults, BMS/ops, comfort, and safe access/intercom boundaries | NOT A HOTEL private compatibility and full-stack emulation remain out of scope | `phase14/phase_status.md` |
+| Phase 14 | `done` | Hospitality smart-home QA core coverage: local MQTT, edge, device protocols, network/control faults, BMS/ops, comfort, and safe access/intercom boundaries | Private hospitality-stack compatibility and full-stack emulation remain out of scope | `phase14/phase_status.md` |
 | Phase 15 | `done` | Evaluator friction removal: retained subscribe loop, practical Modbus depth, reproducible Docker smoke, serve/core/scenario maintainability, and protocol evidence automation | None | `phase15/phase_status.md` |
 | Phase 16 | `done` | Roadmap triage for optional depth with promote/defer/non-goal decisions recorded | None | `phase16/phase_status.md` |
 | Phase 17 | `done` | Promoted contract depth: safe intercom/relay mock, network/control-panel profiles, BMS hardening, comfort time-series, adapter samples | None | `phase17/phase_status.md` |
@@ -27,8 +27,8 @@
 | Phase 20 | `done` | A Tier developer experience completion for Python SDK, scenario debugger, and adoption workflow docs | Editor assets completed in Phase 22 | `phase20/phase_status.md` |
 | Phase 21 | `done` | B Tier protocol profile completion: Matter, BACnet, KNX, and OPC UA contract profiles | Real customer maps needed before any profile is promoted beyond contract_profile | `phase21/phase_status.md` |
 | Phase 22 | `done` | Deferred VSCode editor authoring assets | None | `phase22/phase_status.md` |
-| Phase 23 | `in_progress` | OSS trust and positioning cleanup after external product review | None | `phase23/phase_status.md` |
-| Phase 24 | `todo` | Core architecture hardening: typed assertions, runtime sub-states, parser/property tests, concurrency tests, and protocol-server ADR | Phase 23 should finish first | `phase24/phase_status.md` |
+| Phase 23 | `done` | OSS trust and positioning cleanup after external product review | None | `phase23/phase_status.md` |
+| Phase 24 | `todo` | Core architecture hardening: typed assertions, runtime sub-states, parser/property tests, concurrency tests, and protocol-server ADR | None | `phase24/phase_status.md` |
 
 ## Update Rules
 
@@ -63,7 +63,7 @@ The final self-review created Phase 15. Phases 15, 16, 17, and 18 are now comple
   implementations.
 - **Phase 22** completed the intentionally deferred VSCode editor authoring
   assets as a local bundle, not a Marketplace extension.
-- **Phase 23** is cleaning up public OSS trust issues found in product review:
+- **Phase 23** cleaned up public OSS trust issues found in product review:
   license metadata, stale repository/container namespace, provenance wording,
   duplicate positioning docs, and public hospitality/vendor signals.
 - **Phase 24** now tracks deeper engineering hardening that should not be
