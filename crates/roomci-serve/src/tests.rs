@@ -337,6 +337,56 @@ fn external_events_survive_run_boundary() {
 }
 
 #[test]
+fn overlapped_run_state_bms_and_report_requests_leave_consistent_reports() {
+    let state = serve_state();
+    let requests = [
+        request("POST", "/run", ""),
+        request("GET", "/state", ""),
+        request(
+            "POST",
+            "/external/bms/contact",
+            r#"{"source":"contact.sauna_emergency_button","state":"on","severity":"critical","replay_id":"phase24-overlap"}"#,
+        ),
+        request("GET", "/reports/latest.json", ""),
+    ];
+
+    let responses = requests
+        .into_iter()
+        .map(|http_request| {
+            let state = Arc::clone(&state);
+            thread::spawn(move || route_request(&http_request, state))
+        })
+        .map(|handle| {
+            handle
+                .join()
+                .expect("serve request thread should not panic")
+        })
+        .collect::<Vec<_>>();
+
+    assert!(responses
+        .iter()
+        .all(|response| !response.contains("serve_state_poisoned")));
+    assert!(responses.iter().any(|response| {
+        response.contains("HTTP/1.1 200 OK") && response.contains("\"finished\":true")
+    }));
+    assert!(responses
+        .iter()
+        .any(|response| response.contains("HTTP/1.1 202 Accepted")));
+
+    let report = route_request(
+        &request("GET", "/reports/latest.json", ""),
+        Arc::clone(&state),
+    );
+    assert!(report.contains("HTTP/1.1 200 OK"));
+    assert!(report.contains("\"scenario_name\""));
+    assert!(report.contains("generic_mqtt_retained_state"));
+
+    let current_state = route_request(&request("GET", "/state", ""), Arc::clone(&state));
+    assert!(current_state.contains("HTTP/1.1 200 OK"));
+    assert!(current_state.contains("generic_mqtt_retained_state"));
+}
+
+#[test]
 fn external_bms_contact_sanitizes_source_and_message() {
     let state = serve_state();
 

@@ -28,8 +28,9 @@
 | Phase 21 | `done` | B Tier protocol profile completion: Matter, BACnet, KNX, and OPC UA contract profiles | Real customer maps needed before any profile is promoted beyond contract_profile | `phase21/phase_status.md` |
 | Phase 22 | `done` | Deferred VSCode editor authoring assets | None | `phase22/phase_status.md` |
 | Phase 23 | `done` | OSS trust and positioning cleanup after external product review | None | `phase23/phase_status.md` |
-| Phase 24 | `todo` | Core architecture hardening: typed assertions, runtime sub-states, parser/property tests, concurrency tests, and protocol-server ADR | None | `phase24/phase_status.md` |
+| Phase 24 | `done` | Core architecture hardening: typed assertions, runtime sub-states, parser/property tests, concurrency tests, and protocol-server ADR | None | `phase24/phase_status.md` |
 | Phase 25 | `done` | Public surface evidence freshness: README demo link and quality measurement refresh | None | `phase25/phase_status.md` |
+| Phase 26 | `todo` | Adapter contract generalization that can proceed without customer-specific protocol specs | None | `phase26/phase_status.md` |
 
 ## Update Rules
 
@@ -67,11 +68,15 @@ The final self-review created Phase 15. Phases 15, 16, 17, and 18 are now comple
 - **Phase 23** cleaned up public OSS trust issues found in product review:
   license metadata, stale repository/container namespace, provenance wording,
   duplicate positioning docs, and public hospitality/vendor signals.
-- **Phase 24** now tracks deeper engineering hardening that should not be
-  rushed into the public-surface cleanup.
+- **Phase 24** completed deeper engineering hardening: typed assertion
+  classification, runtime domain sub-states, bounded parser tests, concurrent
+  serve overlay tests, and a protocol-server strategy ADR.
 - **Phase 25** closed follow-up public-surface freshness issues from the
   product/codebase evaluation: the README interview-demo link now resolves, and
   README quality measurements match the current workspace test count.
+- **Phase 26** now tracks the next customer-independent product work: stronger
+  adapter contract validation, topic/identity diagnostics, acceptance-evidence
+  mapping, and evaluator intake docs.
 
 See `tasks/backlog_inventory.md` for the current split between implemented work, already taskified implementation work, newly taskified roadmap work, and intentional non-goals.
 

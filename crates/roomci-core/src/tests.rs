@@ -278,6 +278,17 @@ fn comfort_auto_mode_passes() {
 }
 
 #[test]
+fn runtime_groups_customer_independent_domain_state() {
+    let scenario = load_scenario(fixture("examples/comfort_auto_mode.yaml")).unwrap();
+
+    let runtime = runtime::RuntimeState::new(&scenario).unwrap();
+
+    assert!(runtime.comfort.target.is_some());
+    assert!(runtime.access.unexpected_users.is_empty());
+    assert_eq!(runtime.commissioning.check_count, 0);
+}
+
+#[test]
 fn access_permission_drift_passes_when_stale_user_is_detected() {
     let scenario = load_scenario(fixture("examples/access_permission_drift.yaml")).unwrap();
 

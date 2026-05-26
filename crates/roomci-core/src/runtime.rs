@@ -30,15 +30,30 @@ pub(crate) struct RuntimeState {
     pub(crate) lighting: LightingModel,
     pub(crate) contacts: ContactModel,
     pub(crate) ops: OpsModel,
-    pub(crate) comfort_target: Option<f64>,
-    pub(crate) comfort_range: Option<(f64, f64)>,
-    pub(crate) discomfort_by_target: BTreeMap<String, f64>,
-    pub(crate) comfort_reading_history: BTreeMap<String, Vec<f64>>,
-    pub(crate) user_override_count: u32,
-    pub(crate) unexpected_access_users: Vec<String>,
-    pub(crate) commissioning_check_count: usize,
-    pub(crate) commissioning_site: Option<String>,
+    pub(crate) comfort: ComfortRuntimeState,
+    pub(crate) access: AccessRuntimeState,
+    pub(crate) commissioning: CommissioningRuntimeState,
     pub(crate) timeline: Vec<TimelineEvent>,
+}
+
+#[derive(Debug)]
+pub(crate) struct ComfortRuntimeState {
+    pub(crate) target: Option<f64>,
+    pub(crate) range: Option<(f64, f64)>,
+    pub(crate) discomfort_by_target: BTreeMap<String, f64>,
+    pub(crate) reading_history: BTreeMap<String, Vec<f64>>,
+    pub(crate) user_override_count: u32,
+}
+
+#[derive(Debug)]
+pub(crate) struct AccessRuntimeState {
+    pub(crate) unexpected_users: Vec<String>,
+}
+
+#[derive(Debug)]
+pub(crate) struct CommissioningRuntimeState {
+    pub(crate) check_count: usize,
+    pub(crate) site: Option<String>,
 }
 
 impl RuntimeState {
@@ -78,14 +93,20 @@ impl RuntimeState {
             ),
             contacts: ContactModel::from_config(&scenario.contacts),
             ops: OpsModel::try_from_config(&scenario.alerts)?,
-            comfort_target: yaml_mapping_number(&scenario.comfort, "target_discomfort_index"),
-            comfort_range: comfort_range(&scenario.comfort),
-            discomfort_by_target: discomfort_by_target(&scenario.sensors),
-            comfort_reading_history: BTreeMap::new(),
-            user_override_count: 0,
-            unexpected_access_users: unexpected_access_users(&scenario.inputs),
-            commissioning_check_count: commissioning_check_count(&scenario.commissioning),
-            commissioning_site: string_value(&scenario.commissioning, "site"),
+            comfort: ComfortRuntimeState {
+                target: yaml_mapping_number(&scenario.comfort, "target_discomfort_index"),
+                range: comfort_range(&scenario.comfort),
+                discomfort_by_target: discomfort_by_target(&scenario.sensors),
+                reading_history: BTreeMap::new(),
+                user_override_count: 0,
+            },
+            access: AccessRuntimeState {
+                unexpected_users: unexpected_access_users(&scenario.inputs),
+            },
+            commissioning: CommissioningRuntimeState {
+                check_count: commissioning_check_count(&scenario.commissioning),
+                site: string_value(&scenario.commissioning, "site"),
+            },
             timeline: Vec::new(),
         })
     }
@@ -169,7 +190,9 @@ impl RuntimeState {
     fn apply_sensor_reading(&mut self, at: Duration, reading: &SensorReadingStep) {
         let discomfort = discomfort_index(reading.temperature, reading.humidity);
         let discomfort_key = format!("{}.discomfort_index", reading.target);
-        self.discomfort_by_target.insert(discomfort_key, discomfort);
+        self.comfort
+            .discomfort_by_target
+            .insert(discomfort_key, discomfort);
 
         let mut state = StateMap::new();
         state.insert(
@@ -192,7 +215,8 @@ impl RuntimeState {
         }
 
         let history = self
-            .comfort_reading_history
+            .comfort
+            .reading_history
             .entry(reading.target.clone())
             .or_default();
         history.push(discomfort);
@@ -599,8 +623,9 @@ impl RuntimeState {
     fn apply_automation(&mut self, at: Duration, automation: &BTreeMap<String, serde_yaml::Value>) {
         let automation_type = automation.get("type").and_then(|value| value.as_str());
         if automation_type == Some("hvac_auto_mode") {
-            if let Some(target) = self.comfort_target {
-                self.discomfort_by_target
+            if let Some(target) = self.comfort.target {
+                self.comfort
+                    .discomfort_by_target
                     .insert("living_area.discomfort_index".to_string(), target);
                 self.push(
                     at,
@@ -683,13 +708,13 @@ impl RuntimeState {
     }
 
     pub(crate) fn evaluate_between_condition(&self, target: &str, condition_text: &str) -> bool {
-        let Some(actual) = self.discomfort_by_target.get(target).copied() else {
+        let Some(actual) = self.comfort.discomfort_by_target.get(target).copied() else {
             return false;
         };
         if let Some((min, max)) = parse_between_condition(condition_text) {
             return actual >= min && actual <= max;
         }
-        if let Some((min, max)) = self.comfort_range {
+        if let Some((min, max)) = self.comfort.range {
             return actual >= min && actual <= max;
         }
         false

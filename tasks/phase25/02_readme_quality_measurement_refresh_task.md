@@ -18,4 +18,5 @@ while the current workspace test run reports 124 passing tests.
 ## Acceptance Criteria
 
 - `rg "100 tests|100 テスト" README.md README.ja.md` returns no matches.
-- `cargo test --workspace --all-targets` passes with 124 tests.
+- `cargo test --workspace --all-targets` passes with the current README test
+  count.

@@ -514,6 +514,58 @@ fn mqtt_packet_parser_reports_malformed_inputs() {
 }
 
 #[test]
+fn mqtt_payload_parsers_do_not_panic_on_bounded_malformed_inputs() {
+    for len in 0..32 {
+        let bytes = (0..len)
+            .map(|index| (index * 17 % 251) as u8)
+            .collect::<Vec<_>>();
+
+        let publish_result = std::panic::catch_unwind(|| parse_mqtt_publish(&bytes));
+        assert!(
+            publish_result.is_ok(),
+            "publish parser panicked for len {len}"
+        );
+
+        let subscribe_result = std::panic::catch_unwind(|| parse_mqtt_subscribe(&bytes));
+        assert!(
+            subscribe_result.is_ok(),
+            "subscribe parser panicked for len {len}"
+        );
+    }
+}
+
+#[test]
+fn modbus_request_handler_returns_protocol_responses_for_bounded_payload_shapes() {
+    for function in [0x03, 0x04, 0x06, 0x10] {
+        for len in 0..8 {
+            let payload = (0..len)
+                .map(|index| (index * 29 % 251) as u8)
+                .collect::<Vec<_>>();
+            let state = modbus_serve_state();
+            let request = ModbusTcpRequest {
+                transaction_id: len as u16,
+                unit_id: 1,
+                function,
+                payload,
+            };
+
+            let response = {
+                let mut state = state.lock().unwrap();
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    apply_modbus_tcp_request(&mut state, request)
+                }))
+            };
+
+            let response = response.expect("Modbus handler should not panic");
+            assert!(
+                response.len() >= 9,
+                "Modbus response should include MBAP and PDU for function {function:#04x} len {len}"
+            );
+        }
+    }
+}
+
+#[test]
 fn request_size_guards_reject_large_inputs() {
     let request = format!(
         "POST /fault HTTP/1.1\r\nContent-Length: {}\r\n\r\n",

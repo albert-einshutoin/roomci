@@ -2,7 +2,7 @@
 
 ## Status
 
-`todo`
+`done`
 
 ## Problem
 
@@ -23,3 +23,7 @@ and makes new assertions easy to add incorrectly.
 - Core assertion evaluation uses exhaustive matching for promoted assertion
   kinds.
 
+## Evidence
+
+- `cargo test -p roomci-scenario rejects_unknown_target_condition_assertion`
+- `cargo test -p roomci-core`

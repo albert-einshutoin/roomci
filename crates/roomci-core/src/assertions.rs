@@ -1,5 +1,8 @@
 use roomci_edge::EdgeStatus;
-use roomci_scenario::yaml_map_to_json;
+use roomci_scenario::{
+    typed_assertion_kind, yaml_map_to_json, InlineAssertionKind, TargetConditionAssertion,
+    TypedAssertionKind,
+};
 
 use crate::{runtime::RuntimeState, AssertionResult};
 
@@ -8,137 +11,166 @@ pub(crate) fn evaluate_assertion(
 
     assertion: &roomci_scenario::AssertionDefinition,
 ) -> AssertionResult {
-    if let Some(mqtt) = &assertion.mqtt {
-        let expected = yaml_map_to_json(&mqtt.retained);
-        let actual = runtime.broker.retained().get(&mqtt.topic);
-        let passed = actual == Some(&expected);
-        return AssertionResult {
-            name: format!("mqtt_retained:{}", mqtt.topic),
-            assertion_type: "mqtt_retained".to_string(),
-            passed,
-            message: if passed {
-                "retained MQTT state matched".to_string()
-            } else {
-                format!("retained MQTT state mismatch: expected {expected:?}, got {actual:?}")
-            },
-            impact_level: if passed {
-                None
-            } else {
-                Some("high".to_string())
-            },
-            impact_message: if passed {
-                None
-            } else {
-                Some(
-                    "Local controller state did not synchronize through retained MQTT state."
-                        .to_string(),
-                )
-            },
-        };
+    match typed_assertion_kind(assertion) {
+        Ok(TypedAssertionKind::MqttRetained(mqtt)) => evaluate_mqtt_retained(runtime, mqtt),
+        Ok(TypedAssertionKind::ModbusRegister(modbus)) => evaluate_modbus_register(runtime, modbus),
+        Ok(TypedAssertionKind::GuestExperienceField(expected)) => {
+            evaluate_guest_experience_field(runtime, expected)
+        }
+        Ok(TypedAssertionKind::Ops(ops)) => evaluate_ops(runtime, ops),
+        Ok(TypedAssertionKind::TargetCondition(kind)) => {
+            evaluate_target_condition(runtime, assertion, kind)
+        }
+        Ok(TypedAssertionKind::Inline(kind)) => evaluate_inline_assertion(runtime, kind),
+        Err(_) => unsupported_assertion(),
     }
+}
 
-    if let Some(modbus) = &assertion.modbus {
-        let actual = runtime.modbus.value(&modbus.device, modbus.register);
-        let passed = if let Some(expected_readable) = modbus.readable_value {
-            runtime
-                .modbus
-                .readable_value(&modbus.device, modbus.register)
-                .map(|value| (value - expected_readable).abs() < f64::EPSILON)
-                .unwrap_or(false)
-        } else if let Some(expected) = &modbus.value {
-            let expected_json = serde_json::to_value(expected).unwrap_or(serde_json::Value::Null);
-            actual == Some(&expected_json)
+fn evaluate_mqtt_retained(
+    runtime: &RuntimeState,
+    mqtt: &roomci_scenario::MqttAssertion,
+) -> AssertionResult {
+    let expected = yaml_map_to_json(&mqtt.retained);
+    let actual = runtime.broker.retained().get(&mqtt.topic);
+    let passed = actual == Some(&expected);
+    AssertionResult {
+        name: format!("mqtt_retained:{}", mqtt.topic),
+        assertion_type: "mqtt_retained".to_string(),
+        passed,
+        message: if passed {
+            "retained MQTT state matched".to_string()
         } else {
-            false
-        };
-        return AssertionResult {
-            name: format!("modbus:{}:{}", modbus.device, modbus.register),
-            assertion_type: "modbus_register".to_string(),
-            passed,
-            message: if passed {
-                "Modbus register matched expected value".to_string()
-            } else {
-                format!("Modbus register mismatch: got {actual:?}")
-            },
-            impact_level: if passed {
-                None
-            } else {
-                Some("medium".to_string())
-            },
-            impact_message: if passed {
-                None
-            } else {
-                Some("Register-map behavior did not match commissioning expectation.".to_string())
-            },
-        };
+            format!("retained MQTT state mismatch: expected {expected:?}, got {actual:?}")
+        },
+        impact_level: if passed {
+            None
+        } else {
+            Some("high".to_string())
+        },
+        impact_message: if passed {
+            None
+        } else {
+            Some(
+                "Local controller state did not synchronize through retained MQTT state."
+                    .to_string(),
+            )
+        },
     }
+}
 
-    if let Some(expected) = &assertion.guest_experience {
-        let local_ok = runtime.broker.is_online("mqtt.local");
-        let passed = expected == "unaffected" && local_ok;
-        return AssertionResult {
-            name: "guest_experience".to_string(),
-            assertion_type: "guest_experience".to_string(),
-            passed,
-            message: if passed {
-                "guest experience remained unaffected by upstream outage".to_string()
+fn evaluate_modbus_register(
+    runtime: &RuntimeState,
+    modbus: &roomci_scenario::ModbusAssertion,
+) -> AssertionResult {
+    let actual = runtime.modbus.value(&modbus.device, modbus.register);
+    let passed = if let Some(expected_readable) = modbus.readable_value {
+        runtime
+            .modbus
+            .readable_value(&modbus.device, modbus.register)
+            .map(|value| (value - expected_readable).abs() < f64::EPSILON)
+            .unwrap_or(false)
+    } else if let Some(expected) = &modbus.value {
+        let expected_json = serde_json::to_value(expected).unwrap_or(serde_json::Value::Null);
+        actual == Some(&expected_json)
+    } else {
+        false
+    };
+    AssertionResult {
+        name: format!("modbus:{}:{}", modbus.device, modbus.register),
+        assertion_type: "modbus_register".to_string(),
+        passed,
+        message: if passed {
+            "Modbus register matched expected value".to_string()
+        } else {
+            format!("Modbus register mismatch: got {actual:?}")
+        },
+        impact_level: if passed {
+            None
+        } else {
+            Some("medium".to_string())
+        },
+        impact_message: if passed {
+            None
+        } else {
+            Some("Register-map behavior did not match commissioning expectation.".to_string())
+        },
+    }
+}
+
+fn evaluate_guest_experience_field(runtime: &RuntimeState, expected: &str) -> AssertionResult {
+    let local_ok = runtime.broker.is_online("mqtt.local");
+    let passed = expected == "unaffected" && local_ok;
+    AssertionResult {
+        name: "guest_experience".to_string(),
+        assertion_type: "guest_experience".to_string(),
+        passed,
+        message: if passed {
+            "guest experience remained unaffected by upstream outage".to_string()
+        } else {
+            "guest experience was affected".to_string()
+        },
+        impact_level: if passed {
+            None
+        } else {
+            Some("high".to_string())
+        },
+        impact_message: if passed {
+            None
+        } else {
+            Some("Local-first control did not preserve guest experience.".to_string())
+        },
+    }
+}
+
+fn evaluate_ops(
+    runtime: &RuntimeState,
+    ops: &std::collections::BTreeMap<String, serde_yaml::Value>,
+) -> AssertionResult {
+    match runtime.ops.evaluate_assertion(ops) {
+        Ok(outcome) => AssertionResult {
+            name: "ops".to_string(),
+            assertion_type: "ops".to_string(),
+            passed: outcome.passed,
+            message: if outcome.passed {
+                "ops escalation matched expected state".to_string()
             } else {
-                "guest experience was affected".to_string()
+                format!("ops escalation mismatch: {}", outcome.failures.join("; "))
             },
-            impact_level: if passed {
+            impact_level: if outcome.passed {
                 None
             } else {
                 Some("high".to_string())
             },
-            impact_message: if passed {
+            impact_message: if outcome.passed {
                 None
             } else {
-                Some("Local-first control did not preserve guest experience.".to_string())
+                Some("Operations response did not meet the emergency alert contract.".to_string())
             },
-        };
+        },
+        Err(error) => AssertionResult {
+            name: "ops".to_string(),
+            assertion_type: "ops".to_string(),
+            passed: false,
+            message: error.to_string(),
+            impact_level: Some("unknown".to_string()),
+            impact_message: Some("The ops assertion is not supported by the runner.".to_string()),
+        },
     }
+}
 
-    if let Some(ops) = &assertion.ops {
-        return match runtime.ops.evaluate_assertion(ops) {
-            Ok(outcome) => AssertionResult {
-                name: "ops".to_string(),
-                assertion_type: "ops".to_string(),
-                passed: outcome.passed,
-                message: if outcome.passed {
-                    "ops escalation matched expected state".to_string()
-                } else {
-                    format!("ops escalation mismatch: {}", outcome.failures.join("; "))
-                },
-                impact_level: if outcome.passed {
-                    None
-                } else {
-                    Some("high".to_string())
-                },
-                impact_message: if outcome.passed {
-                    None
-                } else {
-                    Some(
-                        "Operations response did not meet the emergency alert contract."
-                            .to_string(),
-                    )
-                },
-            },
-            Err(error) => AssertionResult {
-                name: "ops".to_string(),
-                assertion_type: "ops".to_string(),
-                passed: false,
-                message: error.to_string(),
-                impact_level: Some("unknown".to_string()),
-                impact_message: Some(
-                    "The ops assertion is not supported by the runner.".to_string(),
-                ),
-            },
-        };
-    }
-
-    if let (Some(target), Some(condition)) = (&assertion.target, &assertion.condition) {
-        let condition_text = condition.as_str().unwrap_or_default();
-        if target == "edge.secondary" {
+fn evaluate_target_condition(
+    runtime: &RuntimeState,
+    assertion: &roomci_scenario::AssertionDefinition,
+    kind: TargetConditionAssertion,
+) -> AssertionResult {
+    let target = assertion.target.as_deref().unwrap_or_default();
+    let condition = assertion
+        .condition
+        .as_ref()
+        .unwrap_or(&serde_yaml::Value::Null);
+    let condition_text = condition.as_str().unwrap_or_default();
+    match kind {
+        TargetConditionAssertion::EdgeSecondaryActive => {
             let status_passed = condition_text == "active"
                 && runtime.edge.secondary_status() == Some(EdgeStatus::Active);
             let timing_passed = runtime
@@ -153,7 +185,7 @@ pub(crate) fn evaluate_assertion(
                 })
                 .unwrap_or(true);
             let passed = status_passed && timing_passed;
-            return AssertionResult {
+            AssertionResult {
                 name: "edge.secondary".to_string(),
                 assertion_type: "edge_state".to_string(),
                 passed,
@@ -177,11 +209,11 @@ pub(crate) fn evaluate_assertion(
                 } else {
                     Some("Edge failover did not preserve local control.".to_string())
                 },
-            };
+            }
         }
-        if target == "mqtt.local" {
+        TargetConditionAssertion::MqttLocalAvailable => {
             let passed = condition_text == "available" && runtime.broker.is_online("mqtt.local");
-            return AssertionResult {
+            AssertionResult {
                 name: "mqtt.local".to_string(),
                 assertion_type: "broker_state".to_string(),
                 passed,
@@ -200,9 +232,9 @@ pub(crate) fn evaluate_assertion(
                 } else {
                     Some("Local MQTT broker is unavailable during failover.".to_string())
                 },
-            };
+            }
         }
-        if target == "wan.backup" {
+        TargetConditionAssertion::WanBackupActive => {
             let status_passed = condition_text == "active"
                 && runtime.wan_backup_status.as_deref() == Some("active");
             let timing_passed = runtime
@@ -217,7 +249,7 @@ pub(crate) fn evaluate_assertion(
                 })
                 .unwrap_or(true);
             let passed = status_passed && timing_passed;
-            return AssertionResult {
+            AssertionResult {
                 name: "wan.backup".to_string(),
                 assertion_type: "wan_failover".to_string(),
                 passed,
@@ -236,12 +268,12 @@ pub(crate) fn evaluate_assertion(
                 } else {
                     Some("WAN failover did not preserve internet resilience.".to_string())
                 },
-            };
+            }
         }
-        if target == "living_area.discomfort_index" {
+        TargetConditionAssertion::LivingAreaDiscomfortIndex => {
             let passed = runtime.evaluate_between_condition(target, condition_text);
-            return AssertionResult {
-                name: target.clone(),
+            AssertionResult {
+                name: target.to_string(),
                 assertion_type: "comfort_metric".to_string(),
                 passed,
                 message: if passed {
@@ -259,13 +291,13 @@ pub(crate) fn evaluate_assertion(
                 } else {
                     Some("HVAC auto mode did not meet comfort expectation.".to_string())
                 },
-            };
+            }
         }
-        if target == "user_override" {
+        TargetConditionAssertion::UserOverrideFalse => {
             let expected_false = condition.as_bool() == Some(false) || condition_text == "false";
-            let passed = expected_false && runtime.user_override_count == 0;
-            return AssertionResult {
-                name: target.clone(),
+            let passed = expected_false && runtime.comfort.user_override_count == 0;
+            AssertionResult {
+                name: target.to_string(),
                 assertion_type: "comfort_user_override".to_string(),
                 passed,
                 message: if passed {
@@ -283,13 +315,13 @@ pub(crate) fn evaluate_assertion(
                 } else {
                     Some("Guest manually overrode comfort automation.".to_string())
                 },
-            };
+            }
         }
-        if target == "guest_experience" {
+        TargetConditionAssertion::GuestExperienceUnaffected => {
             let passed = condition_text == "unaffected"
                 && runtime.broker.is_online("mqtt.local")
                 && runtime.edge.active_id().is_some();
-            return AssertionResult {
+            AssertionResult {
                 name: "guest_experience".to_string(),
                 assertion_type: "guest_experience".to_string(),
                 passed,
@@ -311,57 +343,32 @@ pub(crate) fn evaluate_assertion(
                             .to_string(),
                     )
                 },
-            };
-        }
-    }
-
-    if let Some(inline_assert) = &assertion.inline_assert {
-        if let Some(scene) = inline_assert.get("scene").and_then(|value| value.as_str()) {
-            let complete = inline_assert
-                .get("consistency")
-                .and_then(|value| value.as_str())
-                == Some("complete");
-            if complete {
-                return evaluate_scene_consistency(runtime, scene);
             }
         }
-        if inline_assert
-            .get("access_control_drift")
-            .and_then(|value| value.as_str())
-            == Some("detected")
-        {
-            return evaluate_access_control_drift(runtime);
-        }
-        if inline_assert
-            .get("commissioning_checklist")
-            .and_then(|value| value.as_str())
-            == Some("generated")
-        {
-            return evaluate_commissioning_checklist(runtime);
-        }
-        if inline_assert
-            .get("intercom_relay")
-            .and_then(|value| value.as_str())
-            == Some("safe_evidence")
-        {
-            return evaluate_intercom_relay_evidence(runtime);
-        }
-        if inline_assert
-            .get("network_control_panel_faults")
-            .and_then(|value| value.as_str())
-            == Some("observed")
-        {
-            return evaluate_network_control_panel_faults(runtime);
-        }
-        if inline_assert
-            .get("comfort_timeseries")
-            .and_then(|value| value.as_str())
-            == Some("observed")
-        {
-            return evaluate_comfort_timeseries(runtime);
-        }
     }
+}
 
+fn evaluate_inline_assertion(
+    runtime: &RuntimeState,
+    kind: InlineAssertionKind<'_>,
+) -> AssertionResult {
+    match kind {
+        InlineAssertionKind::SceneConsistencyComplete(scene) => {
+            evaluate_scene_consistency(runtime, scene)
+        }
+        InlineAssertionKind::AccessControlDriftDetected => evaluate_access_control_drift(runtime),
+        InlineAssertionKind::CommissioningChecklistGenerated => {
+            evaluate_commissioning_checklist(runtime)
+        }
+        InlineAssertionKind::IntercomRelaySafeEvidence => evaluate_intercom_relay_evidence(runtime),
+        InlineAssertionKind::NetworkControlPanelFaultsObserved => {
+            evaluate_network_control_panel_faults(runtime)
+        }
+        InlineAssertionKind::ComfortTimeseriesObserved => evaluate_comfort_timeseries(runtime),
+    }
+}
+
+fn unsupported_assertion() -> AssertionResult {
     AssertionResult {
         name: "unsupported_assertion".to_string(),
         assertion_type: "unsupported".to_string(),
@@ -413,7 +420,7 @@ fn evaluate_scene_consistency(runtime: &RuntimeState, scene: &str) -> AssertionR
 }
 
 fn evaluate_access_control_drift(runtime: &RuntimeState) -> AssertionResult {
-    let passed = !runtime.unexpected_access_users.is_empty();
+    let passed = !runtime.access.unexpected_users.is_empty();
     AssertionResult {
         name: "access_control_drift".to_string(),
         assertion_type: "access_control_drift".to_string(),
@@ -421,7 +428,7 @@ fn evaluate_access_control_drift(runtime: &RuntimeState) -> AssertionResult {
         message: if passed {
             format!(
                 "detected unexpected access users: {}",
-                runtime.unexpected_access_users.join(", ")
+                runtime.access.unexpected_users.join(", ")
             )
         } else {
             "no unexpected access users were detected".to_string()
@@ -560,20 +567,20 @@ fn evaluate_intercom_relay_evidence(runtime: &RuntimeState) -> AssertionResult {
 }
 
 fn evaluate_commissioning_checklist(runtime: &RuntimeState) -> AssertionResult {
-    let passed = runtime.commissioning_check_count > 0;
+    let passed = runtime.commissioning.check_count > 0;
     AssertionResult {
         name: "commissioning_checklist".to_string(),
         assertion_type: "commissioning_checklist".to_string(),
         passed,
         message: if passed {
-            match &runtime.commissioning_site {
+            match &runtime.commissioning.site {
                 Some(site) => format!(
                     "generated {count} commissioning checks for {site}",
-                    count = runtime.commissioning_check_count
+                    count = runtime.commissioning.check_count
                 ),
                 None => format!(
                     "generated {count} commissioning checks",
-                    count = runtime.commissioning_check_count
+                    count = runtime.commissioning.check_count
                 ),
             }
         } else {

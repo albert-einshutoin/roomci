@@ -2,7 +2,7 @@
 
 ## Status
 
-`todo`
+`done`
 
 ## Problem
 
@@ -26,3 +26,6 @@ components, or Modbus crates.
 - Follow-up implementation tasks are created only for decisions that are
   promoted.
 
+## Evidence
+
+- `docs/adr/0001-serve-protocol-server-strategy.md`

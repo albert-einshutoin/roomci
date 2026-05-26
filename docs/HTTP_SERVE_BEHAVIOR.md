@@ -90,6 +90,27 @@ The trace fields are deterministic artifact metadata for local and CI
 correlation. They are not an OpenTelemetry implementation and do not imply
 distributed tracing across production systems.
 
+### Concurrent external inputs
+
+The serve runtime keeps reports internally consistent when `/run`, `/state`,
+external BMS/contact input, MQTT publish overlays, and report fetches overlap.
+It does not promise real-time ordering between independently accepted external
+requests beyond the order in which the local serve-state lock accepts them.
+
+Supported promise:
+
+- requests do not panic or poison serve state;
+- `GET /state` and report endpoints return a coherent snapshot;
+- overlays accepted before a successful `/run` drain are merged into that
+  report;
+- overlays accepted after that boundary remain queued for the next report.
+
+Unsupported promise:
+
+- wall-clock ordering across concurrent external clients;
+- production event-stream ordering, exactly-once delivery, or distributed
+  transaction semantics.
+
 ## Health Semantics
 
 `GET /health` returns the serve lifecycle state:

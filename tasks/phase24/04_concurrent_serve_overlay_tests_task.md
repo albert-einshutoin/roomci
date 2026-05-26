@@ -2,7 +2,7 @@
 
 ## Status
 
-`todo`
+`done`
 
 ## Problem
 
@@ -23,3 +23,7 @@ fetches during state mutation, and BMS contact ingestion overlap.
 - Reports remain internally consistent after overlapped external inputs.
 - Any non-deterministic behavior is documented as such.
 
+## Evidence
+
+- `cargo test -p roomci-serve overlapped_run_state_bms_and_report_requests_leave_consistent_reports`
+- `docs/HTTP_SERVE_BEHAVIOR.md`

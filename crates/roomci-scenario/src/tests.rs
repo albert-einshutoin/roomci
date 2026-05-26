@@ -188,6 +188,29 @@ assertions:
 }
 
 #[test]
+fn rejects_unknown_target_condition_assertion() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: invalid_target_condition_assertion
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: imaginary.subsystem
+    condition: active
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(error, ScenarioError::InvalidAssertionKind));
+}
+
+#[test]
 fn validates_adapter_contract_examples() {
     for path in [
         "adapter-contracts/templates/company_adapter_contract.yaml",

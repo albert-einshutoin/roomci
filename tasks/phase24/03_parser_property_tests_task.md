@@ -2,7 +2,7 @@
 
 ## Status
 
-`todo`
+`done`
 
 ## Problem
 
@@ -22,3 +22,6 @@ currently covered mostly by example tests.
 - Invalid frames return documented errors or protocol responses.
 - Tests run in the normal workspace test suite.
 
+## Evidence
+
+- `cargo test -p roomci-serve bounded`

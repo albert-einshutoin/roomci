@@ -2,7 +2,7 @@
 
 ## Status
 
-`todo`
+`done`
 
 ## Problem
 
@@ -22,3 +22,7 @@ commissioning, network, operations, and protocol overlays.
 - Existing report snapshots and CLI tests continue to pass.
 - No domain state is silently dropped from final reports.
 
+## Evidence
+
+- `cargo test -p roomci-core runtime_groups_customer_independent_domain_state`
+- `cargo test -p roomci-core`

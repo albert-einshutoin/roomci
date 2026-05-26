@@ -410,6 +410,7 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
         if kinds != 1 {
             return Err(ScenarioError::InvalidAssertionKind);
         }
+        typed_assertion_kind(assertion)?;
         if let Some(modbus_assertion) = &assertion.modbus {
             if !modbus.has_register(&modbus_assertion.device, modbus_assertion.register) {
                 return Err(DeviceModelError::UnknownModbusRegister {
@@ -427,6 +428,140 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
     }
 
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum TypedAssertionKind<'a> {
+    MqttRetained(&'a MqttAssertion),
+    ModbusRegister(&'a ModbusAssertion),
+    GuestExperienceField(&'a str),
+    Ops(&'a BTreeMap<String, serde_yaml::Value>),
+    TargetCondition(TargetConditionAssertion),
+    Inline(InlineAssertionKind<'a>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetConditionAssertion {
+    EdgeSecondaryActive,
+    MqttLocalAvailable,
+    WanBackupActive,
+    LivingAreaDiscomfortIndex,
+    UserOverrideFalse,
+    GuestExperienceUnaffected,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InlineAssertionKind<'a> {
+    SceneConsistencyComplete(&'a str),
+    AccessControlDriftDetected,
+    CommissioningChecklistGenerated,
+    IntercomRelaySafeEvidence,
+    NetworkControlPanelFaultsObserved,
+    ComfortTimeseriesObserved,
+}
+
+pub fn typed_assertion_kind<'a>(
+    assertion: &'a AssertionDefinition,
+) -> Result<TypedAssertionKind<'a>, ScenarioError> {
+    if let Some(mqtt) = &assertion.mqtt {
+        return Ok(TypedAssertionKind::MqttRetained(mqtt));
+    }
+    if let Some(modbus) = &assertion.modbus {
+        return Ok(TypedAssertionKind::ModbusRegister(modbus));
+    }
+    if let Some(expected) = assertion.guest_experience.as_deref() {
+        if expected == "unaffected" {
+            return Ok(TypedAssertionKind::GuestExperienceField(expected));
+        }
+        return Err(ScenarioError::InvalidAssertionKind);
+    }
+    if let Some(ops) = &assertion.ops {
+        return Ok(TypedAssertionKind::Ops(ops));
+    }
+    if let (Some(target), Some(condition)) = (&assertion.target, &assertion.condition) {
+        return typed_target_condition_assertion(target, condition)
+            .map(TypedAssertionKind::TargetCondition);
+    }
+    if let Some(inline_assert) = &assertion.inline_assert {
+        return typed_inline_assertion(inline_assert).map(TypedAssertionKind::Inline);
+    }
+    Err(ScenarioError::InvalidAssertionKind)
+}
+
+fn typed_target_condition_assertion(
+    target: &str,
+    condition: &serde_yaml::Value,
+) -> Result<TargetConditionAssertion, ScenarioError> {
+    let condition_text = condition.as_str().unwrap_or_default();
+    match target {
+        "edge.secondary" if condition_text == "active" => {
+            Ok(TargetConditionAssertion::EdgeSecondaryActive)
+        }
+        "mqtt.local" if condition_text == "available" => {
+            Ok(TargetConditionAssertion::MqttLocalAvailable)
+        }
+        "wan.backup" if condition_text == "active" => Ok(TargetConditionAssertion::WanBackupActive),
+        "living_area.discomfort_index" if condition_text.starts_with("between ") => {
+            Ok(TargetConditionAssertion::LivingAreaDiscomfortIndex)
+        }
+        "user_override" if condition.as_bool() == Some(false) || condition_text == "false" => {
+            Ok(TargetConditionAssertion::UserOverrideFalse)
+        }
+        "guest_experience" if condition_text == "unaffected" => {
+            Ok(TargetConditionAssertion::GuestExperienceUnaffected)
+        }
+        _ => Err(ScenarioError::InvalidAssertionKind),
+    }
+}
+
+fn typed_inline_assertion<'a>(
+    inline_assert: &'a BTreeMap<String, serde_yaml::Value>,
+) -> Result<InlineAssertionKind<'a>, ScenarioError> {
+    if let Some(scene) = inline_assert.get("scene").and_then(|value| value.as_str()) {
+        let complete = inline_assert
+            .get("consistency")
+            .and_then(|value| value.as_str())
+            == Some("complete");
+        if complete {
+            return Ok(InlineAssertionKind::SceneConsistencyComplete(scene));
+        }
+    }
+    if inline_assert
+        .get("access_control_drift")
+        .and_then(|value| value.as_str())
+        == Some("detected")
+    {
+        return Ok(InlineAssertionKind::AccessControlDriftDetected);
+    }
+    if inline_assert
+        .get("commissioning_checklist")
+        .and_then(|value| value.as_str())
+        == Some("generated")
+    {
+        return Ok(InlineAssertionKind::CommissioningChecklistGenerated);
+    }
+    if inline_assert
+        .get("intercom_relay")
+        .and_then(|value| value.as_str())
+        == Some("safe_evidence")
+    {
+        return Ok(InlineAssertionKind::IntercomRelaySafeEvidence);
+    }
+    if inline_assert
+        .get("network_control_panel_faults")
+        .and_then(|value| value.as_str())
+        == Some("observed")
+    {
+        return Ok(InlineAssertionKind::NetworkControlPanelFaultsObserved);
+    }
+    if inline_assert
+        .get("comfort_timeseries")
+        .and_then(|value| value.as_str())
+        == Some("observed")
+    {
+        return Ok(InlineAssertionKind::ComfortTimeseriesObserved);
+    }
+    Err(ScenarioError::InvalidAssertionKind)
 }
 
 fn validate_mqtt_contracts(contracts: &[MqttConnectionContract]) -> Result<(), ScenarioError> {
