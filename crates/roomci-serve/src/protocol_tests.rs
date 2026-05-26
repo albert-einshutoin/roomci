@@ -31,7 +31,7 @@ fn modbus_serve_state() -> Arc<Mutex<ServeState>> {
 
 fn serve_state_for_scenario(scenario: ScenarioFile) -> Arc<Mutex<ServeState>> {
     let latest_report = run_scenario(&scenario).unwrap();
-    let mut modbus = ModbusModel::from_config(&scenario.modbus);
+    let mut modbus = ModbusModel::try_from_config(&scenario.modbus).unwrap();
     apply_scenario_modbus_steps(&scenario, &mut modbus);
     let modbus_units = modbus_unit_map(&scenario);
     Arc::new(Mutex::new(ServeState {

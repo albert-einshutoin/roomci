@@ -121,16 +121,22 @@ pub fn apply_command_state(
 /// scenario references an unknown device or writes a read-only register.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum DeviceModelError {
+    #[error("invalid Modbus config: {0}")]
+    InvalidModbusConfig(String),
     #[error("unknown Modbus device {0}")]
     UnknownModbusDevice(String),
     #[error("unknown Modbus register {device}:{register}")]
     UnknownModbusRegister { device: String, register: u32 },
     #[error("Modbus register {device}:{register} is read-only")]
     ReadOnlyModbusRegister { device: String, register: u32 },
+    #[error("invalid DALI lighting config: {0}")]
+    InvalidLightingConfig(String),
     #[error("unknown DALI scene {0}")]
     UnknownScene(String),
     #[error("unknown DALI fixture {0}")]
     UnknownFixture(String),
+    #[error("invalid contact config: {0}")]
+    InvalidContactConfig(String),
     #[error("unknown contact input {0}")]
     UnknownContact(String),
 }
@@ -156,20 +162,31 @@ pub struct ModbusModel {
 }
 
 impl ModbusModel {
+    #[deprecated(note = "use try_from_config to surface malformed scenario config")]
     pub fn from_config(modbus: &BTreeMap<String, serde_yaml::Value>) -> Self {
+        Self::try_from_config(modbus).unwrap_or_default()
+    }
+
+    pub fn try_from_config(
+        modbus: &BTreeMap<String, serde_yaml::Value>,
+    ) -> Result<Self, DeviceModelError> {
         let mut devices = BTreeMap::new();
         let Some(device_values) = modbus.get("devices").and_then(|value| value.as_sequence())
         else {
-            return Self { devices };
+            return Ok(Self { devices });
         };
         for device_value in device_values {
-            let Some(device_map) = device_value.as_mapping() else {
-                continue;
-            };
+            let device_map = device_value.as_mapping().ok_or_else(|| {
+                DeviceModelError::InvalidModbusConfig(
+                    "devices[] entries must be YAML maps".to_string(),
+                )
+            })?;
             let Some(device_id) =
                 yaml_mapping_get(device_map, "id").and_then(|value| value.as_str())
             else {
-                continue;
+                return Err(DeviceModelError::InvalidModbusConfig(
+                    "devices[].id must be a string".to_string(),
+                ));
             };
             let registers = devices
                 .entry(device_id.to_string())
@@ -186,15 +203,21 @@ impl ModbusModel {
                     continue;
                 };
                 for (address, definition) in section_map {
-                    let Some(address) = yaml_key_u32(address) else {
-                        continue;
-                    };
-                    let Some(definition_map) = definition.as_mapping() else {
-                        continue;
-                    };
-                    let Some(value) = yaml_mapping_get(definition_map, "value") else {
-                        continue;
-                    };
+                    let address = yaml_key_u32(address).ok_or_else(|| {
+                        DeviceModelError::InvalidModbusConfig(format!(
+                            "register address in {device_id}.{section} must be u32"
+                        ))
+                    })?;
+                    let definition_map = definition.as_mapping().ok_or_else(|| {
+                        DeviceModelError::InvalidModbusConfig(format!(
+                            "register {device_id}:{address} definition must be a YAML map"
+                        ))
+                    })?;
+                    let value = yaml_mapping_get(definition_map, "value").ok_or_else(|| {
+                        DeviceModelError::InvalidModbusConfig(format!(
+                            "register {device_id}:{address} must declare value"
+                        ))
+                    })?;
                     let value_type = yaml_mapping_get(definition_map, "type")
                         .and_then(|value| value.as_str())
                         .map(str::to_string);
@@ -209,7 +232,7 @@ impl ModbusModel {
                 }
             }
         }
-        Self { devices }
+        Ok(Self { devices })
     }
 
     pub fn assert_writable(&self, device: &str, register: u32) -> Result<(), DeviceModelError> {
@@ -307,38 +330,54 @@ pub struct LightingModel {
 }
 
 impl LightingModel {
+    #[deprecated(note = "use try_from_config to surface malformed scenario config")]
     pub fn from_config(
         lighting: &BTreeMap<String, serde_yaml::Value>,
         scenes: &BTreeMap<String, BTreeMap<String, i64>>,
     ) -> Self {
+        Self::try_from_config(lighting, scenes).unwrap_or_else(|_| Self {
+            levels: BTreeMap::new(),
+            scene_targets: scenes.clone(),
+            command_drops: BTreeSet::new(),
+        })
+    }
+
+    pub fn try_from_config(
+        lighting: &BTreeMap<String, serde_yaml::Value>,
+        scenes: &BTreeMap<String, BTreeMap<String, i64>>,
+    ) -> Result<Self, DeviceModelError> {
         let mut levels = BTreeMap::new();
         let Some(fixtures) = lighting
             .get("fixtures")
             .and_then(|value| value.as_sequence())
         else {
-            return Self {
+            return Ok(Self {
                 levels,
                 scene_targets: scenes.clone(),
                 command_drops: BTreeSet::new(),
-            };
+            });
         };
         for fixture in fixtures {
-            let Some(mapping) = fixture.as_mapping() else {
-                continue;
-            };
+            let mapping = fixture.as_mapping().ok_or_else(|| {
+                DeviceModelError::InvalidLightingConfig(
+                    "fixtures[] entries must be YAML maps".to_string(),
+                )
+            })?;
             let Some(id) = yaml_mapping_get(mapping, "id").and_then(|value| value.as_str()) else {
-                continue;
+                return Err(DeviceModelError::InvalidLightingConfig(
+                    "fixtures[].id must be a string".to_string(),
+                ));
             };
             let level = yaml_mapping_get(mapping, "level")
                 .and_then(|value| value.as_i64())
                 .unwrap_or(0);
             levels.insert(id.to_string(), level);
         }
-        Self {
+        Ok(Self {
             levels,
             scene_targets: scenes.clone(),
             command_drops: BTreeSet::new(),
-        }
+        })
     }
 
     pub fn assert_fixture_exists(&self, fixture: &str) -> Result<(), DeviceModelError> {
@@ -413,24 +452,35 @@ pub struct ContactModel {
 }
 
 impl ContactModel {
+    #[deprecated(note = "use try_from_config to surface malformed scenario config")]
     pub fn from_config(contacts: &BTreeMap<String, serde_yaml::Value>) -> Self {
+        Self::try_from_config(contacts).unwrap_or_default()
+    }
+
+    pub fn try_from_config(
+        contacts: &BTreeMap<String, serde_yaml::Value>,
+    ) -> Result<Self, DeviceModelError> {
         let mut states = BTreeMap::new();
         let Some(inputs) = contacts.get("inputs").and_then(|value| value.as_sequence()) else {
-            return Self { states };
+            return Ok(Self { states });
         };
         for input in inputs {
-            let Some(mapping) = input.as_mapping() else {
-                continue;
-            };
+            let mapping = input.as_mapping().ok_or_else(|| {
+                DeviceModelError::InvalidContactConfig(
+                    "inputs[] entries must be YAML maps".to_string(),
+                )
+            })?;
             let Some(id) = yaml_mapping_get(mapping, "id").and_then(|value| value.as_str()) else {
-                continue;
+                return Err(DeviceModelError::InvalidContactConfig(
+                    "inputs[].id must be a string".to_string(),
+                ));
             };
             let state = yaml_mapping_get(mapping, "state")
                 .and_then(|value| value.as_str())
                 .unwrap_or("off");
             states.insert(id.to_string(), state.to_string());
         }
-        Self { states }
+        Ok(Self { states })
     }
 
     pub fn set_state(&mut self, id: &str, state: &str) -> Result<(), DeviceModelError> {
@@ -497,7 +547,7 @@ mod tests {
 
     #[test]
     fn modbus_decimal_readable_value_uses_register_metadata() {
-        let model = ModbusModel::from_config(
+        let model = ModbusModel::try_from_config(
             &serde_yaml::from_str(
                 r#"
 devices:
@@ -509,14 +559,15 @@ devices:
 "#,
             )
             .unwrap(),
-        );
+        )
+        .unwrap();
 
         assert_eq!(model.readable_value("floor_heating", 40001), Some(24.5));
     }
 
     #[test]
     fn modbus_rejects_writes_to_read_only_registers() {
-        let mut model = ModbusModel::from_config(
+        let mut model = ModbusModel::try_from_config(
             &serde_yaml::from_str(
                 r#"
 devices:
@@ -528,7 +579,8 @@ devices:
 "#,
             )
             .unwrap(),
-        );
+        )
+        .unwrap();
 
         assert_eq!(
             model.write("floor_heating", 30001, serde_yaml::Value::from(230)),
@@ -545,7 +597,7 @@ devices:
             "welcome".to_string(),
             BTreeMap::from([("D411S10".to_string(), 60), ("D411S11".to_string(), 40)]),
         )]);
-        let mut model = LightingModel::from_config(
+        let mut model = LightingModel::try_from_config(
             &serde_yaml::from_str(
                 r#"
 fixtures:
@@ -557,7 +609,8 @@ fixtures:
             )
             .unwrap(),
             &scenes,
-        );
+        )
+        .unwrap();
 
         model.drop_command_for_fixture("D411S10").unwrap();
         model.activate_scene("welcome").unwrap();
@@ -574,7 +627,7 @@ fixtures:
             "welcome".to_string(),
             BTreeMap::from([("missing_fixture".to_string(), 60)]),
         )]);
-        let model = LightingModel::from_config(
+        let model = LightingModel::try_from_config(
             &serde_yaml::from_str(
                 r#"
 fixtures:
@@ -584,7 +637,8 @@ fixtures:
             )
             .unwrap(),
             &scenes,
-        );
+        )
+        .unwrap();
 
         assert_eq!(
             model.assert_scene_targets_exist(),

@@ -9,6 +9,7 @@ use std::{collections::BTreeMap, fs, path::Path};
 
 use chrono::Duration;
 use roomci_device_model::{ContactModel, DeviceModelError, LightingModel, ModbusModel};
+use roomci_edge::{EdgeError, EdgeModel};
 use roomci_ops::{OpsError, OpsModel};
 use thiserror::Error;
 
@@ -37,6 +38,8 @@ pub enum ScenarioError {
     UnknownDevice(String),
     #[error("step must contain a supported action")]
     InvalidStepKind,
+    #[error("unsupported fault target/type combination: {target} {fault_type}")]
+    InvalidFaultKind { target: String, fault_type: String },
     #[error("assertion must contain a supported condition")]
     InvalidAssertionKind,
     #[error("invalid sensor reading: {0}")]
@@ -53,6 +56,8 @@ pub enum ScenarioError {
     InvalidAdapterContract(String),
     #[error(transparent)]
     DeviceModel(#[from] DeviceModelError),
+    #[error(transparent)]
+    Edge(#[from] EdgeError),
     #[error(transparent)]
     Ops(#[from] OpsError),
 }
@@ -317,14 +322,15 @@ fn require_non_empty(field: &str, value: &str) -> Result<(), ScenarioError> {
 /// Called by `roomci-core::run_scenario` before execution; callers can also
 /// invoke it directly for a `--dry-run`-style validation pass.
 pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
-    let modbus = ModbusModel::from_config(&scenario.modbus);
+    let modbus = ModbusModel::try_from_config(&scenario.modbus)?;
     let scene_targets = scenario
         .scenes
         .iter()
         .map(|(name, scene)| (name.clone(), scene.fixtures.clone()))
         .collect::<BTreeMap<_, _>>();
-    let lighting = LightingModel::from_config(&scenario.lighting, &scene_targets);
-    let contacts = ContactModel::from_config(&scenario.contacts);
+    let lighting = LightingModel::try_from_config(&scenario.lighting, &scene_targets)?;
+    let contacts = ContactModel::try_from_config(&scenario.contacts)?;
+    EdgeModel::try_from_config(&scenario.edge)?;
     let ops = OpsModel::try_from_config(&scenario.alerts)?;
     lighting.assert_scene_targets_exist()?;
     ops.validate_sources(|contact_id| contacts.has_contact(contact_id))?;
@@ -337,61 +343,13 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
         if let Some(duration) = &fault.duration {
             parse_duration(duration)?;
         }
+        typed_fault_kind(fault)?;
         validate_fault_reference(fault, &lighting)?;
     }
 
     for step in &scenario.steps {
         resolve_time_offset(&step.at)?;
-        let kinds = [
-            step.event.is_some(),
-            step.command.is_some(),
-            step.modbus_write.is_some(),
-            step.mqtt_publish.is_some(),
-            step.fault.is_some(),
-            step.contact.is_some(),
-            step.intercom.is_some(),
-            step.sensor_reading.is_some(),
-            step.ops.is_some(),
-            step.automation.is_some(),
-        ]
-        .iter()
-        .filter(|present| **present)
-        .count();
-        if kinds != 1 {
-            return Err(ScenarioError::InvalidStepKind);
-        }
-        if let Some(fault) = &step.fault {
-            if let Some(duration) = &fault.duration {
-                parse_duration(duration)?;
-            }
-            validate_fault_reference(fault, &lighting)?;
-        }
-        if let Some(command) = &step.command {
-            if let Some(scene) = command.target.strip_prefix("scene.") {
-                lighting.assert_scene_exists(scene)?;
-            }
-        }
-        if let Some(modbus_write) = &step.modbus_write {
-            modbus.assert_writable(&modbus_write.device, modbus_write.register)?;
-        }
-        if let Some(contact) = &step.contact {
-            if !contacts.has_contact(&contact.id) {
-                return Err(DeviceModelError::UnknownContact(contact.id.clone()).into());
-            }
-        }
-        if let Some(intercom) = &step.intercom {
-            require_non_empty("steps[].intercom.id", &intercom.id)?;
-            require_non_empty("steps[].intercom.event", &intercom.event)?;
-            require_non_empty("steps[].intercom.outcome", &intercom.outcome)?;
-        }
-        if let Some(sensor_reading) = &step.sensor_reading {
-            require_non_empty("steps[].sensor_reading.target", &sensor_reading.target)?;
-            if !(0.0..=100.0).contains(&sensor_reading.humidity) {
-                return Err(ScenarioError::InvalidSensorReading(
-                    "steps[].sensor_reading.humidity must be between 0 and 100".to_string(),
-                ));
-            }
-        }
+        validate_typed_step_kind(typed_step_kind(step)?, &modbus, &lighting, &contacts)?;
     }
 
     for assertion in &scenario.assertions {
@@ -428,6 +386,239 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
     }
 
     Ok(())
+}
+
+fn validate_typed_step_kind(
+    kind: TypedStepKind<'_>,
+    modbus: &ModbusModel,
+    lighting: &LightingModel,
+    contacts: &ContactModel,
+) -> Result<(), ScenarioError> {
+    match kind {
+        TypedStepKind::Event(_) => {}
+        TypedStepKind::Command(command) => {
+            if let Some(scene) = command.target.strip_prefix("scene.") {
+                lighting.assert_scene_exists(scene)?;
+            }
+        }
+        TypedStepKind::ModbusWrite(modbus_write) => {
+            modbus.assert_writable(&modbus_write.device, modbus_write.register)?;
+        }
+        TypedStepKind::MqttPublish(_) => {}
+        TypedStepKind::Fault(fault) => {
+            if let Some(duration) = &fault.duration {
+                parse_duration(duration)?;
+            }
+            typed_fault_kind(fault)?;
+            validate_fault_reference(fault, lighting)?;
+        }
+        TypedStepKind::Contact(contact) => {
+            if !contacts.has_contact(&contact.id) {
+                return Err(DeviceModelError::UnknownContact(contact.id.clone()).into());
+            }
+        }
+        TypedStepKind::Intercom(intercom) => {
+            require_non_empty("steps[].intercom.id", &intercom.id)?;
+            require_non_empty("steps[].intercom.event", &intercom.event)?;
+            require_non_empty("steps[].intercom.outcome", &intercom.outcome)?;
+        }
+        TypedStepKind::SensorReading(sensor_reading) => {
+            require_non_empty("steps[].sensor_reading.target", &sensor_reading.target)?;
+            if !(0.0..=100.0).contains(&sensor_reading.humidity) {
+                return Err(ScenarioError::InvalidSensorReading(
+                    "steps[].sensor_reading.humidity must be between 0 and 100".to_string(),
+                ));
+            }
+        }
+        TypedStepKind::Ops(_) | TypedStepKind::Automation(_) => {}
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum TypedStepKind<'a> {
+    Event(&'a str),
+    Command(&'a CommandStep),
+    ModbusWrite(&'a ModbusWriteStep),
+    MqttPublish(&'a MqttPublishStep),
+    Fault(&'a FaultStep),
+    Contact(&'a ContactStep),
+    Intercom(&'a IntercomStep),
+    SensorReading(&'a SensorReadingStep),
+    Ops(&'a BTreeMap<String, serde_yaml::Value>),
+    Automation(&'a BTreeMap<String, serde_yaml::Value>),
+}
+
+pub fn typed_step_kind(step: &ScenarioStep) -> Result<TypedStepKind<'_>, ScenarioError> {
+    let mut kind = None;
+    if let Some(event) = step.event.as_deref() {
+        set_step_kind(&mut kind, TypedStepKind::Event(event))?;
+    }
+    if let Some(command) = &step.command {
+        set_step_kind(&mut kind, TypedStepKind::Command(command))?;
+    }
+    if let Some(modbus_write) = &step.modbus_write {
+        set_step_kind(&mut kind, TypedStepKind::ModbusWrite(modbus_write))?;
+    }
+    if let Some(mqtt_publish) = &step.mqtt_publish {
+        set_step_kind(&mut kind, TypedStepKind::MqttPublish(mqtt_publish))?;
+    }
+    if let Some(fault) = &step.fault {
+        set_step_kind(&mut kind, TypedStepKind::Fault(fault))?;
+    }
+    if let Some(contact) = &step.contact {
+        set_step_kind(&mut kind, TypedStepKind::Contact(contact))?;
+    }
+    if let Some(intercom) = &step.intercom {
+        set_step_kind(&mut kind, TypedStepKind::Intercom(intercom))?;
+    }
+    if let Some(sensor_reading) = &step.sensor_reading {
+        set_step_kind(&mut kind, TypedStepKind::SensorReading(sensor_reading))?;
+    }
+    if let Some(ops) = &step.ops {
+        set_step_kind(&mut kind, TypedStepKind::Ops(ops))?;
+    }
+    if let Some(automation) = &step.automation {
+        set_step_kind(&mut kind, TypedStepKind::Automation(automation))?;
+    }
+    kind.ok_or(ScenarioError::InvalidStepKind)
+}
+
+fn set_step_kind<'a>(
+    slot: &mut Option<TypedStepKind<'a>>,
+    kind: TypedStepKind<'a>,
+) -> Result<(), ScenarioError> {
+    if slot.replace(kind).is_some() {
+        return Err(ScenarioError::InvalidStepKind);
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TypedFaultKind<'a> {
+    BrokerOffline {
+        target: &'a str,
+    },
+    EdgePrimaryPowerLost,
+    WanPrimaryDown,
+    MqttDuplicateDelivery {
+        topic: Option<&'a str>,
+        count: Option<u32>,
+    },
+    NetworkSegmentIsolated {
+        target: &'a str,
+        segment: &'a str,
+    },
+    FirewallPolicyDrift {
+        target: &'a str,
+        policy: &'a str,
+    },
+    MqttLocalUnreachable,
+    ControlPanelUpsBatteryDegraded,
+    ControlPanelCircuitProtectorTripped {
+        target: &'a str,
+    },
+    ControlPanelPsuDegraded {
+        target: &'a str,
+    },
+    EdgeSecondaryTakeoverFailed,
+    DaliFixtureCommandDrop {
+        target: &'a str,
+        fixture: &'a str,
+    },
+}
+
+impl TypedFaultKind<'_> {
+    pub fn target(self) -> String {
+        match self {
+            TypedFaultKind::BrokerOffline { target }
+            | TypedFaultKind::NetworkSegmentIsolated { target, .. }
+            | TypedFaultKind::FirewallPolicyDrift { target, .. }
+            | TypedFaultKind::ControlPanelCircuitProtectorTripped { target }
+            | TypedFaultKind::ControlPanelPsuDegraded { target }
+            | TypedFaultKind::DaliFixtureCommandDrop { target, .. } => target.to_string(),
+            TypedFaultKind::EdgePrimaryPowerLost => "edge.primary".to_string(),
+            TypedFaultKind::WanPrimaryDown => "wan.primary".to_string(),
+            TypedFaultKind::MqttDuplicateDelivery { .. } => "mqtt.local".to_string(),
+            TypedFaultKind::MqttLocalUnreachable => "mqtt.local".to_string(),
+            TypedFaultKind::ControlPanelUpsBatteryDegraded => "control_panel.ups".to_string(),
+            TypedFaultKind::EdgeSecondaryTakeoverFailed => "edge.secondary".to_string(),
+        }
+    }
+
+    pub fn fault_type(self) -> &'static str {
+        match self {
+            TypedFaultKind::BrokerOffline { .. } => "offline",
+            TypedFaultKind::EdgePrimaryPowerLost => "power_lost",
+            TypedFaultKind::WanPrimaryDown => "down",
+            TypedFaultKind::MqttDuplicateDelivery { .. } => "duplicate_delivery",
+            TypedFaultKind::NetworkSegmentIsolated { .. } => "isolated",
+            TypedFaultKind::FirewallPolicyDrift { .. } => "drift",
+            TypedFaultKind::MqttLocalUnreachable => "unreachable",
+            TypedFaultKind::ControlPanelUpsBatteryDegraded => "battery_degraded",
+            TypedFaultKind::ControlPanelCircuitProtectorTripped { .. } => "tripped",
+            TypedFaultKind::ControlPanelPsuDegraded { .. } => "degraded",
+            TypedFaultKind::EdgeSecondaryTakeoverFailed => "takeover_failed",
+            TypedFaultKind::DaliFixtureCommandDrop { .. } => "command_drop",
+        }
+    }
+}
+
+pub fn typed_fault_kind(fault: &FaultStep) -> Result<TypedFaultKind<'_>, ScenarioError> {
+    match (fault.target.as_str(), fault.fault_type.as_str()) {
+        (target @ ("mqtt.cloud" | "mqtt.local"), "offline") => {
+            Ok(TypedFaultKind::BrokerOffline { target })
+        }
+        ("edge.primary", "power_lost") => Ok(TypedFaultKind::EdgePrimaryPowerLost),
+        ("wan.primary", "down") => Ok(TypedFaultKind::WanPrimaryDown),
+        ("mqtt.local", "duplicate_delivery") => Ok(TypedFaultKind::MqttDuplicateDelivery {
+            topic: fault.topic.as_deref(),
+            count: fault.count,
+        }),
+        ("mqtt.local", "unreachable") => Ok(TypedFaultKind::MqttLocalUnreachable),
+        ("control_panel.ups", "battery_degraded") => {
+            Ok(TypedFaultKind::ControlPanelUpsBatteryDegraded)
+        }
+        ("edge.secondary", "takeover_failed") => Ok(TypedFaultKind::EdgeSecondaryTakeoverFailed),
+        (target, "isolated") => {
+            let Some(segment) = target.strip_prefix("network.segment.") else {
+                return invalid_fault_kind(fault);
+            };
+            Ok(TypedFaultKind::NetworkSegmentIsolated { target, segment })
+        }
+        (target, "drift") => {
+            let Some(policy) = target.strip_prefix("firewall.policy.") else {
+                return invalid_fault_kind(fault);
+            };
+            Ok(TypedFaultKind::FirewallPolicyDrift { target, policy })
+        }
+        (target, "tripped") => {
+            if !target.starts_with("control_panel.circuit_protector.") {
+                return invalid_fault_kind(fault);
+            }
+            Ok(TypedFaultKind::ControlPanelCircuitProtectorTripped { target })
+        }
+        (target, "degraded") => {
+            if !target.starts_with("control_panel.psu.") {
+                return invalid_fault_kind(fault);
+            }
+            Ok(TypedFaultKind::ControlPanelPsuDegraded { target })
+        }
+        (target, "command_drop") => {
+            let Some(fixture) = target.strip_prefix("dali.fixture.") else {
+                return invalid_fault_kind(fault);
+            };
+            Ok(TypedFaultKind::DaliFixtureCommandDrop { target, fixture })
+        }
+        _ => invalid_fault_kind(fault),
+    }
+}
+
+fn invalid_fault_kind<T>(fault: &FaultStep) -> Result<T, ScenarioError> {
+    Err(ScenarioError::InvalidFaultKind {
+        target: fault.target.clone(),
+        fault_type: fault.fault_type.clone(),
+    })
 }
 
 #[derive(Debug, Clone, Copy)]

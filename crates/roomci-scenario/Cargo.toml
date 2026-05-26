@@ -12,6 +12,7 @@ categories.workspace = true
 [dependencies]
 chrono.workspace = true
 roomci-device-model = { path = "../roomci-device-model" }
+roomci-edge = { path = "../roomci-edge" }
 roomci-ops = { path = "../roomci-ops" }
 serde.workspace = true
 serde_json.workspace = true

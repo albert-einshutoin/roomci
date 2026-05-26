@@ -12,6 +12,9 @@ use thiserror::Error;
 /// Errors produced by the edge model.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum EdgeError {
+    /// Edge config contains a malformed or unsupported value.
+    #[error("invalid edge config: {0}")]
+    InvalidConfig(String),
     /// Neither the primary nor the secondary edge is currently active.
     #[error("no active edge server is available")]
     NoActiveEdge,
@@ -82,12 +85,24 @@ impl EdgeModel {
     /// Missing values fall back to a sensible default: a primary named
     /// `edge_primary` in [`EdgeStatus::Active`] and a secondary named
     /// `edge_secondary` in [`EdgeStatus::Standby`], with failover enabled.
+    #[deprecated(note = "use try_from_config to surface malformed scenario config")]
     pub fn from_config(config: &BTreeMap<String, serde_yaml::Value>) -> Self {
+        Self::try_from_config(config).unwrap_or_default()
+    }
+
+    /// Build an [`EdgeModel`] from config, returning a typed error instead of
+    /// silently coercing unsupported operational states.
+    pub fn try_from_config(
+        config: &BTreeMap<String, serde_yaml::Value>,
+    ) -> Result<Self, EdgeError> {
         let primary =
-            edge_server_from_config(config.get("primary"), "edge_primary", EdgeStatus::Active);
-        let secondary = config.get("secondary").map(|value| {
-            edge_server_from_config(Some(value), "edge_secondary", EdgeStatus::Standby)
-        });
+            edge_server_from_config(config.get("primary"), "edge_primary", EdgeStatus::Active)?;
+        let secondary = config
+            .get("secondary")
+            .map(|value| {
+                edge_server_from_config(Some(value), "edge_secondary", EdgeStatus::Standby)
+            })
+            .transpose()?;
         let failover_enabled = config
             .get("failover")
             .and_then(|value| value.as_mapping())
@@ -95,11 +110,11 @@ impl EdgeModel {
             .and_then(|value| value.as_bool())
             .unwrap_or(true);
 
-        Self {
+        Ok(Self {
             primary,
             secondary,
             failover_enabled,
-        }
+        })
     }
 
     /// Returns the id of the currently active edge, or `None` if both are
@@ -165,12 +180,12 @@ fn edge_server_from_config(
     value: Option<&serde_yaml::Value>,
     fallback_id: &str,
     fallback_status: EdgeStatus,
-) -> EdgeServer {
+) -> Result<EdgeServer, EdgeError> {
     let Some(mapping) = value.and_then(|value| value.as_mapping()) else {
-        return EdgeServer {
+        return Ok(EdgeServer {
             id: fallback_id.to_string(),
             status: fallback_status,
-        };
+        });
     };
     let id = mapping
         .get(serde_yaml::Value::String("id".to_string()))
@@ -181,17 +196,20 @@ fn edge_server_from_config(
         .get(serde_yaml::Value::String("status".to_string()))
         .and_then(|value| value.as_str())
         .map(parse_status)
+        .transpose()?
         .unwrap_or(fallback_status);
 
-    EdgeServer { id, status }
+    Ok(EdgeServer { id, status })
 }
 
-fn parse_status(value: &str) -> EdgeStatus {
+fn parse_status(value: &str) -> Result<EdgeStatus, EdgeError> {
     match value {
-        "active" => EdgeStatus::Active,
-        "standby" => EdgeStatus::Standby,
-        "failed" => EdgeStatus::Failed,
-        _ => EdgeStatus::Standby,
+        "active" => Ok(EdgeStatus::Active),
+        "standby" => Ok(EdgeStatus::Standby),
+        "failed" => Ok(EdgeStatus::Failed),
+        _ => Err(EdgeError::InvalidConfig(format!(
+            "unsupported edge status {value}; expected active, standby, or failed"
+        ))),
     }
 }
 

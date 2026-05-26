@@ -6,8 +6,8 @@ use roomci_edge::EdgeModel;
 use roomci_mqtt::{device_id_from_command_topic, BrokerModel};
 use roomci_ops::{OpsEvent, OpsModel};
 use roomci_scenario::{
-    parse_duration, yaml_map_to_json, IntercomStep, MqttPublishStep, ScenarioError, ScenarioFile,
-    SensorReadingStep,
+    parse_duration, typed_fault_kind, typed_step_kind, yaml_map_to_json, IntercomStep,
+    MqttPublishStep, ScenarioError, ScenarioFile, SensorReadingStep, TypedFaultKind, TypedStepKind,
 };
 
 use crate::{AssertionResult, CoreError, ScheduledEvent, StateMap, TimelineEvent};
@@ -73,7 +73,7 @@ impl RuntimeState {
             states,
             protocols,
             broker: BrokerModel::new(true, scenario.mqtt.cloud.enabled),
-            edge: EdgeModel::from_config(&scenario.edge),
+            edge: EdgeModel::try_from_config(&scenario.edge)?,
             edge_primary_failed_at: None,
             edge_failover_at: None,
             edge_expected_within: edge_expected_within(&scenario.edge)?,
@@ -82,16 +82,16 @@ impl RuntimeState {
             wan_expected_within: expected_within(&scenario.wan)?,
             wan_backup_status: status_at(&scenario.wan, "backup"),
             duplicate_delivery_by_topic: BTreeMap::new(),
-            modbus: ModbusModel::from_config(&scenario.modbus),
-            lighting: LightingModel::from_config(
+            modbus: ModbusModel::try_from_config(&scenario.modbus)?,
+            lighting: LightingModel::try_from_config(
                 &scenario.lighting,
                 &scenario
                     .scenes
                     .iter()
                     .map(|(name, scene)| (name.clone(), scene.fixtures.clone()))
                     .collect(),
-            ),
-            contacts: ContactModel::from_config(&scenario.contacts),
+            )?,
+            contacts: ContactModel::try_from_config(&scenario.contacts)?,
             ops: OpsModel::try_from_config(&scenario.alerts)?,
             comfort: ComfortRuntimeState {
                 target: yaml_mapping_number(&scenario.comfort, "target_discomfort_index"),
@@ -117,73 +117,61 @@ impl RuntimeState {
     ) -> Result<Option<AssertionResult>, CoreError> {
         match event {
             ScheduledEvent::GlobalFault(at, fault) => {
-                self.apply_fault(
-                    at,
-                    &fault.target,
-                    &fault.fault_type,
-                    fault.topic.as_deref(),
-                    fault.count,
-                );
+                self.apply_fault(at, typed_fault_kind(fault)?);
                 Ok(None)
             }
             ScheduledEvent::Step(at, step) => {
-                if let Some(event) = step.event {
-                    self.push(at, "event", None, event);
-                }
-                if let Some(fault) = step.fault {
-                    self.apply_fault(
-                        at,
-                        &fault.target,
-                        &fault.fault_type,
-                        fault.topic.as_deref(),
-                        fault.count,
-                    );
-                }
-                if let Some(command) = step.command {
-                    self.apply_command(at, &command.target, &command.action);
-                }
-                if let Some(modbus_write) = step.modbus_write {
-                    self.apply_modbus_write(
-                        at,
-                        &modbus_write.device,
-                        modbus_write.register,
-                        modbus_write.value,
-                    );
-                }
-                if let Some(mqtt_publish) = step.mqtt_publish {
-                    self.apply_mqtt_publish(at, &mqtt_publish);
-                }
-                if let Some(contact) = step.contact {
-                    let contact_id = contact.id.clone();
-                    let contact_state = contact.state.clone();
-                    self.contacts.set_state(&contact_id, &contact_state)?;
-                    self.push(
-                        at,
-                        "contact_changed",
-                        Some(contact_id.clone()),
-                        format!("contact state changed to {contact_state}"),
-                    );
-                    for event in self.ops.apply_contact_change(&contact_id, &contact_state) {
-                        self.push_ops_event(at, event);
+                match typed_step_kind(step)? {
+                    TypedStepKind::Event(event) => {
+                        self.push(at, "event", None, event);
                     }
-                }
-                if let Some(intercom) = step.intercom {
-                    self.apply_intercom_step(at, &intercom);
-                }
-                if let Some(sensor_reading) = step.sensor_reading {
-                    self.apply_sensor_reading(at, &sensor_reading);
-                }
-                if let Some(ops) = step.ops {
-                    self.apply_ops_step(at, &ops);
-                }
-                if let Some(automation) = step.automation {
-                    self.apply_automation(at, &automation);
+                    TypedStepKind::Fault(fault) => {
+                        self.apply_fault(at, typed_fault_kind(fault)?);
+                    }
+                    TypedStepKind::Command(command) => {
+                        self.apply_command(at, &command.target, &command.action);
+                    }
+                    TypedStepKind::ModbusWrite(modbus_write) => {
+                        self.apply_modbus_write(
+                            at,
+                            &modbus_write.device,
+                            modbus_write.register,
+                            modbus_write.value.clone(),
+                        );
+                    }
+                    TypedStepKind::MqttPublish(mqtt_publish) => {
+                        self.apply_mqtt_publish(at, mqtt_publish);
+                    }
+                    TypedStepKind::Contact(contact) => {
+                        let contact_id = contact.id.clone();
+                        let contact_state = contact.state.clone();
+                        self.contacts.set_state(&contact_id, &contact_state)?;
+                        self.push(
+                            at,
+                            "contact_changed",
+                            Some(contact_id.clone()),
+                            format!("contact state changed to {contact_state}"),
+                        );
+                        for event in self.ops.apply_contact_change(&contact_id, &contact_state) {
+                            self.push_ops_event(at, event);
+                        }
+                    }
+                    TypedStepKind::Intercom(intercom) => {
+                        self.apply_intercom_step(at, intercom);
+                    }
+                    TypedStepKind::SensorReading(sensor_reading) => {
+                        self.apply_sensor_reading(at, sensor_reading);
+                    }
+                    TypedStepKind::Ops(ops) => {
+                        self.apply_ops_step(at, ops);
+                    }
+                    TypedStepKind::Automation(automation) => {
+                        self.apply_automation(at, automation);
+                    }
                 }
                 Ok(None)
             }
-            ScheduledEvent::Assertion(_, assertion) => {
-                Ok(Some(self.evaluate_assertion(&assertion)))
-            }
+            ScheduledEvent::Assertion(_, assertion) => Ok(Some(self.evaluate_assertion(assertion))),
         }
     }
 
@@ -296,50 +284,45 @@ impl RuntimeState {
         }
     }
 
-    fn apply_fault(
-        &mut self,
-        at: Duration,
-        target: &str,
-        fault_type: &str,
-        topic: Option<&str>,
-        count: Option<u32>,
-    ) {
-        if matches!(target, "mqtt.cloud" | "mqtt.local") && fault_type == "offline" {
-            self.broker.set_online(target, false);
-        }
-        if target == "edge.primary" && fault_type == "power_lost" {
-            self.edge_primary_failed_at = Some(at);
-            if let Some(outcome) = self.edge.apply_power_lost_to_primary() {
-                self.edge_failover_at = Some(at);
+    fn apply_fault(&mut self, at: Duration, fault: TypedFaultKind<'_>) {
+        match fault {
+            TypedFaultKind::BrokerOffline { target } => {
+                self.broker.set_online(target, false);
+            }
+            TypedFaultKind::EdgePrimaryPowerLost => {
+                self.edge_primary_failed_at = Some(at);
+                if let Some(outcome) = self.edge.apply_power_lost_to_primary() {
+                    self.edge_failover_at = Some(at);
+                    self.push(
+                        at,
+                        "edge_failover",
+                        Some(outcome.to),
+                        format!("edge failover completed from {}", outcome.from),
+                    );
+                }
+            }
+            TypedFaultKind::WanPrimaryDown => {
+                self.wan_primary_failed_at = Some(at);
+                self.wan_backup_status = Some("active".to_string());
+                self.wan_failover_at = Some(at);
                 self.push(
                     at,
-                    "edge_failover",
-                    Some(outcome.to),
-                    format!("edge failover completed from {}", outcome.from),
+                    "wan_failover",
+                    Some("wan.backup".to_string()),
+                    "backup WAN activated after primary failure",
                 );
+                let event = self.ops.record_slack_notification("wan_failover", None);
+                self.push_ops_event(at, event);
             }
-        }
-        if target == "wan.primary" && fault_type == "down" {
-            self.wan_primary_failed_at = Some(at);
-            self.wan_backup_status = Some("active".to_string());
-            self.wan_failover_at = Some(at);
-            self.push(
-                at,
-                "wan_failover",
-                Some("wan.backup".to_string()),
-                "backup WAN activated after primary failure",
-            );
-            let event = self.ops.record_slack_notification("wan_failover", None);
-            self.push_ops_event(at, event);
-        }
-        if target == "mqtt.local" && fault_type == "duplicate_delivery" {
-            if let Some(topic) = topic {
+            TypedFaultKind::MqttDuplicateDelivery {
+                topic: Some(topic),
+                count,
+            } => {
                 self.duplicate_delivery_by_topic
                     .insert(topic.to_string(), count.unwrap_or(2).max(2));
             }
-        }
-        if let Some(segment) = target.strip_prefix("network.segment.") {
-            if fault_type == "isolated" {
+            TypedFaultKind::MqttDuplicateDelivery { topic: None, .. } => {}
+            TypedFaultKind::NetworkSegmentIsolated { target, segment } => {
                 self.record_fault_profile(
                     at,
                     target,
@@ -347,9 +330,7 @@ impl RuntimeState {
                     format!("network segment {segment} isolated"),
                 );
             }
-        }
-        if let Some(policy) = target.strip_prefix("firewall.policy.") {
-            if fault_type == "drift" {
+            TypedFaultKind::FirewallPolicyDrift { target, policy } => {
                 self.record_fault_profile(
                     at,
                     target,
@@ -357,49 +338,47 @@ impl RuntimeState {
                     format!("firewall policy {policy} drift detected"),
                 );
             }
-        }
-        if target == "mqtt.local" && fault_type == "unreachable" {
-            self.record_fault_profile(
-                at,
-                target,
-                "local_broker_unreachable",
-                "local MQTT broker unreachable".to_string(),
-            );
-        }
-        if target == "control_panel.ups" && fault_type == "battery_degraded" {
-            self.record_fault_profile(
-                at,
-                target,
-                "control_panel_ups_degraded",
-                "control-panel UPS battery degraded".to_string(),
-            );
-        }
-        if target.starts_with("control_panel.circuit_protector.") && fault_type == "tripped" {
-            self.record_fault_profile(
-                at,
-                target,
-                "control_panel_circuit_protector_tripped",
-                format!("{target} tripped"),
-            );
-        }
-        if target.starts_with("control_panel.psu.") && fault_type == "degraded" {
-            self.record_fault_profile(
-                at,
-                target,
-                "control_panel_redundant_psu_degraded",
-                format!("{target} degraded"),
-            );
-        }
-        if target == "edge.secondary" && fault_type == "takeover_failed" {
-            self.record_fault_profile(
-                at,
-                target,
-                "edge_redundancy_takeover_failed",
-                "secondary edge takeover failed".to_string(),
-            );
-        }
-        if let Some(fixture) = target.strip_prefix("dali.fixture.") {
-            if fault_type == "command_drop" {
+            TypedFaultKind::MqttLocalUnreachable => {
+                self.record_fault_profile(
+                    at,
+                    "mqtt.local",
+                    "local_broker_unreachable",
+                    "local MQTT broker unreachable".to_string(),
+                );
+            }
+            TypedFaultKind::ControlPanelUpsBatteryDegraded => {
+                self.record_fault_profile(
+                    at,
+                    "control_panel.ups",
+                    "control_panel_ups_degraded",
+                    "control-panel UPS battery degraded".to_string(),
+                );
+            }
+            TypedFaultKind::ControlPanelCircuitProtectorTripped { target } => {
+                self.record_fault_profile(
+                    at,
+                    target,
+                    "control_panel_circuit_protector_tripped",
+                    format!("{target} tripped"),
+                );
+            }
+            TypedFaultKind::ControlPanelPsuDegraded { target } => {
+                self.record_fault_profile(
+                    at,
+                    target,
+                    "control_panel_redundant_psu_degraded",
+                    format!("{target} degraded"),
+                );
+            }
+            TypedFaultKind::EdgeSecondaryTakeoverFailed => {
+                self.record_fault_profile(
+                    at,
+                    "edge.secondary",
+                    "edge_redundancy_takeover_failed",
+                    "secondary edge takeover failed".to_string(),
+                );
+            }
+            TypedFaultKind::DaliFixtureCommandDrop { target, fixture } => {
                 if let Err(error) = self.lighting.drop_command_for_fixture(fixture) {
                     self.push(
                         at,
@@ -411,11 +390,12 @@ impl RuntimeState {
                 }
             }
         }
+        let target = fault.target();
         self.push(
             at,
             "fault_activated",
-            Some(target.to_string()),
-            format!("{} fault activated", fault_type),
+            Some(target),
+            format!("{} fault activated", fault.fault_type()),
         );
     }
 

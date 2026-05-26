@@ -120,18 +120,15 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
             .map(resolve_time_offset)
             .transpose()?
             .unwrap_or_else(Duration::zero);
-        events.push(ScheduledEvent::GlobalFault(at, fault.clone()));
+        events.push(ScheduledEvent::GlobalFault(at, fault));
     }
     for step in &scenario.steps {
-        events.push(ScheduledEvent::Step(
-            resolve_time_offset(&step.at)?,
-            step.clone(),
-        ));
+        events.push(ScheduledEvent::Step(resolve_time_offset(&step.at)?, step));
     }
     for assertion in &scenario.assertions {
         events.push(ScheduledEvent::Assertion(
             resolve_time_offset(&assertion.at)?,
-            assertion.clone(),
+            assertion,
         ));
     }
     events.sort_by_key(|event| (event.at().num_milliseconds(), event.order()));
@@ -163,14 +160,13 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
 }
 
 #[derive(Debug)]
-#[allow(clippy::large_enum_variant)]
-pub(crate) enum ScheduledEvent {
-    GlobalFault(Duration, roomci_scenario::FaultStep),
-    Step(Duration, roomci_scenario::ScenarioStep),
-    Assertion(Duration, roomci_scenario::AssertionDefinition),
+pub(crate) enum ScheduledEvent<'a> {
+    GlobalFault(Duration, &'a roomci_scenario::FaultStep),
+    Step(Duration, &'a roomci_scenario::ScenarioStep),
+    Assertion(Duration, &'a roomci_scenario::AssertionDefinition),
 }
 
-impl ScheduledEvent {
+impl ScheduledEvent<'_> {
     fn at(&self) -> Duration {
         match self {
             ScheduledEvent::GlobalFault(at, _)

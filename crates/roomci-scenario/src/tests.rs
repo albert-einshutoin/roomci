@@ -530,6 +530,124 @@ assertions:
 }
 
 #[test]
+fn rejects_step_with_multiple_actions() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: multi_action_step
+steps:
+  - at: T
+    event: no-op
+    command:
+      target: scene.welcome
+      action: activate
+assertions:
+  - at: T+1s
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(error, ScenarioError::InvalidStepKind));
+}
+
+#[test]
+fn rejects_invalid_edge_status() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: invalid_edge_status
+edge:
+  primary:
+    status: warm
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::Edge(roomci_edge::EdgeError::InvalidConfig(_))
+    ));
+}
+
+#[test]
+fn rejects_malformed_modbus_config() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: malformed_modbus
+modbus:
+  devices:
+    - id: floor_heating
+      holding_registers:
+        bad-address:
+          value: 1
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::DeviceModel(roomci_device_model::DeviceModelError::InvalidModbusConfig(
+            _
+        ))
+    ));
+}
+
+#[test]
+fn rejects_unknown_fault_kind() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: unknown_fault_kind
+faults:
+  - at: T
+    target: edge.primary
+    type: imaginary_failure
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidFaultKind {
+            target,
+            fault_type
+        } if target == "edge.primary" && fault_type == "imaginary_failure"
+    ));
+}
+
+#[test]
 fn rejects_invalid_time_offset() {
     let error = resolve_time_offset("invalid_time").unwrap_err();
 

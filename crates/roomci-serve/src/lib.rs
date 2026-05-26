@@ -13,7 +13,7 @@ use std::{
 };
 
 use roomci_core::{run_scenario, RunReport, TimelineEvent};
-use roomci_device_model::ModbusModel;
+use roomci_device_model::{DeviceModelError, ModbusModel};
 use roomci_scenario::ScenarioFile;
 use serde_json::json;
 use thiserror::Error;
@@ -75,6 +75,9 @@ pub enum ServeError {
     /// JSON rendering failed while creating a serve response.
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    /// Device model config failed validation during serve startup.
+    #[error(transparent)]
+    DeviceModel(#[from] DeviceModelError),
     /// The serve runtime rejected or failed an HTTP/MQTT operation.
     #[error("serve error: {0}")]
     Runtime(String),
@@ -138,7 +141,7 @@ fn serve_http(
     modbus_port: Option<u16>,
 ) -> Result<(), ServeError> {
     let latest_report = run_scenario(&scenario)?;
-    let mut modbus = ModbusModel::from_config(&scenario.modbus);
+    let mut modbus = ModbusModel::try_from_config(&scenario.modbus)?;
     apply_scenario_modbus_steps(&scenario, &mut modbus);
     let modbus_units = modbus_unit_map(&scenario);
     let state = Arc::new(Mutex::new(ServeState {
