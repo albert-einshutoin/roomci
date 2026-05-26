@@ -303,6 +303,29 @@ assertions:
 }
 
 #[test]
+fn rejects_non_finite_between_condition_at_validated_boundary() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: invalid_non_finite_between_condition
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: living_area.discomfort_index
+    condition: between NaN and 75
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(error, ScenarioError::InvalidAssertionKind));
+}
+
+#[test]
 fn projects_domain_config_into_validated_runtime_config() {
     let scenario = load_scenario(fixture("examples/starlink_failover.yaml")).unwrap();
 

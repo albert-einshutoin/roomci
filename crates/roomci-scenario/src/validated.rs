@@ -767,7 +767,7 @@ impl Condition {
         let max = max
             .parse::<f64>()
             .map_err(|_| ScenarioError::InvalidAssertionKind)?;
-        if min > max {
+        if !min.is_finite() || !max.is_finite() || min > max {
             return Err(ScenarioError::InvalidAssertionKind);
         }
         Ok(Self::Between { min, max })
