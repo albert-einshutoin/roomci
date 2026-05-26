@@ -6,11 +6,12 @@ use roomci_edge::EdgeModel;
 use roomci_mqtt::{device_id_from_command_topic, BrokerModel};
 use roomci_ops::{OpsEvent, OpsModel};
 use roomci_scenario::{
-    parse_duration, typed_fault_kind, typed_step_kind, yaml_map_to_json, IntercomStep,
-    MqttPublishStep, ScenarioError, ScenarioFile, SensorReadingStep, TypedFaultKind, TypedStepKind,
+    yaml_map_to_json, Condition, ValidatedEventKind, ValidatedFaultKind, ValidatedIntercomStep,
+    ValidatedMqttPublishStep, ValidatedScenario, ValidatedScheduledEvent,
+    ValidatedSensorReadingStep, ValidatedStepKind,
 };
 
-use crate::{AssertionResult, CoreError, ScheduledEvent, StateMap, TimelineEvent};
+use crate::{AssertionResult, CoreError, StateMap, TimelineEvent};
 
 #[derive(Debug)]
 pub(crate) struct RuntimeState {
@@ -57,55 +58,61 @@ pub(crate) struct CommissioningRuntimeState {
 }
 
 impl RuntimeState {
-    pub(crate) fn new(scenario: &ScenarioFile) -> Result<Self, CoreError> {
+    pub(crate) fn new(scenario: &ValidatedScenario) -> Result<Self, CoreError> {
+        let raw = scenario.raw();
+        let domain_config = scenario.domain_config();
         let states = scenario
-            .devices
+            .devices()
             .iter()
-            .map(|device| (device.id.clone(), yaml_map_to_json(&device.state)))
+            .map(|device| (device.id.to_string(), device.state.clone()))
             .collect::<BTreeMap<_, _>>();
         let protocols = scenario
-            .devices
+            .devices()
             .iter()
-            .map(|device| (device.id.clone(), device.protocol.clone()))
+            .map(|device| {
+                (
+                    device.id.to_string(),
+                    device.protocol.as_ref().map(ToString::to_string),
+                )
+            })
             .collect::<BTreeMap<_, _>>();
 
         Ok(Self {
             states,
             protocols,
-            broker: BrokerModel::new(true, scenario.mqtt.cloud.enabled),
-            edge: EdgeModel::try_from_config(&scenario.edge)?,
+            broker: BrokerModel::new(true, raw.mqtt.cloud.enabled),
+            edge: EdgeModel::try_from_config(&raw.edge)?,
             edge_primary_failed_at: None,
             edge_failover_at: None,
-            edge_expected_within: edge_expected_within(&scenario.edge)?,
+            edge_expected_within: domain_config.edge.expected_within,
             wan_primary_failed_at: None,
             wan_failover_at: None,
-            wan_expected_within: expected_within(&scenario.wan)?,
-            wan_backup_status: status_at(&scenario.wan, "backup"),
+            wan_expected_within: domain_config.wan.expected_within,
+            wan_backup_status: domain_config.wan.backup_status.clone(),
             duplicate_delivery_by_topic: BTreeMap::new(),
-            modbus: ModbusModel::try_from_config(&scenario.modbus)?,
+            modbus: ModbusModel::try_from_config(&raw.modbus)?,
             lighting: LightingModel::try_from_config(
-                &scenario.lighting,
-                &scenario
-                    .scenes
+                &raw.lighting,
+                &raw.scenes
                     .iter()
                     .map(|(name, scene)| (name.clone(), scene.fixtures.clone()))
                     .collect(),
             )?,
-            contacts: ContactModel::try_from_config(&scenario.contacts)?,
-            ops: OpsModel::try_from_config(&scenario.alerts)?,
+            contacts: ContactModel::try_from_config(&raw.contacts)?,
+            ops: OpsModel::try_from_config(&raw.alerts)?,
             comfort: ComfortRuntimeState {
-                target: yaml_mapping_number(&scenario.comfort, "target_discomfort_index"),
-                range: comfort_range(&scenario.comfort),
-                discomfort_by_target: discomfort_by_target(&scenario.sensors),
+                target: domain_config.comfort.target,
+                range: domain_config.comfort.range,
+                discomfort_by_target: domain_config.comfort.discomfort_by_target.clone(),
                 reading_history: BTreeMap::new(),
                 user_override_count: 0,
             },
             access: AccessRuntimeState {
-                unexpected_users: unexpected_access_users(&scenario.inputs),
+                unexpected_users: domain_config.access.unexpected_users.clone(),
             },
             commissioning: CommissioningRuntimeState {
-                check_count: commissioning_check_count(&scenario.commissioning),
-                site: string_value(&scenario.commissioning, "site"),
+                check_count: domain_config.commissioning.check_count,
+                site: domain_config.commissioning.site.clone(),
             },
             timeline: Vec::new(),
         })
@@ -113,69 +120,72 @@ impl RuntimeState {
 
     pub(crate) fn apply_event(
         &mut self,
-        event: ScheduledEvent,
+        event: &ValidatedScheduledEvent,
     ) -> Result<Option<AssertionResult>, CoreError> {
-        match event {
-            ScheduledEvent::GlobalFault(at, fault) => {
-                self.apply_fault(at, typed_fault_kind(fault)?);
+        match event.kind() {
+            ValidatedEventKind::GlobalFault(fault) => {
+                self.apply_fault(event.at(), fault);
                 Ok(None)
             }
-            ScheduledEvent::Step(at, step) => {
-                match typed_step_kind(step)? {
-                    TypedStepKind::Event(event) => {
-                        self.push(at, "event", None, event);
+            ValidatedEventKind::Step(step) => {
+                match step {
+                    ValidatedStepKind::Event(event_name) => {
+                        self.push(event.at(), "event", None, event_name);
                     }
-                    TypedStepKind::Fault(fault) => {
-                        self.apply_fault(at, typed_fault_kind(fault)?);
+                    ValidatedStepKind::Fault(fault) => {
+                        self.apply_fault(event.at(), fault);
                     }
-                    TypedStepKind::Command(command) => {
-                        self.apply_command(at, &command.target, &command.action);
+                    ValidatedStepKind::Command(command) => {
+                        self.apply_command(event.at(), &command.target, command.action.as_str());
                     }
-                    TypedStepKind::ModbusWrite(modbus_write) => {
+                    ValidatedStepKind::ModbusWrite(modbus_write) => {
                         self.apply_modbus_write(
-                            at,
-                            &modbus_write.device,
+                            event.at(),
+                            modbus_write.device.as_str(),
                             modbus_write.register,
                             modbus_write.value.clone(),
                         );
                     }
-                    TypedStepKind::MqttPublish(mqtt_publish) => {
-                        self.apply_mqtt_publish(at, mqtt_publish);
+                    ValidatedStepKind::MqttPublish(mqtt_publish) => {
+                        self.apply_mqtt_publish(event.at(), mqtt_publish);
                     }
-                    TypedStepKind::Contact(contact) => {
-                        let contact_id = contact.id.clone();
-                        let contact_state = contact.state.clone();
+                    ValidatedStepKind::Contact(contact) => {
+                        let contact_id = contact.id.to_string();
+                        let contact_state = contact.state.to_string();
                         self.contacts.set_state(&contact_id, &contact_state)?;
                         self.push(
-                            at,
+                            event.at(),
                             "contact_changed",
                             Some(contact_id.clone()),
                             format!("contact state changed to {contact_state}"),
                         );
-                        for event in self.ops.apply_contact_change(&contact_id, &contact_state) {
-                            self.push_ops_event(at, event);
+                        for ops_event in self.ops.apply_contact_change(&contact_id, &contact_state)
+                        {
+                            self.push_ops_event(event.at(), ops_event);
                         }
                     }
-                    TypedStepKind::Intercom(intercom) => {
-                        self.apply_intercom_step(at, intercom);
+                    ValidatedStepKind::Intercom(intercom) => {
+                        self.apply_intercom_step(event.at(), intercom);
                     }
-                    TypedStepKind::SensorReading(sensor_reading) => {
-                        self.apply_sensor_reading(at, sensor_reading);
+                    ValidatedStepKind::SensorReading(sensor_reading) => {
+                        self.apply_sensor_reading(event.at(), sensor_reading);
                     }
-                    TypedStepKind::Ops(ops) => {
-                        self.apply_ops_step(at, ops);
+                    ValidatedStepKind::Ops(ops) => {
+                        self.apply_ops_step(event.at(), ops);
                     }
-                    TypedStepKind::Automation(automation) => {
-                        self.apply_automation(at, automation);
+                    ValidatedStepKind::Automation(automation) => {
+                        self.apply_automation(event.at(), automation);
                     }
                 }
                 Ok(None)
             }
-            ScheduledEvent::Assertion(_, assertion) => Ok(Some(self.evaluate_assertion(assertion))),
+            ValidatedEventKind::Assertion(assertion) => {
+                Ok(Some(self.evaluate_assertion(assertion)))
+            }
         }
     }
 
-    fn apply_sensor_reading(&mut self, at: Duration, reading: &SensorReadingStep) {
+    fn apply_sensor_reading(&mut self, at: Duration, reading: &ValidatedSensorReadingStep) {
         let discomfort = discomfort_index(reading.temperature, reading.humidity);
         let discomfort_key = format!("{}.discomfort_index", reading.target);
         self.comfort
@@ -205,7 +215,7 @@ impl RuntimeState {
         let history = self
             .comfort
             .reading_history
-            .entry(reading.target.clone())
+            .entry(reading.target.to_string())
             .or_default();
         history.push(discomfort);
         let oscillation_detected = has_recent_oscillation(history);
@@ -218,7 +228,7 @@ impl RuntimeState {
         self.push(
             at,
             "comfort_sensor_reading_recorded",
-            Some(reading.target.clone()),
+            Some(reading.target.to_string()),
             format!(
                 "temperature {} humidity {} discomfort {}",
                 reading.temperature, reading.humidity, discomfort
@@ -228,22 +238,22 @@ impl RuntimeState {
             self.push(
                 at,
                 "comfort_oscillation_detected",
-                Some(reading.target.clone()),
+                Some(reading.target.to_string()),
                 "recent comfort readings changed direction repeatedly".to_string(),
             );
         }
     }
 
-    fn apply_intercom_step(&mut self, at: Duration, intercom: &IntercomStep) {
+    fn apply_intercom_step(&mut self, at: Duration, intercom: &ValidatedIntercomStep) {
         let state_key = format!("intercom.{}", intercom.id);
         let mut state = StateMap::new();
         state.insert(
             "event".to_string(),
-            serde_json::Value::String(intercom.event.clone()),
+            serde_json::Value::String(intercom.event.to_string()),
         );
         state.insert(
             "outcome".to_string(),
-            serde_json::Value::String(intercom.outcome.clone()),
+            serde_json::Value::String(intercom.outcome.to_string()),
         );
         state.insert(
             "real_unlock_controlled".to_string(),
@@ -284,12 +294,12 @@ impl RuntimeState {
         }
     }
 
-    fn apply_fault(&mut self, at: Duration, fault: TypedFaultKind<'_>) {
+    fn apply_fault(&mut self, at: Duration, fault: &ValidatedFaultKind) {
         match fault {
-            TypedFaultKind::BrokerOffline { target } => {
-                self.broker.set_online(target, false);
+            ValidatedFaultKind::BrokerOffline { target } => {
+                self.broker.set_online(target.as_str(), false);
             }
-            TypedFaultKind::EdgePrimaryPowerLost => {
+            ValidatedFaultKind::EdgePrimaryPowerLost => {
                 self.edge_primary_failed_at = Some(at);
                 if let Some(outcome) = self.edge.apply_power_lost_to_primary() {
                     self.edge_failover_at = Some(at);
@@ -301,7 +311,7 @@ impl RuntimeState {
                     );
                 }
             }
-            TypedFaultKind::WanPrimaryDown => {
+            ValidatedFaultKind::WanPrimaryDown => {
                 self.wan_primary_failed_at = Some(at);
                 self.wan_backup_status = Some("active".to_string());
                 self.wan_failover_at = Some(at);
@@ -314,15 +324,15 @@ impl RuntimeState {
                 let event = self.ops.record_slack_notification("wan_failover", None);
                 self.push_ops_event(at, event);
             }
-            TypedFaultKind::MqttDuplicateDelivery {
+            ValidatedFaultKind::MqttDuplicateDelivery {
                 topic: Some(topic),
                 count,
             } => {
                 self.duplicate_delivery_by_topic
                     .insert(topic.to_string(), count.unwrap_or(2).max(2));
             }
-            TypedFaultKind::MqttDuplicateDelivery { topic: None, .. } => {}
-            TypedFaultKind::NetworkSegmentIsolated { target, segment } => {
+            ValidatedFaultKind::MqttDuplicateDelivery { topic: None, .. } => {}
+            ValidatedFaultKind::NetworkSegmentIsolated { target, segment } => {
                 self.record_fault_profile(
                     at,
                     target,
@@ -330,7 +340,7 @@ impl RuntimeState {
                     format!("network segment {segment} isolated"),
                 );
             }
-            TypedFaultKind::FirewallPolicyDrift { target, policy } => {
+            ValidatedFaultKind::FirewallPolicyDrift { target, policy } => {
                 self.record_fault_profile(
                     at,
                     target,
@@ -338,7 +348,7 @@ impl RuntimeState {
                     format!("firewall policy {policy} drift detected"),
                 );
             }
-            TypedFaultKind::MqttLocalUnreachable => {
+            ValidatedFaultKind::MqttLocalUnreachable => {
                 self.record_fault_profile(
                     at,
                     "mqtt.local",
@@ -346,7 +356,7 @@ impl RuntimeState {
                     "local MQTT broker unreachable".to_string(),
                 );
             }
-            TypedFaultKind::ControlPanelUpsBatteryDegraded => {
+            ValidatedFaultKind::ControlPanelUpsBatteryDegraded => {
                 self.record_fault_profile(
                     at,
                     "control_panel.ups",
@@ -354,7 +364,7 @@ impl RuntimeState {
                     "control-panel UPS battery degraded".to_string(),
                 );
             }
-            TypedFaultKind::ControlPanelCircuitProtectorTripped { target } => {
+            ValidatedFaultKind::ControlPanelCircuitProtectorTripped { target } => {
                 self.record_fault_profile(
                     at,
                     target,
@@ -362,7 +372,7 @@ impl RuntimeState {
                     format!("{target} tripped"),
                 );
             }
-            TypedFaultKind::ControlPanelPsuDegraded { target } => {
+            ValidatedFaultKind::ControlPanelPsuDegraded { target } => {
                 self.record_fault_profile(
                     at,
                     target,
@@ -370,7 +380,7 @@ impl RuntimeState {
                     format!("{target} degraded"),
                 );
             }
-            TypedFaultKind::EdgeSecondaryTakeoverFailed => {
+            ValidatedFaultKind::EdgeSecondaryTakeoverFailed => {
                 self.record_fault_profile(
                     at,
                     "edge.secondary",
@@ -378,8 +388,8 @@ impl RuntimeState {
                     "secondary edge takeover failed".to_string(),
                 );
             }
-            TypedFaultKind::DaliFixtureCommandDrop { target, fixture } => {
-                if let Err(error) = self.lighting.drop_command_for_fixture(fixture) {
+            ValidatedFaultKind::DaliFixtureCommandDrop { target, fixture } => {
+                if let Err(error) = self.lighting.drop_command_for_fixture(fixture.as_str()) {
                     self.push(
                         at,
                         "fault_rejected",
@@ -497,20 +507,20 @@ impl RuntimeState {
         );
     }
 
-    fn apply_mqtt_publish(&mut self, at: Duration, publish: &MqttPublishStep) {
+    fn apply_mqtt_publish(&mut self, at: Duration, publish: &ValidatedMqttPublishStep) {
         self.push(
             at,
             "mqtt_publish",
-            Some(publish.client.clone()),
+            Some(publish.client.to_string()),
             format!("published {}", publish.topic),
         );
 
         let deliveries = self
             .duplicate_delivery_by_topic
-            .get(&publish.topic)
+            .get(publish.topic.as_str())
             .copied()
             .unwrap_or(1);
-        let Some(device_id) = device_id_from_command_topic(&publish.topic) else {
+        let Some(device_id) = device_id_from_command_topic(publish.topic.as_str()) else {
             self.push(
                 at,
                 "mqtt_publish_failed",
@@ -520,7 +530,7 @@ impl RuntimeState {
             return;
         };
         match self.edge.route_mqtt_command(
-            &publish.client,
+            publish.client.as_str(),
             &device_id,
             self.protocols.get(&device_id).cloned().flatten(),
         ) {
@@ -547,8 +557,8 @@ impl RuntimeState {
         let payload = yaml_map_to_json(&publish.payload);
         match self.broker.publish_device_command(
             "mqtt.local",
-            &publish.client,
-            &publish.topic,
+            publish.client.as_str(),
+            publish.topic.as_str(),
             payload,
             deliveries,
         ) {
@@ -667,7 +677,7 @@ impl RuntimeState {
 
     fn evaluate_assertion(
         &self,
-        assertion: &roomci_scenario::AssertionDefinition,
+        assertion: &roomci_scenario::ValidatedAssertionKind,
     ) -> AssertionResult {
         crate::assertions::evaluate_assertion(self, assertion)
     }
@@ -687,11 +697,11 @@ impl RuntimeState {
         });
     }
 
-    pub(crate) fn evaluate_between_condition(&self, target: &str, condition_text: &str) -> bool {
+    pub(crate) fn evaluate_between_condition(&self, target: &str, condition: Condition) -> bool {
         let Some(actual) = self.comfort.discomfort_by_target.get(target).copied() else {
             return false;
         };
-        if let Some((min, max)) = parse_between_condition(condition_text) {
+        if let Condition::Between { min, max } = condition {
             return actual >= min && actual <= max;
         }
         if let Some((min, max)) = self.comfort.range {
@@ -699,149 +709,6 @@ impl RuntimeState {
         }
         false
     }
-}
-
-fn edge_expected_within(
-    edge: &BTreeMap<String, serde_yaml::Value>,
-) -> Result<Option<Duration>, ScenarioError> {
-    let Some(failover) = edge.get("failover").and_then(|value| value.as_mapping()) else {
-        return Ok(None);
-    };
-    let Some(expected_within) = failover
-        .get(serde_yaml::Value::String("expected_within".to_string()))
-        .and_then(|value| value.as_str())
-    else {
-        return Ok(None);
-    };
-    parse_duration(expected_within).map(Some)
-}
-
-fn expected_within(
-    config: &BTreeMap<String, serde_yaml::Value>,
-) -> Result<Option<Duration>, ScenarioError> {
-    let Some(failover) = config.get("failover").and_then(|value| value.as_mapping()) else {
-        return Ok(None);
-    };
-    let Some(expected_within) = failover
-        .get(serde_yaml::Value::String("expected_within".to_string()))
-        .and_then(|value| value.as_str())
-    else {
-        return Ok(None);
-    };
-    parse_duration(expected_within).map(Some)
-}
-
-fn status_at(config: &BTreeMap<String, serde_yaml::Value>, key: &str) -> Option<String> {
-    config
-        .get(key)
-        .and_then(|value| value.as_mapping())
-        .and_then(|mapping| {
-            mapping
-                .get(serde_yaml::Value::String("status".to_string()))
-                .and_then(|value| value.as_str())
-        })
-        .map(str::to_string)
-}
-
-fn yaml_mapping_number(map: &BTreeMap<String, serde_yaml::Value>, key: &str) -> Option<f64> {
-    map.get(key).and_then(|value| {
-        value
-            .as_f64()
-            .or_else(|| value.as_i64().map(|value| value as f64))
-    })
-}
-
-fn string_value(map: &BTreeMap<String, serde_yaml::Value>, key: &str) -> Option<String> {
-    map.get(key)
-        .and_then(|value| value.as_str())
-        .map(str::to_string)
-}
-
-fn unexpected_access_users(inputs: &BTreeMap<String, serde_yaml::Value>) -> Vec<String> {
-    let identity_users = string_sequence(inputs.get("identity_group"));
-    let access_users = string_sequence(inputs.get("access_system_group"));
-    access_users
-        .into_iter()
-        .filter(|user| !identity_users.contains(user))
-        .collect()
-}
-
-fn commissioning_check_count(commissioning: &BTreeMap<String, serde_yaml::Value>) -> usize {
-    let Some(rooms) = commissioning
-        .get("rooms")
-        .and_then(|value| value.as_sequence())
-    else {
-        return 0;
-    };
-    rooms
-        .iter()
-        .filter_map(|room| room.as_mapping())
-        .map(|room| {
-            room.get(serde_yaml::Value::String("devices".to_string()))
-                .and_then(|value| value.as_sequence())
-                .map_or(0, |devices| devices.len())
-        })
-        .sum()
-}
-
-fn string_sequence(value: Option<&serde_yaml::Value>) -> Vec<String> {
-    value
-        .and_then(|value| value.as_sequence())
-        .map(|sequence| {
-            sequence
-                .iter()
-                .filter_map(|value| value.as_str().map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-fn comfort_range(comfort: &BTreeMap<String, serde_yaml::Value>) -> Option<(f64, f64)> {
-    let range = comfort
-        .get("acceptable_range")
-        .and_then(|value| value.as_mapping())?;
-    let min = range
-        .get(serde_yaml::Value::String("min".to_string()))
-        .and_then(|value| {
-            value
-                .as_f64()
-                .or_else(|| value.as_i64().map(|value| value as f64))
-        })?;
-    let max = range
-        .get(serde_yaml::Value::String("max".to_string()))
-        .and_then(|value| {
-            value
-                .as_f64()
-                .or_else(|| value.as_i64().map(|value| value as f64))
-        })?;
-    Some((min, max))
-}
-
-fn discomfort_by_target(sensors: &BTreeMap<String, serde_yaml::Value>) -> BTreeMap<String, f64> {
-    sensors
-        .iter()
-        .filter_map(|(sensor, value)| {
-            let mapping = value.as_mapping()?;
-            let temperature = mapping
-                .get(serde_yaml::Value::String("temperature".to_string()))
-                .and_then(|value| {
-                    value
-                        .as_f64()
-                        .or_else(|| value.as_i64().map(|value| value as f64))
-                })?;
-            let humidity = mapping
-                .get(serde_yaml::Value::String("humidity".to_string()))
-                .and_then(|value| {
-                    value
-                        .as_f64()
-                        .or_else(|| value.as_i64().map(|value| value as f64))
-                })?;
-            Some((
-                format!("{sensor}.discomfort_index"),
-                discomfort_index(temperature, humidity),
-            ))
-        })
-        .collect()
 }
 
 fn discomfort_index(temperature: f64, humidity: f64) -> f64 {
@@ -862,12 +729,6 @@ fn has_recent_oscillation(history: &[f64]) -> bool {
         directions.push(delta.signum());
     }
     directions.len() >= 3 && directions.windows(2).all(|pair| pair[0] != pair[1])
-}
-
-fn parse_between_condition(condition_text: &str) -> Option<(f64, f64)> {
-    let rest = condition_text.strip_prefix("between ")?;
-    let (min, max) = rest.split_once(" and ")?;
-    Some((min.parse().ok()?, max.parse().ok()?))
 }
 
 fn format_duration(duration: Duration) -> String {

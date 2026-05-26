@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use roomci_scenario::load_scenario;
+use roomci_scenario::{load_scenario, ValidatedScenario};
 
 use super::*;
 
@@ -281,6 +281,7 @@ fn comfort_auto_mode_passes() {
 fn runtime_groups_customer_independent_domain_state() {
     let scenario = load_scenario(fixture("examples/comfort_auto_mode.yaml")).unwrap();
 
+    let scenario = ValidatedScenario::try_from(&scenario).unwrap();
     let runtime = runtime::RuntimeState::new(&scenario).unwrap();
 
     assert!(runtime.comfort.target.is_some());

@@ -41,6 +41,7 @@ The current detailed product goal is tracked in
 | Phase 23 | OSS trust and positioning cleanup | Public license, repository, provenance, positioning, and debranding issues are made coherent |
 | Phase 24 | Core architecture hardening | Typed assertions, domain runtime state, parser/property tests, concurrency tests, and protocol-server ADR are tracked |
 | Phase 25 | Public surface evidence freshness | README demo links and quality measurements remain truthful after product/codebase evaluation |
+| Phase 25.1 | Rust type-boundary maximization | Raw scenario/config data is validated into owned Rust domain types before adapter-contract breadth expands |
 | Phase 26 | Adapter contract generalization | Payload, topic, acceptance, and evaluator intake surfaces improve without customer-specific protocol specs |
 
 ## Progress Management

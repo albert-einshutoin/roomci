@@ -13,9 +13,15 @@ fn validates_latest_local_first_scenario() {
     let scenario = load_scenario(fixture("examples/local_first_cloud_outage.yaml")).unwrap();
 
     validate_scenario(&scenario).unwrap();
+    let validated = ValidatedScenario::try_from(&scenario).unwrap();
 
     assert_eq!(scenario.scenario.name, "local_first_cloud_outage");
     assert!(scenario.scenario.tags.contains(&"local-first".to_string()));
+    assert!(!validated.scheduled_events().is_empty());
+    assert!(validated
+        .devices()
+        .iter()
+        .any(|device| device.id.as_str() == "living_light"));
 }
 
 #[test]
@@ -208,6 +214,105 @@ assertions:
     let error = validate_scenario(&scenario).unwrap_err();
 
     assert!(matches!(error, ScenarioError::InvalidAssertionKind));
+}
+
+#[test]
+fn rejects_empty_promoted_identifier_at_validated_boundary() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: invalid_empty_device_id
+devices:
+  - id: ""
+    type: light
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidIdentifier { field, .. } if field == "devices[].id"
+    ));
+}
+
+#[test]
+fn rejects_invalid_mqtt_publish_topic_at_validated_boundary() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: invalid_mqtt_topic
+devices:
+  - id: living_light
+    type: light
+    protocol: dali
+steps:
+  - at: T
+    mqtt_publish:
+      client: ipad_controller
+      topic: house/+/device/living_light/command
+      payload:
+        power: true
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidMqttTopic { field, .. } if field == "steps[].mqtt_publish.topic"
+    ));
+}
+
+#[test]
+fn rejects_malformed_between_condition_at_validated_boundary() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: invalid_between_condition
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: living_area.discomfort_index
+    condition: between warm and 75
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(error, ScenarioError::InvalidAssertionKind));
+}
+
+#[test]
+fn projects_domain_config_into_validated_runtime_config() {
+    let scenario = load_scenario(fixture("examples/starlink_failover.yaml")).unwrap();
+
+    let validated = ValidatedScenario::try_from(&scenario).unwrap();
+
+    assert!(validated.domain_config().wan.expected_within.is_some());
+    assert_eq!(
+        validated.domain_config().wan.backup_status.as_deref(),
+        Some("standby")
+    );
 }
 
 #[test]

@@ -8,14 +8,16 @@
 use std::{collections::BTreeMap, fs, path::Path};
 
 use chrono::Duration;
-use roomci_device_model::{ContactModel, DeviceModelError, LightingModel, ModbusModel};
-use roomci_edge::{EdgeError, EdgeModel};
-use roomci_ops::{OpsError, OpsModel};
+use roomci_device_model::DeviceModelError;
+use roomci_edge::EdgeError;
+use roomci_ops::OpsError;
 use thiserror::Error;
 
 mod schema;
+mod validated;
 
 pub use schema::*;
+pub use validated::*;
 
 /// Errors produced while loading or validating a scenario.
 #[derive(Debug, Error)]
@@ -44,6 +46,14 @@ pub enum ScenarioError {
     InvalidAssertionKind,
     #[error("invalid sensor reading: {0}")]
     InvalidSensorReading(String),
+    #[error("invalid identifier {field}: {value}")]
+    InvalidIdentifier { field: String, value: String },
+    #[error("invalid MQTT topic {field}: {value} ({reason})")]
+    InvalidMqttTopic {
+        field: String,
+        value: String,
+        reason: String,
+    },
     #[error("unsupported MQTT adapter declaration {0}")]
     UnsupportedMqttAdapter(String),
     #[error("MQTT contract {0} is missing command_topic or state_topic")]
@@ -322,117 +332,7 @@ fn require_non_empty(field: &str, value: &str) -> Result<(), ScenarioError> {
 /// Called by `roomci-core::run_scenario` before execution; callers can also
 /// invoke it directly for a `--dry-run`-style validation pass.
 pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
-    let modbus = ModbusModel::try_from_config(&scenario.modbus)?;
-    let scene_targets = scenario
-        .scenes
-        .iter()
-        .map(|(name, scene)| (name.clone(), scene.fixtures.clone()))
-        .collect::<BTreeMap<_, _>>();
-    let lighting = LightingModel::try_from_config(&scenario.lighting, &scene_targets)?;
-    let contacts = ContactModel::try_from_config(&scenario.contacts)?;
-    EdgeModel::try_from_config(&scenario.edge)?;
-    let ops = OpsModel::try_from_config(&scenario.alerts)?;
-    lighting.assert_scene_targets_exist()?;
-    ops.validate_sources(|contact_id| contacts.has_contact(contact_id))?;
-    validate_mqtt_contracts(&scenario.mqtt.contracts)?;
-
-    for fault in &scenario.faults {
-        if let Some(at) = &fault.at {
-            resolve_time_offset(at)?;
-        }
-        if let Some(duration) = &fault.duration {
-            parse_duration(duration)?;
-        }
-        typed_fault_kind(fault)?;
-        validate_fault_reference(fault, &lighting)?;
-    }
-
-    for step in &scenario.steps {
-        resolve_time_offset(&step.at)?;
-        validate_typed_step_kind(typed_step_kind(step)?, &modbus, &lighting, &contacts)?;
-    }
-
-    for assertion in &scenario.assertions {
-        resolve_time_offset(&assertion.at)?;
-        let kinds = [
-            assertion.mqtt.is_some(),
-            assertion.modbus.is_some(),
-            assertion.guest_experience.is_some(),
-            assertion.ops.is_some(),
-            assertion.target.is_some() && assertion.condition.is_some(),
-            assertion.inline_assert.is_some(),
-        ]
-        .iter()
-        .filter(|present| **present)
-        .count();
-        if kinds != 1 {
-            return Err(ScenarioError::InvalidAssertionKind);
-        }
-        typed_assertion_kind(assertion)?;
-        if let Some(modbus_assertion) = &assertion.modbus {
-            if !modbus.has_register(&modbus_assertion.device, modbus_assertion.register) {
-                return Err(DeviceModelError::UnknownModbusRegister {
-                    device: modbus_assertion.device.clone(),
-                    register: modbus_assertion.register,
-                }
-                .into());
-            }
-        }
-        if let Some(inline_assert) = &assertion.inline_assert {
-            if let Some(scene) = inline_assert.get("scene").and_then(|value| value.as_str()) {
-                lighting.assert_scene_exists(scene)?;
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn validate_typed_step_kind(
-    kind: TypedStepKind<'_>,
-    modbus: &ModbusModel,
-    lighting: &LightingModel,
-    contacts: &ContactModel,
-) -> Result<(), ScenarioError> {
-    match kind {
-        TypedStepKind::Event(_) => {}
-        TypedStepKind::Command(command) => {
-            if let Some(scene) = command.target.strip_prefix("scene.") {
-                lighting.assert_scene_exists(scene)?;
-            }
-        }
-        TypedStepKind::ModbusWrite(modbus_write) => {
-            modbus.assert_writable(&modbus_write.device, modbus_write.register)?;
-        }
-        TypedStepKind::MqttPublish(_) => {}
-        TypedStepKind::Fault(fault) => {
-            if let Some(duration) = &fault.duration {
-                parse_duration(duration)?;
-            }
-            typed_fault_kind(fault)?;
-            validate_fault_reference(fault, lighting)?;
-        }
-        TypedStepKind::Contact(contact) => {
-            if !contacts.has_contact(&contact.id) {
-                return Err(DeviceModelError::UnknownContact(contact.id.clone()).into());
-            }
-        }
-        TypedStepKind::Intercom(intercom) => {
-            require_non_empty("steps[].intercom.id", &intercom.id)?;
-            require_non_empty("steps[].intercom.event", &intercom.event)?;
-            require_non_empty("steps[].intercom.outcome", &intercom.outcome)?;
-        }
-        TypedStepKind::SensorReading(sensor_reading) => {
-            require_non_empty("steps[].sensor_reading.target", &sensor_reading.target)?;
-            if !(0.0..=100.0).contains(&sensor_reading.humidity) {
-                return Err(ScenarioError::InvalidSensorReading(
-                    "steps[].sensor_reading.humidity must be between 0 and 100".to_string(),
-                ));
-            }
-        }
-        TypedStepKind::Ops(_) | TypedStepKind::Automation(_) => {}
-    }
-    Ok(())
+    ValidatedScenario::try_from(scenario).map(|_| ())
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -790,16 +690,6 @@ fn validate_mqtt_contracts(contracts: &[MqttConnectionContract]) -> Result<(), S
                 contract.command_topic, existing, contract.name
             )));
         }
-    }
-    Ok(())
-}
-
-fn validate_fault_reference(
-    fault: &FaultStep,
-    lighting: &LightingModel,
-) -> Result<(), ScenarioError> {
-    if let Some(fixture) = fault.target.strip_prefix("dali.fixture.") {
-        lighting.assert_fixture_exists(fixture)?;
     }
     Ok(())
 }

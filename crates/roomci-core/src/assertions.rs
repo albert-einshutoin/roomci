@@ -1,7 +1,7 @@
 use roomci_edge::EdgeStatus;
 use roomci_scenario::{
-    typed_assertion_kind, yaml_map_to_json, InlineAssertionKind, TargetConditionAssertion,
-    TypedAssertionKind,
+    yaml_map_to_json, Condition, ValidatedAssertionKind, ValidatedInlineAssertionKind,
+    ValidatedModbusAssertion, ValidatedMqttAssertion, ValidatedTargetConditionAssertion,
 };
 
 use crate::{runtime::RuntimeState, AssertionResult};
@@ -9,29 +9,26 @@ use crate::{runtime::RuntimeState, AssertionResult};
 pub(crate) fn evaluate_assertion(
     runtime: &RuntimeState,
 
-    assertion: &roomci_scenario::AssertionDefinition,
+    assertion: &ValidatedAssertionKind,
 ) -> AssertionResult {
-    match typed_assertion_kind(assertion) {
-        Ok(TypedAssertionKind::MqttRetained(mqtt)) => evaluate_mqtt_retained(runtime, mqtt),
-        Ok(TypedAssertionKind::ModbusRegister(modbus)) => evaluate_modbus_register(runtime, modbus),
-        Ok(TypedAssertionKind::GuestExperienceField(expected)) => {
-            evaluate_guest_experience_field(runtime, expected)
+    match assertion {
+        ValidatedAssertionKind::MqttRetained(mqtt) => evaluate_mqtt_retained(runtime, mqtt),
+        ValidatedAssertionKind::ModbusRegister(modbus) => evaluate_modbus_register(runtime, modbus),
+        ValidatedAssertionKind::GuestExperienceField(condition) => {
+            evaluate_guest_experience_field(runtime, *condition)
         }
-        Ok(TypedAssertionKind::Ops(ops)) => evaluate_ops(runtime, ops),
-        Ok(TypedAssertionKind::TargetCondition(kind)) => {
-            evaluate_target_condition(runtime, assertion, kind)
-        }
-        Ok(TypedAssertionKind::Inline(kind)) => evaluate_inline_assertion(runtime, kind),
-        Err(_) => unsupported_assertion(),
+        ValidatedAssertionKind::Ops(ops) => evaluate_ops(runtime, ops),
+        ValidatedAssertionKind::TargetCondition(kind) => evaluate_target_condition(runtime, kind),
+        ValidatedAssertionKind::Inline(kind) => evaluate_inline_assertion(runtime, kind),
     }
 }
 
 fn evaluate_mqtt_retained(
     runtime: &RuntimeState,
-    mqtt: &roomci_scenario::MqttAssertion,
+    mqtt: &ValidatedMqttAssertion,
 ) -> AssertionResult {
     let expected = yaml_map_to_json(&mqtt.retained);
-    let actual = runtime.broker.retained().get(&mqtt.topic);
+    let actual = runtime.broker.retained().get(mqtt.topic.as_str());
     let passed = actual == Some(&expected);
     AssertionResult {
         name: format!("mqtt_retained:{}", mqtt.topic),
@@ -60,13 +57,15 @@ fn evaluate_mqtt_retained(
 
 fn evaluate_modbus_register(
     runtime: &RuntimeState,
-    modbus: &roomci_scenario::ModbusAssertion,
+    modbus: &ValidatedModbusAssertion,
 ) -> AssertionResult {
-    let actual = runtime.modbus.value(&modbus.device, modbus.register);
+    let actual = runtime
+        .modbus
+        .value(modbus.device.as_str(), modbus.register);
     let passed = if let Some(expected_readable) = modbus.readable_value {
         runtime
             .modbus
-            .readable_value(&modbus.device, modbus.register)
+            .readable_value(modbus.device.as_str(), modbus.register)
             .map(|value| (value - expected_readable).abs() < f64::EPSILON)
             .unwrap_or(false)
     } else if let Some(expected) = &modbus.value {
@@ -97,9 +96,12 @@ fn evaluate_modbus_register(
     }
 }
 
-fn evaluate_guest_experience_field(runtime: &RuntimeState, expected: &str) -> AssertionResult {
+fn evaluate_guest_experience_field(
+    runtime: &RuntimeState,
+    condition: Condition,
+) -> AssertionResult {
     let local_ok = runtime.broker.is_online("mqtt.local");
-    let passed = expected == "unaffected" && local_ok;
+    let passed = condition == Condition::Unaffected && local_ok;
     AssertionResult {
         name: "guest_experience".to_string(),
         assertion_type: "guest_experience".to_string(),
@@ -160,18 +162,11 @@ fn evaluate_ops(
 
 fn evaluate_target_condition(
     runtime: &RuntimeState,
-    assertion: &roomci_scenario::AssertionDefinition,
-    kind: TargetConditionAssertion,
+    kind: &ValidatedTargetConditionAssertion,
 ) -> AssertionResult {
-    let target = assertion.target.as_deref().unwrap_or_default();
-    let condition = assertion
-        .condition
-        .as_ref()
-        .unwrap_or(&serde_yaml::Value::Null);
-    let condition_text = condition.as_str().unwrap_or_default();
     match kind {
-        TargetConditionAssertion::EdgeSecondaryActive => {
-            let status_passed = condition_text == "active"
+        ValidatedTargetConditionAssertion::EdgeSecondary { condition } => {
+            let status_passed = *condition == Condition::Active
                 && runtime.edge.secondary_status() == Some(EdgeStatus::Active);
             let timing_passed = runtime
                 .edge_expected_within
@@ -211,8 +206,9 @@ fn evaluate_target_condition(
                 },
             }
         }
-        TargetConditionAssertion::MqttLocalAvailable => {
-            let passed = condition_text == "available" && runtime.broker.is_online("mqtt.local");
+        ValidatedTargetConditionAssertion::MqttLocal { condition } => {
+            let passed =
+                *condition == Condition::Available && runtime.broker.is_online("mqtt.local");
             AssertionResult {
                 name: "mqtt.local".to_string(),
                 assertion_type: "broker_state".to_string(),
@@ -234,8 +230,8 @@ fn evaluate_target_condition(
                 },
             }
         }
-        TargetConditionAssertion::WanBackupActive => {
-            let status_passed = condition_text == "active"
+        ValidatedTargetConditionAssertion::WanBackup { condition } => {
+            let status_passed = *condition == Condition::Active
                 && runtime.wan_backup_status.as_deref() == Some("active");
             let timing_passed = runtime
                 .wan_expected_within
@@ -270,8 +266,9 @@ fn evaluate_target_condition(
                 },
             }
         }
-        TargetConditionAssertion::LivingAreaDiscomfortIndex => {
-            let passed = runtime.evaluate_between_condition(target, condition_text);
+        ValidatedTargetConditionAssertion::LivingAreaDiscomfortIndex { condition } => {
+            let target = "living_area.discomfort_index";
+            let passed = runtime.evaluate_between_condition(target, *condition);
             AssertionResult {
                 name: target.to_string(),
                 assertion_type: "comfort_metric".to_string(),
@@ -293,9 +290,9 @@ fn evaluate_target_condition(
                 },
             }
         }
-        TargetConditionAssertion::UserOverrideFalse => {
-            let expected_false = condition.as_bool() == Some(false) || condition_text == "false";
-            let passed = expected_false && runtime.comfort.user_override_count == 0;
+        ValidatedTargetConditionAssertion::UserOverride { condition } => {
+            let target = "user_override";
+            let passed = *condition == Condition::False && runtime.comfort.user_override_count == 0;
             AssertionResult {
                 name: target.to_string(),
                 assertion_type: "comfort_user_override".to_string(),
@@ -317,8 +314,8 @@ fn evaluate_target_condition(
                 },
             }
         }
-        TargetConditionAssertion::GuestExperienceUnaffected => {
-            let passed = condition_text == "unaffected"
+        ValidatedTargetConditionAssertion::GuestExperience { condition } => {
+            let passed = *condition == Condition::Unaffected
                 && runtime.broker.is_online("mqtt.local")
                 && runtime.edge.active_id().is_some();
             AssertionResult {
@@ -350,32 +347,27 @@ fn evaluate_target_condition(
 
 fn evaluate_inline_assertion(
     runtime: &RuntimeState,
-    kind: InlineAssertionKind<'_>,
+    kind: &ValidatedInlineAssertionKind,
 ) -> AssertionResult {
     match kind {
-        InlineAssertionKind::SceneConsistencyComplete(scene) => {
-            evaluate_scene_consistency(runtime, scene)
+        ValidatedInlineAssertionKind::SceneConsistencyComplete(scene) => {
+            evaluate_scene_consistency(runtime, scene.as_str())
         }
-        InlineAssertionKind::AccessControlDriftDetected => evaluate_access_control_drift(runtime),
-        InlineAssertionKind::CommissioningChecklistGenerated => {
+        ValidatedInlineAssertionKind::AccessControlDriftDetected => {
+            evaluate_access_control_drift(runtime)
+        }
+        ValidatedInlineAssertionKind::CommissioningChecklistGenerated => {
             evaluate_commissioning_checklist(runtime)
         }
-        InlineAssertionKind::IntercomRelaySafeEvidence => evaluate_intercom_relay_evidence(runtime),
-        InlineAssertionKind::NetworkControlPanelFaultsObserved => {
+        ValidatedInlineAssertionKind::IntercomRelaySafeEvidence => {
+            evaluate_intercom_relay_evidence(runtime)
+        }
+        ValidatedInlineAssertionKind::NetworkControlPanelFaultsObserved => {
             evaluate_network_control_panel_faults(runtime)
         }
-        InlineAssertionKind::ComfortTimeseriesObserved => evaluate_comfort_timeseries(runtime),
-    }
-}
-
-fn unsupported_assertion() -> AssertionResult {
-    AssertionResult {
-        name: "unsupported_assertion".to_string(),
-        assertion_type: "unsupported".to_string(),
-        passed: false,
-        message: "unsupported assertion type".to_string(),
-        impact_level: Some("unknown".to_string()),
-        impact_message: Some("The runner does not support this assertion yet.".to_string()),
+        ValidatedInlineAssertionKind::ComfortTimeseriesObserved => {
+            evaluate_comfort_timeseries(runtime)
+        }
     }
 }
 
