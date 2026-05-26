@@ -40,6 +40,7 @@ The current detailed product goal is tracked in
 | Phase 22 | Deferred editor authoring assets | VSCode schema/snippet/task assets are implemented as a local-only authoring bundle |
 | Phase 23 | OSS trust and positioning cleanup | Public license, repository, provenance, positioning, and debranding issues are made coherent |
 | Phase 24 | Core architecture hardening | Typed assertions, domain runtime state, parser/property tests, concurrency tests, and protocol-server ADR are tracked |
+| Phase 25 | Public surface evidence freshness | README demo links and quality measurements remain truthful after product/codebase evaluation |
 
 ## Progress Management
 
