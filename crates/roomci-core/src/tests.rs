@@ -282,7 +282,7 @@ fn runtime_groups_customer_independent_domain_state() {
     let scenario = load_scenario(fixture("examples/comfort_auto_mode.yaml")).unwrap();
 
     let scenario = ValidatedScenario::try_from(&scenario).unwrap();
-    let runtime = runtime::RuntimeState::new(&scenario).unwrap();
+    let runtime = runtime::RuntimeState::new(&scenario);
 
     assert!(runtime.comfort.target.is_some());
     assert!(runtime.access.unexpected_users.is_empty());

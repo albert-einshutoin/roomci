@@ -110,7 +110,7 @@ pub struct AssertionResult {
 pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
     let scenario = ValidatedScenario::try_from(scenario)?;
 
-    let mut runtime = RuntimeState::new(&scenario)?;
+    let mut runtime = RuntimeState::new(&scenario);
 
     let mut assertions = Vec::new();
     for event in scenario.scheduled_events() {
@@ -127,9 +127,9 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
 
     Ok(RunReport {
         schema_version: "roomci.report.v1".to_string(),
-        run_id: scenario.raw().scenario.name.clone(),
+        run_id: scenario.run_id().to_string(),
         generated_by: "roomci".to_string(),
-        scenario_name: scenario.raw().scenario.name.clone(),
+        scenario_name: scenario.scenario_name().to_string(),
         result,
         timeline: runtime.timeline,
         assertions,

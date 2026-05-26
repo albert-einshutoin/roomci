@@ -339,6 +339,195 @@ fn projects_domain_config_into_validated_runtime_config() {
 }
 
 #[test]
+fn validates_promoted_ops_acknowledge_as_typed_step() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: typed_ops_acknowledge
+steps:
+  - at: T
+    ops:
+      action: acknowledge
+      alert_id: sauna_emergency_button
+      assignee: ops_member_01
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let validated = ValidatedScenario::try_from(&scenario).unwrap();
+
+    assert!(validated.scheduled_events().iter().any(|event| {
+        matches!(
+            event.kind(),
+            ValidatedEventKind::Step(ValidatedStepKind::Ops(ValidatedOpsStep::Acknowledge {
+                alert_id: Some(alert_id),
+                assignee: Some(assignee),
+            })) if alert_id.as_str() == "sauna_emergency_button"
+                && assignee.as_str() == "ops_member_01"
+        )
+    }));
+}
+
+#[test]
+fn rejects_malformed_promoted_ops_acknowledge_at_validated_boundary() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: invalid_ops_acknowledge
+steps:
+  - at: T
+    ops:
+      action: acknowledge
+      alert_id: ""
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidIdentifier { field, .. } if field == "steps[].ops.alert_id"
+    ));
+}
+
+#[test]
+fn preserves_unknown_ops_as_extension_step() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: ops_extension
+steps:
+  - at: T
+    ops:
+      action: custom_escalation
+      queue: frontdesk
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let validated = ValidatedScenario::try_from(&scenario).unwrap();
+
+    assert!(validated.scheduled_events().iter().any(|event| {
+        matches!(
+            event.kind(),
+            ValidatedEventKind::Step(ValidatedStepKind::Ops(ValidatedOpsStep::Extension(map)))
+                if map.get("action").and_then(|value| value.as_str())
+                    == Some("custom_escalation")
+                    && map.get("queue").and_then(|value| value.as_str()) == Some("frontdesk")
+        )
+    }));
+}
+
+#[test]
+fn validates_promoted_hvac_automation_as_typed_step() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: typed_hvac_automation
+steps:
+  - at: T
+    automation:
+      type: hvac_auto_mode
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let validated = ValidatedScenario::try_from(&scenario).unwrap();
+
+    assert!(validated.scheduled_events().iter().any(|event| {
+        matches!(
+            event.kind(),
+            ValidatedEventKind::Step(ValidatedStepKind::Automation(
+                ValidatedAutomationStep::HvacAutoMode
+            ))
+        )
+    }));
+}
+
+#[test]
+fn preserves_unknown_automation_as_extension_step() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: automation_extension
+steps:
+  - at: T
+    automation:
+      type: vendor_specific_sequence
+      profile: evening
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let validated = ValidatedScenario::try_from(&scenario).unwrap();
+
+    assert!(validated.scheduled_events().iter().any(|event| {
+        matches!(
+            event.kind(),
+            ValidatedEventKind::Step(ValidatedStepKind::Automation(
+                ValidatedAutomationStep::Extension(map)
+            )) if map.get("type").and_then(|value| value.as_str())
+                    == Some("vendor_specific_sequence")
+                    && map.get("profile").and_then(|value| value.as_str()) == Some("evening")
+        )
+    }));
+}
+
+#[test]
+fn rejects_invalid_promoted_command_target_at_validated_boundary() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: invalid_command_target
+steps:
+  - at: T
+    command:
+      target: "scene."
+      action: activate
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidIdentifier { field, .. } if field == "steps[].command.target"
+    ));
+}
+
+#[test]
 fn validates_adapter_contract_examples() {
     for path in [
         "adapter-contracts/templates/company_adapter_contract.yaml",

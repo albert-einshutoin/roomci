@@ -6,9 +6,9 @@ use roomci_edge::EdgeModel;
 use roomci_mqtt::{device_id_from_command_topic, BrokerModel};
 use roomci_ops::{OpsEvent, OpsModel};
 use roomci_scenario::{
-    yaml_map_to_json, Condition, ValidatedEventKind, ValidatedFaultKind, ValidatedIntercomStep,
-    ValidatedMqttPublishStep, ValidatedScenario, ValidatedScheduledEvent,
-    ValidatedSensorReadingStep, ValidatedStepKind,
+    yaml_map_to_json, CommandTarget, Condition, ValidatedAutomationStep, ValidatedEventKind,
+    ValidatedFaultKind, ValidatedIntercomStep, ValidatedMqttPublishStep, ValidatedOpsStep,
+    ValidatedScenario, ValidatedScheduledEvent, ValidatedSensorReadingStep, ValidatedStepKind,
 };
 
 use crate::{AssertionResult, CoreError, StateMap, TimelineEvent};
@@ -58,9 +58,9 @@ pub(crate) struct CommissioningRuntimeState {
 }
 
 impl RuntimeState {
-    pub(crate) fn new(scenario: &ValidatedScenario) -> Result<Self, CoreError> {
-        let raw = scenario.raw();
+    pub(crate) fn new(scenario: &ValidatedScenario) -> Self {
         let domain_config = scenario.domain_config();
+        let runtime_inputs = scenario.runtime_inputs();
         let states = scenario
             .devices()
             .iter()
@@ -77,11 +77,11 @@ impl RuntimeState {
             })
             .collect::<BTreeMap<_, _>>();
 
-        Ok(Self {
+        Self {
             states,
             protocols,
-            broker: BrokerModel::new(true, raw.mqtt.cloud.enabled),
-            edge: EdgeModel::try_from_config(&raw.edge)?,
+            broker: BrokerModel::new(true, runtime_inputs.broker_cloud_enabled),
+            edge: runtime_inputs.edge.clone(),
             edge_primary_failed_at: None,
             edge_failover_at: None,
             edge_expected_within: domain_config.edge.expected_within,
@@ -90,16 +90,10 @@ impl RuntimeState {
             wan_expected_within: domain_config.wan.expected_within,
             wan_backup_status: domain_config.wan.backup_status.clone(),
             duplicate_delivery_by_topic: BTreeMap::new(),
-            modbus: ModbusModel::try_from_config(&raw.modbus)?,
-            lighting: LightingModel::try_from_config(
-                &raw.lighting,
-                &raw.scenes
-                    .iter()
-                    .map(|(name, scene)| (name.clone(), scene.fixtures.clone()))
-                    .collect(),
-            )?,
-            contacts: ContactModel::try_from_config(&raw.contacts)?,
-            ops: OpsModel::try_from_config(&raw.alerts)?,
+            modbus: runtime_inputs.modbus.clone(),
+            lighting: runtime_inputs.lighting.clone(),
+            contacts: runtime_inputs.contacts.clone(),
+            ops: runtime_inputs.ops.clone(),
             comfort: ComfortRuntimeState {
                 target: domain_config.comfort.target,
                 range: domain_config.comfort.range,
@@ -115,7 +109,7 @@ impl RuntimeState {
                 site: domain_config.commissioning.site.clone(),
             },
             timeline: Vec::new(),
-        })
+        }
     }
 
     pub(crate) fn apply_event(
@@ -332,18 +326,18 @@ impl RuntimeState {
                     .insert(topic.to_string(), count.unwrap_or(2).max(2));
             }
             ValidatedFaultKind::MqttDuplicateDelivery { topic: None, .. } => {}
-            ValidatedFaultKind::NetworkSegmentIsolated { target, segment } => {
+            ValidatedFaultKind::NetworkSegmentIsolated { segment } => {
                 self.record_fault_profile(
                     at,
-                    target,
+                    &fault.target(),
                     "network_segment_isolated",
                     format!("network segment {segment} isolated"),
                 );
             }
-            ValidatedFaultKind::FirewallPolicyDrift { target, policy } => {
+            ValidatedFaultKind::FirewallPolicyDrift { policy } => {
                 self.record_fault_profile(
                     at,
-                    target,
+                    &fault.target(),
                     "firewall_policy_drift_detected",
                     format!("firewall policy {policy} drift detected"),
                 );
@@ -364,20 +358,20 @@ impl RuntimeState {
                     "control-panel UPS battery degraded".to_string(),
                 );
             }
-            ValidatedFaultKind::ControlPanelCircuitProtectorTripped { target } => {
+            ValidatedFaultKind::ControlPanelCircuitProtectorTripped { .. } => {
                 self.record_fault_profile(
                     at,
-                    target,
+                    &fault.target(),
                     "control_panel_circuit_protector_tripped",
-                    format!("{target} tripped"),
+                    format!("{} tripped", fault.target()),
                 );
             }
-            ValidatedFaultKind::ControlPanelPsuDegraded { target } => {
+            ValidatedFaultKind::ControlPanelPsuDegraded { .. } => {
                 self.record_fault_profile(
                     at,
-                    target,
+                    &fault.target(),
                     "control_panel_redundant_psu_degraded",
-                    format!("{target} degraded"),
+                    format!("{} degraded", fault.target()),
                 );
             }
             ValidatedFaultKind::EdgeSecondaryTakeoverFailed => {
@@ -388,12 +382,12 @@ impl RuntimeState {
                     "secondary edge takeover failed".to_string(),
                 );
             }
-            ValidatedFaultKind::DaliFixtureCommandDrop { target, fixture } => {
+            ValidatedFaultKind::DaliFixtureCommandDrop { fixture } => {
                 if let Err(error) = self.lighting.drop_command_for_fixture(fixture.as_str()) {
                     self.push(
                         at,
                         "fault_rejected",
-                        Some(target.to_string()),
+                        Some(fault.target()),
                         error.to_string(),
                     );
                     return;
@@ -435,16 +429,17 @@ impl RuntimeState {
         self.push_ops_event(at, event);
     }
 
-    fn apply_command(&mut self, at: Duration, target: &str, action: &str) {
+    fn apply_command(&mut self, at: Duration, target: &CommandTarget, action: &str) {
+        let display_target = target.display_target();
         self.push(
             at,
             "command_received",
-            Some(target.to_string()),
+            Some(display_target),
             format!("{} command received", action),
         );
         if action == "activate" {
-            if let Some(scene) = target.strip_prefix("scene.") {
-                self.activate_scene(at, scene);
+            if let CommandTarget::Scene(scene) = target {
+                self.activate_scene(at, scene.as_str());
             }
         }
     }
@@ -595,24 +590,20 @@ impl RuntimeState {
         }
     }
 
-    fn apply_ops_step(&mut self, at: Duration, ops: &BTreeMap<String, serde_yaml::Value>) {
-        let action = ops.get("action").and_then(|value| value.as_str());
-        if action == Some("acknowledge") {
-            let assignee = ops
-                .get("assignee")
-                .and_then(|value| value.as_str())
-                .map(str::to_string);
-            let alert_id = ops.get("alert_id").and_then(|value| value.as_str());
-            for event in self.ops.acknowledge(alert_id, assignee) {
+    fn apply_ops_step(&mut self, at: Duration, ops: &ValidatedOpsStep) {
+        if let ValidatedOpsStep::Acknowledge { alert_id, assignee } = ops {
+            for event in self.ops.acknowledge(
+                alert_id.as_ref().map(|id| id.as_str()),
+                assignee.as_ref().map(ToString::to_string),
+            ) {
                 self.push_ops_event(at, event);
             }
         }
         self.push(at, "ops_action", None, "ops action applied");
     }
 
-    fn apply_automation(&mut self, at: Duration, automation: &BTreeMap<String, serde_yaml::Value>) {
-        let automation_type = automation.get("type").and_then(|value| value.as_str());
-        if automation_type == Some("hvac_auto_mode") {
+    fn apply_automation(&mut self, at: Duration, automation: &ValidatedAutomationStep) {
+        if matches!(automation, ValidatedAutomationStep::HvacAutoMode) {
             if let Some(target) = self.comfort.target {
                 self.comfort
                     .discomfort_by_target

@@ -336,7 +336,7 @@ pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum TypedStepKind<'a> {
+pub(crate) enum TypedStepKind<'a> {
     Event(&'a str),
     Command(&'a CommandStep),
     ModbusWrite(&'a ModbusWriteStep),
@@ -349,7 +349,7 @@ pub enum TypedStepKind<'a> {
     Automation(&'a BTreeMap<String, serde_yaml::Value>),
 }
 
-pub fn typed_step_kind(step: &ScenarioStep) -> Result<TypedStepKind<'_>, ScenarioError> {
+pub(crate) fn typed_step_kind(step: &ScenarioStep) -> Result<TypedStepKind<'_>, ScenarioError> {
     let mut kind = None;
     if let Some(event) = step.event.as_deref() {
         set_step_kind(&mut kind, TypedStepKind::Event(event))?;
@@ -395,7 +395,7 @@ fn set_step_kind<'a>(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TypedFaultKind<'a> {
+pub(crate) enum TypedFaultKind<'a> {
     BrokerOffline {
         target: &'a str,
     },
@@ -428,43 +428,7 @@ pub enum TypedFaultKind<'a> {
     },
 }
 
-impl TypedFaultKind<'_> {
-    pub fn target(self) -> String {
-        match self {
-            TypedFaultKind::BrokerOffline { target }
-            | TypedFaultKind::NetworkSegmentIsolated { target, .. }
-            | TypedFaultKind::FirewallPolicyDrift { target, .. }
-            | TypedFaultKind::ControlPanelCircuitProtectorTripped { target }
-            | TypedFaultKind::ControlPanelPsuDegraded { target }
-            | TypedFaultKind::DaliFixtureCommandDrop { target, .. } => target.to_string(),
-            TypedFaultKind::EdgePrimaryPowerLost => "edge.primary".to_string(),
-            TypedFaultKind::WanPrimaryDown => "wan.primary".to_string(),
-            TypedFaultKind::MqttDuplicateDelivery { .. } => "mqtt.local".to_string(),
-            TypedFaultKind::MqttLocalUnreachable => "mqtt.local".to_string(),
-            TypedFaultKind::ControlPanelUpsBatteryDegraded => "control_panel.ups".to_string(),
-            TypedFaultKind::EdgeSecondaryTakeoverFailed => "edge.secondary".to_string(),
-        }
-    }
-
-    pub fn fault_type(self) -> &'static str {
-        match self {
-            TypedFaultKind::BrokerOffline { .. } => "offline",
-            TypedFaultKind::EdgePrimaryPowerLost => "power_lost",
-            TypedFaultKind::WanPrimaryDown => "down",
-            TypedFaultKind::MqttDuplicateDelivery { .. } => "duplicate_delivery",
-            TypedFaultKind::NetworkSegmentIsolated { .. } => "isolated",
-            TypedFaultKind::FirewallPolicyDrift { .. } => "drift",
-            TypedFaultKind::MqttLocalUnreachable => "unreachable",
-            TypedFaultKind::ControlPanelUpsBatteryDegraded => "battery_degraded",
-            TypedFaultKind::ControlPanelCircuitProtectorTripped { .. } => "tripped",
-            TypedFaultKind::ControlPanelPsuDegraded { .. } => "degraded",
-            TypedFaultKind::EdgeSecondaryTakeoverFailed => "takeover_failed",
-            TypedFaultKind::DaliFixtureCommandDrop { .. } => "command_drop",
-        }
-    }
-}
-
-pub fn typed_fault_kind(fault: &FaultStep) -> Result<TypedFaultKind<'_>, ScenarioError> {
+pub(crate) fn typed_fault_kind(fault: &FaultStep) -> Result<TypedFaultKind<'_>, ScenarioError> {
     match (fault.target.as_str(), fault.fault_type.as_str()) {
         (target @ ("mqtt.cloud" | "mqtt.local"), "offline") => {
             Ok(TypedFaultKind::BrokerOffline { target })
@@ -522,17 +486,17 @@ fn invalid_fault_kind<T>(fault: &FaultStep) -> Result<T, ScenarioError> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum TypedAssertionKind<'a> {
+pub(crate) enum TypedAssertionKind<'a> {
     MqttRetained(&'a MqttAssertion),
     ModbusRegister(&'a ModbusAssertion),
-    GuestExperienceField(&'a str),
+    GuestExperienceField,
     Ops(&'a BTreeMap<String, serde_yaml::Value>),
     TargetCondition(TargetConditionAssertion),
     Inline(InlineAssertionKind<'a>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TargetConditionAssertion {
+pub(crate) enum TargetConditionAssertion {
     EdgeSecondaryActive,
     MqttLocalAvailable,
     WanBackupActive,
@@ -542,7 +506,7 @@ pub enum TargetConditionAssertion {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InlineAssertionKind<'a> {
+pub(crate) enum InlineAssertionKind<'a> {
     SceneConsistencyComplete(&'a str),
     AccessControlDriftDetected,
     CommissioningChecklistGenerated,
@@ -551,7 +515,7 @@ pub enum InlineAssertionKind<'a> {
     ComfortTimeseriesObserved,
 }
 
-pub fn typed_assertion_kind<'a>(
+pub(crate) fn typed_assertion_kind<'a>(
     assertion: &'a AssertionDefinition,
 ) -> Result<TypedAssertionKind<'a>, ScenarioError> {
     if let Some(mqtt) = &assertion.mqtt {
@@ -562,7 +526,7 @@ pub fn typed_assertion_kind<'a>(
     }
     if let Some(expected) = assertion.guest_experience.as_deref() {
         if expected == "unaffected" {
-            return Ok(TypedAssertionKind::GuestExperienceField(expected));
+            return Ok(TypedAssertionKind::GuestExperienceField);
         }
         return Err(ScenarioError::InvalidAssertionKind);
     }

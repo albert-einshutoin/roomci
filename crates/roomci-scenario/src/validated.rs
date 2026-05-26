@@ -165,11 +165,20 @@ pub struct ValidatedScenario {
     devices: Vec<ValidatedDevice>,
     scheduled_events: Vec<ValidatedScheduledEvent>,
     domain_config: DomainRuntimeConfig,
+    runtime_inputs: ValidatedRuntimeInputs,
 }
 
 impl ValidatedScenario {
     pub fn raw(&self) -> &ScenarioFile {
         &self.raw
+    }
+
+    pub fn scenario_name(&self) -> &str {
+        &self.raw.scenario.name
+    }
+
+    pub fn run_id(&self) -> &str {
+        self.scenario_name()
     }
 
     pub fn devices(&self) -> &[ValidatedDevice] {
@@ -182,6 +191,10 @@ impl ValidatedScenario {
 
     pub fn domain_config(&self) -> &DomainRuntimeConfig {
         &self.domain_config
+    }
+
+    pub fn runtime_inputs(&self) -> &ValidatedRuntimeInputs {
+        &self.runtime_inputs
     }
 }
 
@@ -197,7 +210,7 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
             .collect::<BTreeMap<_, _>>();
         let lighting = LightingModel::try_from_config(&scenario.lighting, &scene_targets)?;
         let contacts = ContactModel::try_from_config(&scenario.contacts)?;
-        EdgeModel::try_from_config(&scenario.edge)?;
+        let edge = EdgeModel::try_from_config(&scenario.edge)?;
         let ops = OpsModel::try_from_config(&scenario.alerts)?;
         lighting.assert_scene_targets_exist()?;
         ops.validate_sources(|contact_id| contacts.has_contact(contact_id))?;
@@ -257,8 +270,26 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
             devices,
             scheduled_events,
             domain_config: DomainRuntimeConfig::try_from_scenario(scenario)?,
+            runtime_inputs: ValidatedRuntimeInputs {
+                broker_cloud_enabled: scenario.mqtt.cloud.enabled,
+                edge,
+                modbus,
+                lighting,
+                contacts,
+                ops,
+            },
         })
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ValidatedRuntimeInputs {
+    pub broker_cloud_enabled: bool,
+    pub edge: EdgeModel,
+    pub modbus: ModbusModel,
+    pub lighting: LightingModel,
+    pub contacts: ContactModel,
+    pub ops: OpsModel,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -331,8 +362,8 @@ pub enum ValidatedStepKind {
     Contact(ValidatedContactStep),
     Intercom(ValidatedIntercomStep),
     SensorReading(ValidatedSensorReadingStep),
-    Ops(BTreeMap<String, serde_yaml::Value>),
-    Automation(BTreeMap<String, serde_yaml::Value>),
+    Ops(ValidatedOpsStep),
+    Automation(ValidatedAutomationStep),
 }
 
 impl ValidatedStepKind {
@@ -383,15 +414,17 @@ impl ValidatedStepKind {
             TypedStepKind::SensorReading(sensor_reading) => Ok(Self::SensorReading(
                 ValidatedSensorReadingStep::try_from(sensor_reading)?,
             )),
-            TypedStepKind::Ops(ops) => Ok(Self::Ops(ops.clone())),
-            TypedStepKind::Automation(automation) => Ok(Self::Automation(automation.clone())),
+            TypedStepKind::Ops(ops) => Ok(Self::Ops(ValidatedOpsStep::try_from_map(ops)?)),
+            TypedStepKind::Automation(automation) => Ok(Self::Automation(
+                ValidatedAutomationStep::try_from_map(automation)?,
+            )),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValidatedCommandStep {
-    pub target: String,
+    pub target: CommandTarget,
     pub action: Identifier,
 }
 
@@ -400,10 +433,44 @@ impl TryFrom<&CommandStep> for ValidatedCommandStep {
 
     fn try_from(command: &CommandStep) -> Result<Self, Self::Error> {
         Ok(Self {
-            target: Identifier::parse("steps[].command.target", command.target.clone())?
-                .to_string(),
+            target: CommandTarget::parse(&command.target)?,
             action: Identifier::parse("steps[].command.action", command.action.clone())?,
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandTarget {
+    Scene(SceneId),
+    Other(Identifier),
+}
+
+impl CommandTarget {
+    fn parse(target: &str) -> Result<Self, ScenarioError> {
+        if let Some(scene) = target.strip_prefix("scene.") {
+            return Ok(Self::Scene(SceneId::parse(
+                "steps[].command.target",
+                scene.to_string(),
+            )?));
+        }
+        Ok(Self::Other(Identifier::parse(
+            "steps[].command.target",
+            target.to_string(),
+        )?))
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Scene(scene) => scene.as_str(),
+            Self::Other(target) => target.as_str(),
+        }
+    }
+
+    pub fn display_target(&self) -> String {
+        match self {
+            Self::Scene(scene) => format!("scene.{scene}"),
+            Self::Other(target) => target.to_string(),
+        }
     }
 }
 
@@ -411,6 +478,8 @@ impl TryFrom<&CommandStep> for ValidatedCommandStep {
 pub struct ValidatedModbusWriteStep {
     pub device: DeviceId,
     pub register: u32,
+    /// Adapter payload boundary: Modbus register values intentionally preserve
+    /// YAML shape until the device model converts them to runtime JSON.
     pub value: serde_yaml::Value,
 }
 
@@ -430,6 +499,8 @@ impl TryFrom<&ModbusWriteStep> for ValidatedModbusWriteStep {
 pub struct ValidatedMqttPublishStep {
     pub client: Identifier,
     pub topic: MqttTopic,
+    /// Adapter payload boundary: scenario MQTT payloads stay schema-compatible
+    /// maps because Phase 26 contract validation will specialize them per topic.
     pub payload: BTreeMap<String, serde_yaml::Value>,
 }
 
@@ -485,7 +556,7 @@ impl TryFrom<&IntercomStep> for ValidatedIntercomStep {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValidatedSensorReadingStep {
-    pub target: Identifier,
+    pub target: SensorTarget,
     pub temperature: f64,
     pub humidity: f64,
     pub occupancy: Option<bool>,
@@ -502,12 +573,31 @@ impl TryFrom<&SensorReadingStep> for ValidatedSensorReadingStep {
             ));
         }
         Ok(Self {
-            target: Identifier::parse("steps[].sensor_reading.target", step.target.clone())?,
+            target: SensorTarget::parse(step.target.clone())?,
             temperature: step.temperature,
             humidity: step.humidity,
             occupancy: step.occupancy,
             zone: step.zone.clone(),
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SensorTarget(Identifier);
+
+impl SensorTarget {
+    fn parse(value: impl Into<String>) -> Result<Self, ScenarioError> {
+        Identifier::parse("steps[].sensor_reading.target", value).map(Self)
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl std::fmt::Display for SensorTarget {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
     }
 }
 
@@ -523,24 +613,21 @@ pub enum ValidatedFaultKind {
         count: Option<u32>,
     },
     NetworkSegmentIsolated {
-        target: String,
         segment: Identifier,
     },
     FirewallPolicyDrift {
-        target: String,
         policy: Identifier,
     },
     MqttLocalUnreachable,
     ControlPanelUpsBatteryDegraded,
     ControlPanelCircuitProtectorTripped {
-        target: String,
+        protector: Identifier,
     },
     ControlPanelPsuDegraded {
-        target: String,
+        psu: Identifier,
     },
     EdgeSecondaryTakeoverFailed,
     DaliFixtureCommandDrop {
-        target: String,
         fixture: FixtureId,
     },
 }
@@ -562,14 +649,14 @@ impl ValidatedFaultKind {
                 })
             }
             TypedFaultKind::NetworkSegmentIsolated { target, segment } => {
+                let _ = target;
                 Ok(Self::NetworkSegmentIsolated {
-                    target: target.to_string(),
                     segment: Identifier::parse("faults[].network.segment", segment.to_string())?,
                 })
             }
             TypedFaultKind::FirewallPolicyDrift { target, policy } => {
+                let _ = target;
                 Ok(Self::FirewallPolicyDrift {
-                    target: target.to_string(),
                     policy: Identifier::parse("faults[].firewall.policy", policy.to_string())?,
                 })
             }
@@ -578,19 +665,34 @@ impl ValidatedFaultKind {
                 Ok(Self::ControlPanelUpsBatteryDegraded)
             }
             TypedFaultKind::ControlPanelCircuitProtectorTripped { target } => {
+                let protector = target
+                    .strip_prefix("control_panel.circuit_protector.")
+                    .ok_or_else(|| ScenarioError::InvalidFaultKind {
+                        target: target.to_string(),
+                        fault_type: "tripped".to_string(),
+                    })?;
                 Ok(Self::ControlPanelCircuitProtectorTripped {
-                    target: target.to_string(),
+                    protector: Identifier::parse(
+                        "faults[].control_panel.circuit_protector",
+                        protector.to_string(),
+                    )?,
                 })
             }
             TypedFaultKind::ControlPanelPsuDegraded { target } => {
+                let psu = target.strip_prefix("control_panel.psu.").ok_or_else(|| {
+                    ScenarioError::InvalidFaultKind {
+                        target: target.to_string(),
+                        fault_type: "degraded".to_string(),
+                    }
+                })?;
                 Ok(Self::ControlPanelPsuDegraded {
-                    target: target.to_string(),
+                    psu: Identifier::parse("faults[].control_panel.psu", psu.to_string())?,
                 })
             }
             TypedFaultKind::EdgeSecondaryTakeoverFailed => Ok(Self::EdgeSecondaryTakeoverFailed),
             TypedFaultKind::DaliFixtureCommandDrop { target, fixture } => {
+                let _ = target;
                 Ok(Self::DaliFixtureCommandDrop {
-                    target: target.to_string(),
                     fixture: FixtureId::parse("faults[].target.fixture", fixture.to_string())?,
                 })
             }
@@ -600,11 +702,13 @@ impl ValidatedFaultKind {
     pub fn target(&self) -> String {
         match self {
             Self::BrokerOffline { target } => target.to_string(),
-            Self::NetworkSegmentIsolated { target, .. }
-            | Self::FirewallPolicyDrift { target, .. }
-            | Self::ControlPanelCircuitProtectorTripped { target }
-            | Self::ControlPanelPsuDegraded { target }
-            | Self::DaliFixtureCommandDrop { target, .. } => target.clone(),
+            Self::NetworkSegmentIsolated { segment } => format!("network.segment.{segment}"),
+            Self::FirewallPolicyDrift { policy } => format!("firewall.policy.{policy}"),
+            Self::ControlPanelCircuitProtectorTripped { protector } => {
+                format!("control_panel.circuit_protector.{protector}")
+            }
+            Self::ControlPanelPsuDegraded { psu } => format!("control_panel.psu.{psu}"),
+            Self::DaliFixtureCommandDrop { fixture } => format!("dali.fixture.{fixture}"),
             Self::EdgePrimaryPowerLost => "edge.primary".to_string(),
             Self::WanPrimaryDown => "wan.primary".to_string(),
             Self::MqttDuplicateDelivery { .. } | Self::MqttLocalUnreachable => {
@@ -634,10 +738,60 @@ impl ValidatedFaultKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum ValidatedOpsStep {
+    Acknowledge {
+        alert_id: Option<AlertId>,
+        assignee: Option<Identifier>,
+    },
+    /// Extension boundary for non-promoted ops actions. Promoted behavior must
+    /// be added as an enum variant before runtime dispatch depends on it.
+    Extension(BTreeMap<String, serde_yaml::Value>),
+}
+
+impl ValidatedOpsStep {
+    fn try_from_map(map: &BTreeMap<String, serde_yaml::Value>) -> Result<Self, ScenarioError> {
+        match map.get("action").and_then(|value| value.as_str()) {
+            Some("acknowledge") => Ok(Self::Acknowledge {
+                alert_id: map
+                    .get("alert_id")
+                    .and_then(|value| value.as_str())
+                    .map(|value| AlertId::parse("steps[].ops.alert_id", value.to_string()))
+                    .transpose()?,
+                assignee: map
+                    .get("assignee")
+                    .and_then(|value| value.as_str())
+                    .map(|value| Identifier::parse("steps[].ops.assignee", value.to_string()))
+                    .transpose()?,
+            }),
+            _ => Ok(Self::Extension(map.clone())),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ValidatedAutomationStep {
+    HvacAutoMode,
+    /// Extension boundary for non-promoted automation actions. Promoted
+    /// automation must be modeled as a typed variant before execution logic.
+    Extension(BTreeMap<String, serde_yaml::Value>),
+}
+
+impl ValidatedAutomationStep {
+    fn try_from_map(map: &BTreeMap<String, serde_yaml::Value>) -> Result<Self, ScenarioError> {
+        match map.get("type").and_then(|value| value.as_str()) {
+            Some("hvac_auto_mode") => Ok(Self::HvacAutoMode),
+            _ => Ok(Self::Extension(map.clone())),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum ValidatedAssertionKind {
     MqttRetained(ValidatedMqttAssertion),
     ModbusRegister(ValidatedModbusAssertion),
     GuestExperienceField(Condition),
+    /// Compatibility boundary for the existing ops assertion evaluator.
+    /// Runtime can evaluate the map, but promoted ops steps are typed above.
     Ops(BTreeMap<String, serde_yaml::Value>),
     TargetCondition(ValidatedTargetConditionAssertion),
     Inline(ValidatedInlineAssertionKind),
@@ -681,7 +835,7 @@ impl ValidatedAssertionKind {
                 }
                 Ok(Self::ModbusRegister(assertion))
             }
-            TypedAssertionKind::GuestExperienceField(_) => {
+            TypedAssertionKind::GuestExperienceField => {
                 Ok(Self::GuestExperienceField(Condition::Unaffected))
             }
             TypedAssertionKind::Ops(ops) => Ok(Self::Ops(ops.clone())),
@@ -709,6 +863,8 @@ impl ValidatedAssertionKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValidatedMqttAssertion {
     pub topic: MqttTopic,
+    /// Adapter assertion boundary: retained payload shape is topic-specific and
+    /// intentionally remains YAML until adapter contract rules specialize it.
     pub retained: BTreeMap<String, serde_yaml::Value>,
 }
 
@@ -727,6 +883,7 @@ impl TryFrom<&MqttAssertion> for ValidatedMqttAssertion {
 pub struct ValidatedModbusAssertion {
     pub device: DeviceId,
     pub register: u32,
+    /// Adapter assertion boundary for exact register comparisons.
     pub value: Option<serde_yaml::Value>,
     pub readable_value: Option<f64>,
 }
