@@ -30,6 +30,8 @@
 | Phase 23 | `done` | OSS trust and positioning cleanup after external product review | None | `phase23/phase_status.md` |
 | Phase 24 | `done` | Core architecture hardening: typed assertions, runtime sub-states, parser/property tests, concurrency tests, and protocol-server ADR | None | `phase24/phase_status.md` |
 | Phase 25 | `done` | Public surface evidence freshness: README demo link and quality measurement refresh | None | `phase25/phase_status.md` |
+| Phase 25.1 | `done` | Rust type-boundary maximization before adapter contract generalization | None | `phase25_1/phase_status.md` |
+| Phase 25.2 | `done` | Validated graph completion and Rust dependency audit gate before adapter contract generalization | None | `phase25_2/phase_status.md` |
 | Phase 26 | `todo` | Adapter contract generalization that can proceed without customer-specific protocol specs | None | `phase26/phase_status.md` |
 
 ## Update Rules
@@ -74,6 +76,17 @@ The final self-review created Phase 15. Phases 15, 16, 17, and 18 are now comple
 - **Phase 25** closed follow-up public-surface freshness issues from the
   product/codebase evaluation: the README interview-demo link now resolves, and
   README quality measurements match the current workspace test count.
+- **Phase 25.1** now gates Phase 26 on Rust type-boundary hardening: raw
+  scenario/config data is converted into validated owned domain types, promoted
+  identifiers/topics become newtypes, known conditions and runtime state move
+  away from free-form strings and values, and remaining raw boundaries are
+  documented before adapter-contract breadth expands.
+- **Phase 25.2** closed the remaining Rust-maximization gaps from self-review:
+  the RustSec audit gate is green, runtime construction consumes validated
+  subsystem inputs, raw classifier helpers are crate-private, promoted
+  ops/automation behavior is typed, target handling is stronger, and remaining
+  raw boundaries are documented as compatibility, extension, adapter, or output
+  boundaries.
 - **Phase 26** now tracks the next customer-independent product work: stronger
   adapter contract validation, topic/identity diagnostics, acceptance-evidence
   mapping, and evaluator intake docs.

@@ -6,8 +6,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rumqttc::{Client, Event, MqttOptions, Packet, QoS};
-
 fn fixture(path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -480,70 +478,155 @@ fn standard_mqtt_client_publishes_retained_state_through_serve() {
         .map(|(host, port)| (host.to_string(), port.parse::<u16>().unwrap()))
         .expect("MQTT address should include host:port");
 
-    let mut options = MqttOptions::new("roomci-rumqttc-client", mqtt_host, mqtt_port);
-    options.set_keep_alive(Duration::from_secs(5));
-    let (client, mut connection) = Client::new(options, 10);
-    client
-        .subscribe(
-            "fleet/demo/site/lab/device/env_sensor_01/state",
-            QoS::AtMostOnce,
-        )
-        .unwrap();
-    let initial_replay = wait_for_mqtt_publish_payload(&mut connection, "sample_interval_seconds");
+    let mut client = MqttSmokeClient::connect(&mqtt_host, mqtt_port, "roomci-std-mqtt-client");
+    client.subscribe("fleet/demo/site/lab/device/env_sensor_01/state");
+    let initial_replay = client.wait_for_publish_payload("sample_interval_seconds");
     assert!(initial_replay.contains("30"));
-    client
-        .publish(
-            "fleet/demo/site/lab/device/env_sensor_01/command",
-            QoS::AtMostOnce,
-            false,
-            r#"{"online":true,"sample_interval_seconds":20}"#,
-        )
-        .unwrap();
-    drive_mqtt_connection(&mut connection, 3);
+    client.publish(
+        "fleet/demo/site/lab/device/env_sensor_01/command",
+        r#"{"online":true,"sample_interval_seconds":20}"#,
+    );
     std::thread::sleep(Duration::from_millis(150));
 
     let state = http_request(&http_address, "GET", "/state", "");
     assert!(state.contains("fleet/demo/site/lab/device/env_sensor_01/state"));
     assert!(state.contains("\"sample_interval_seconds\":20"));
-    client
-        .subscribe(
-            "fleet/demo/site/lab/device/env_sensor_01/state",
-            QoS::AtMostOnce,
-        )
-        .unwrap();
-    let updated_replay = wait_for_mqtt_publish_payload(&mut connection, "sample_interval_seconds");
+    client.subscribe("fleet/demo/site/lab/device/env_sensor_01/state");
+    let updated_replay = client.wait_for_publish_payload("sample_interval_seconds");
     assert!(updated_replay.contains("20"));
 
     child.kill().unwrap();
     child.wait().unwrap();
 }
 
-fn wait_for_mqtt_publish_payload(connection: &mut rumqttc::Connection, expected: &str) -> String {
-    let deadline = Instant::now() + Duration::from_secs(5);
-    while Instant::now() < deadline {
-        let Some(event) = connection.iter().next() else {
-            break;
-        };
-        match event {
-            Ok(Event::Incoming(Packet::Publish(publish))) => {
-                let payload = String::from_utf8_lossy(&publish.payload).to_string();
-                if payload.contains(expected) {
-                    return payload;
-                }
-            }
-            Ok(_) => {}
-            Err(error) => panic!("MQTT connection error: {error}"),
-        }
-    }
-    panic!("timed out waiting for MQTT publish payload containing {expected}");
+struct MqttSmokeClient {
+    stream: TcpStream,
+    next_packet_id: u16,
 }
 
-fn drive_mqtt_connection(connection: &mut rumqttc::Connection, max_events: usize) {
-    for event in connection.iter().take(max_events) {
-        if let Err(error) = event {
-            panic!("MQTT connection error: {error}");
+impl MqttSmokeClient {
+    fn connect(host: &str, port: u16, client_id: &str) -> Self {
+        let address = format!("{host}:{port}");
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut stream = loop {
+            match TcpStream::connect(&address) {
+                Ok(stream) => break stream,
+                Err(error) if Instant::now() < deadline => {
+                    let _ = error;
+                    std::thread::sleep(Duration::from_millis(25));
+                }
+                Err(error) => panic!("failed to connect to MQTT {address}: {error}"),
+            }
+        };
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut body = Vec::new();
+        push_mqtt_string(&mut body, "MQTT");
+        body.push(4);
+        body.push(0b0000_0010);
+        body.extend_from_slice(&5u16.to_be_bytes());
+        push_mqtt_string(&mut body, client_id);
+        write_mqtt_packet(&mut stream, 0x10, &body);
+        let (packet_type, packet) = read_mqtt_packet(&mut stream);
+        assert_eq!(packet_type, 0x20, "expected MQTT CONNACK");
+        assert_eq!(packet.as_slice(), &[0, 0], "MQTT CONNACK rejected client");
+        Self {
+            stream,
+            next_packet_id: 1,
         }
     }
+
+    fn subscribe(&mut self, topic: &str) {
+        let packet_id = self.next_packet_id;
+        self.next_packet_id = self.next_packet_id.wrapping_add(1).max(1);
+        let mut body = Vec::new();
+        body.extend_from_slice(&packet_id.to_be_bytes());
+        push_mqtt_string(&mut body, topic);
+        body.push(0);
+        write_mqtt_packet(&mut self.stream, 0x82, &body);
+    }
+
+    fn publish(&mut self, topic: &str, payload: &str) {
+        let mut body = Vec::new();
+        push_mqtt_string(&mut body, topic);
+        body.extend_from_slice(payload.as_bytes());
+        write_mqtt_packet(&mut self.stream, 0x30, &body);
+    }
+
+    fn wait_for_publish_payload(&mut self, expected: &str) -> String {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while Instant::now() < deadline {
+            let (packet_type, packet) = read_mqtt_packet(&mut self.stream);
+            if packet_type != 0x30 {
+                continue;
+            }
+            let Some(payload) = mqtt_publish_payload(&packet) else {
+                continue;
+            };
+            if payload.contains(expected) {
+                return payload;
+            }
+        }
+        panic!("timed out waiting for MQTT publish payload containing {expected}");
+    }
+}
+
+fn push_mqtt_string(buffer: &mut Vec<u8>, value: &str) {
+    let len = u16::try_from(value.len()).expect("MQTT test string should fit u16");
+    buffer.extend_from_slice(&len.to_be_bytes());
+    buffer.extend_from_slice(value.as_bytes());
+}
+
+fn write_mqtt_packet(stream: &mut TcpStream, packet_type: u8, body: &[u8]) {
+    let mut packet = vec![packet_type];
+    push_remaining_length(&mut packet, body.len());
+    packet.extend_from_slice(body);
+    stream.write_all(&packet).unwrap();
+}
+
+fn push_remaining_length(buffer: &mut Vec<u8>, mut len: usize) {
+    loop {
+        let mut byte = u8::try_from(len % 128).unwrap();
+        len /= 128;
+        if len > 0 {
+            byte |= 0x80;
+        }
+        buffer.push(byte);
+        if len == 0 {
+            break;
+        }
+    }
+}
+
+fn read_mqtt_packet(stream: &mut TcpStream) -> (u8, Vec<u8>) {
+    let mut fixed = [0u8; 1];
+    stream.read_exact(&mut fixed).unwrap();
+    let len = read_remaining_length(stream);
+    let mut body = vec![0u8; len];
+    stream.read_exact(&mut body).unwrap();
+    (fixed[0] & 0xF0, body)
+}
+
+fn read_remaining_length(stream: &mut TcpStream) -> usize {
+    let mut multiplier = 1usize;
+    let mut value = 0usize;
+    loop {
+        let mut byte = [0u8; 1];
+        stream.read_exact(&mut byte).unwrap();
+        value += usize::from(byte[0] & 0x7F) * multiplier;
+        if byte[0] & 0x80 == 0 {
+            return value;
+        }
+        multiplier *= 128;
+    }
+}
+
+fn mqtt_publish_payload(packet: &[u8]) -> Option<String> {
+    let topic_len = u16::from_be_bytes([*packet.first()?, *packet.get(1)?]) as usize;
+    let payload_start = 2 + topic_len;
+    let payload = packet.get(payload_start..)?;
+    Some(String::from_utf8_lossy(payload).to_string())
 }
 
 fn http_request(address: &str, method: &str, path: &str, body: &str) -> String {

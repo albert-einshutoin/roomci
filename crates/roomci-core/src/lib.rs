@@ -17,12 +17,11 @@ mod runtime;
 
 use runtime::RuntimeState;
 
-use chrono::Duration;
 use roomci_device_model::DeviceModelError;
 use roomci_edge::EdgeError;
 use roomci_mqtt::MqttError;
 use roomci_ops::OpsError;
-use roomci_scenario::{resolve_time_offset, validate_scenario, ScenarioError, ScenarioFile};
+use roomci_scenario::{ScenarioError, ScenarioFile, ValidatedScenario};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -109,32 +108,12 @@ pub struct AssertionResult {
 /// Returns [`CoreError`] if the scenario fails validation or if any subsystem
 /// rejects a request.
 pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
-    validate_scenario(scenario)?;
+    let scenario = ValidatedScenario::try_from(scenario)?;
 
-    let mut runtime = RuntimeState::new(scenario)?;
-    let mut events = Vec::new();
-    for fault in &scenario.faults {
-        let at = fault
-            .at
-            .as_deref()
-            .map(resolve_time_offset)
-            .transpose()?
-            .unwrap_or_else(Duration::zero);
-        events.push(ScheduledEvent::GlobalFault(at, fault));
-    }
-    for step in &scenario.steps {
-        events.push(ScheduledEvent::Step(resolve_time_offset(&step.at)?, step));
-    }
-    for assertion in &scenario.assertions {
-        events.push(ScheduledEvent::Assertion(
-            resolve_time_offset(&assertion.at)?,
-            assertion,
-        ));
-    }
-    events.sort_by_key(|event| (event.at().num_milliseconds(), event.order()));
+    let mut runtime = RuntimeState::new(&scenario);
 
     let mut assertions = Vec::new();
-    for event in events {
+    for event in scenario.scheduled_events() {
         if let Some(assertion) = runtime.apply_event(event)? {
             assertions.push(assertion);
         }
@@ -148,39 +127,15 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
 
     Ok(RunReport {
         schema_version: "roomci.report.v1".to_string(),
-        run_id: scenario.scenario.name.clone(),
+        run_id: scenario.run_id().to_string(),
         generated_by: "roomci".to_string(),
-        scenario_name: scenario.scenario.name.clone(),
+        scenario_name: scenario.scenario_name().to_string(),
         result,
         timeline: runtime.timeline,
         assertions,
         final_state: runtime.states,
         retained_messages: runtime.broker.retained().clone(),
     })
-}
-
-#[derive(Debug)]
-pub(crate) enum ScheduledEvent<'a> {
-    GlobalFault(Duration, &'a roomci_scenario::FaultStep),
-    Step(Duration, &'a roomci_scenario::ScenarioStep),
-    Assertion(Duration, &'a roomci_scenario::AssertionDefinition),
-}
-
-impl ScheduledEvent<'_> {
-    fn at(&self) -> Duration {
-        match self {
-            ScheduledEvent::GlobalFault(at, _)
-            | ScheduledEvent::Step(at, _)
-            | ScheduledEvent::Assertion(at, _) => *at,
-        }
-    }
-
-    fn order(&self) -> u8 {
-        match self {
-            ScheduledEvent::GlobalFault(_, _) | ScheduledEvent::Step(_, _) => 0,
-            ScheduledEvent::Assertion(_, _) => 1,
-        }
-    }
 }
 
 #[cfg(test)]
