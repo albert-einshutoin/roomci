@@ -495,6 +495,12 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
     let mut failed = 0_usize;
     let mut last_report: Option<RunReport> = None;
 
+    if total > 1 && reports_requested(&options) {
+        eprintln!(
+            "warning: single report output flags write only the last scenario; run scenarios separately for per-scenario reports"
+        );
+    }
+
     for (index, path) in options.scenarios.iter().enumerate() {
         let scenario_file = load_scenario(path)?;
         validate_scenario(&scenario_file)?;
@@ -561,6 +567,15 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
     } else {
         ExitCode::from(1)
     })
+}
+
+fn reports_requested(options: &RunOptions) -> bool {
+    options.junit.is_some()
+        || options.markdown.is_some()
+        || options.json.is_some()
+        || options.timeline_json.is_some()
+        || options.timeline_ndjson.is_some()
+        || options.observability_json.is_some()
 }
 
 fn print_scenario_summary(

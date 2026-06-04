@@ -118,6 +118,7 @@ pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
             assertions.push(assertion);
         }
     }
+    assertions.append(&mut runtime.runtime_failures);
 
     let result = if assertions.iter().all(|assertion| assertion.passed) {
         RunResult::Passed

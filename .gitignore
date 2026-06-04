@@ -66,6 +66,7 @@ build/
 
 # Miscellaneous
 recruit/
+docs/me/
 .DS_Store
 Thumbs.db
 *.tmp

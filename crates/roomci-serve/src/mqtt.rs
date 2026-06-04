@@ -4,15 +4,17 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     sync::{Arc, Mutex},
     thread,
+    time::Duration,
 };
 
 use roomci_core::TimelineEvent;
-use roomci_scenario::MqttConnectionContract;
+use roomci_scenario::{validate_mqtt_contract_publish, MqttContractPublishError};
 
 use crate::{
-    lock_serve_state, sanitize_external_message_value, state_retained_messages_view, ServeError,
-    ServeState, MAX_MQTT_PACKET_BYTES, MQTT_CONNACK_ACCEPTED, MQTT_CONNACK_UNACCEPTABLE_PROTOCOL,
-    MQTT_PROTOCOL_LEVEL_3_1_1, MQTT_PROTOCOL_NAME,
+    acquire_connection_permit, lock_serve_state, sanitize_external_message_value,
+    state_retained_messages_view, ServeError, ServeState, MAX_MQTT_PACKET_BYTES,
+    MQTT_CLIENT_TIMEOUT_SECS, MQTT_CONNACK_ACCEPTED, MQTT_CONNACK_UNACCEPTABLE_PROTOCOL,
+    MQTT_MAX_INFLIGHT_CONNECTIONS, MQTT_PROTOCOL_LEVEL_3_1_1, MQTT_PROTOCOL_NAME,
 };
 
 pub(crate) fn serve_mqtt(
@@ -20,11 +22,21 @@ pub(crate) fn serve_mqtt(
     address: SocketAddr,
     state: Arc<Mutex<ServeState>>,
 ) {
+    let active_connections = Arc::new(Mutex::new(0_usize));
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                let Some(permit) =
+                    acquire_connection_permit(&active_connections, MQTT_MAX_INFLIGHT_CONNECTIONS)
+                else {
+                    eprintln!(
+                        "mqtt connection limit reached on {address}; dropping new connection"
+                    );
+                    continue;
+                };
                 let state = Arc::clone(&state);
                 thread::spawn(move || {
+                    let _permit = permit;
                     if let Err(error) = handle_mqtt_client(stream, state) {
                         eprintln!("mqtt request error on {address}: {error}");
                     }
@@ -39,6 +51,14 @@ pub(crate) fn handle_mqtt_client(
     mut stream: TcpStream,
     state: Arc<Mutex<ServeState>>,
 ) -> Result<(), ServeError> {
+    let timeout = Some(Duration::from_secs(MQTT_CLIENT_TIMEOUT_SECS));
+    stream
+        .set_read_timeout(timeout)
+        .map_err(|error| ServeError::Runtime(error.to_string()))?;
+    stream
+        .set_write_timeout(timeout)
+        .map_err(|error| ServeError::Runtime(error.to_string()))?;
+
     loop {
         let Some(packet) = read_mqtt_packet(&mut stream)? else {
             return Ok(());
@@ -246,58 +266,49 @@ pub(crate) fn parse_mqtt_subscribe(payload: &[u8]) -> Result<MqttSubscribe, Serv
 pub(crate) fn apply_external_mqtt_publish(state: &mut ServeState, publish: MqttPublish) {
     state.external_publish_count += 1;
     let event_index = state.external_publish_count;
-    let matched_contract = state
-        .scenario
-        .mqtt
-        .contracts
-        .iter()
-        .find_map(|contract| match_contract(contract, &publish.topic));
-
-    let Some((contract, device_id, state_topic)) = matched_contract else {
-        state.external_observation_timeline.push(TimelineEvent {
-            at: format!("external#{event_index}"),
-            event_type: "external_mqtt_publish_rejected".to_string(),
-            target: Some(sanitize_external_message_value(&publish.topic)),
-            message: "topic did not match any configured MQTT contract".to_string(),
-        });
-        return;
+    let matched = match validate_mqtt_contract_publish(
+        &state.scenario.mqtt.contracts,
+        &publish.topic,
+        &publish.payload,
+    ) {
+        Ok(matched) => matched,
+        Err(error) => {
+            let message = match error {
+                MqttContractPublishError::TopicMismatch { .. } => {
+                    "topic did not match any configured MQTT contract".to_string()
+                }
+                MqttContractPublishError::MissingRequiredFields { contract, fields } => {
+                    format!(
+                        "payload missing required fields for {}: {}",
+                        sanitize_external_message_value(&contract),
+                        fields
+                    )
+                }
+            };
+            state.external_observation_timeline.push(TimelineEvent {
+                at: format!("external#{event_index}"),
+                event_type: "external_mqtt_publish_rejected".to_string(),
+                target: Some(sanitize_external_message_value(&publish.topic)),
+                message,
+            });
+            return;
+        }
     };
-
-    let missing_fields = contract
-        .payload
-        .required_fields
-        .iter()
-        .filter(|field| !publish.payload.contains_key(*field))
-        .cloned()
-        .collect::<Vec<_>>();
-    if !missing_fields.is_empty() {
-        state.external_observation_timeline.push(TimelineEvent {
-            at: format!("external#{event_index}"),
-            event_type: "external_mqtt_publish_rejected".to_string(),
-            target: Some(sanitize_external_message_value(&publish.topic)),
-            message: format!(
-                "payload missing required fields for {}: {}",
-                sanitize_external_message_value(&contract.name),
-                missing_fields.join(", ")
-            ),
-        });
-        return;
-    }
 
     state
         .external_mqtt_final_state
-        .insert(device_id.clone(), publish.payload.clone());
+        .insert(matched.device_id.clone(), publish.payload.clone());
     state
         .external_mqtt_retained_state
-        .insert(state_topic.clone(), publish.payload);
+        .insert(matched.state_topic.clone(), publish.payload);
     state.external_observation_timeline.push(TimelineEvent {
         at: format!("external#{event_index}"),
         event_type: "external_mqtt_retained_state_updated".to_string(),
-        target: Some(sanitize_external_message_value(&device_id)),
+        target: Some(sanitize_external_message_value(&matched.device_id)),
         message: format!(
             "external MQTT publish matched {} and updated retained state at {}",
-            sanitize_external_message_value(&contract.name),
-            sanitize_external_message_value(&state_topic)
+            sanitize_external_message_value(&matched.contract.name),
+            sanitize_external_message_value(&matched.state_topic)
         ),
     });
 }
@@ -386,27 +397,4 @@ fn encode_mqtt_remaining_length(mut length: usize, packet: &mut Vec<u8>) {
             break;
         }
     }
-}
-
-pub(crate) fn match_contract<'a>(
-    contract: &'a MqttConnectionContract,
-    topic: &str,
-) -> Option<(&'a MqttConnectionContract, String, String)> {
-    let device_id = extract_placeholder_value(&contract.command_topic, topic, "{device_id}")?;
-    let state_topic = contract.state_topic.replace("{device_id}", &device_id);
-    Some((contract, device_id, state_topic))
-}
-
-pub(crate) fn extract_placeholder_value(
-    template: &str,
-    value: &str,
-    placeholder: &str,
-) -> Option<String> {
-    let (prefix, suffix) = template.split_once(placeholder)?;
-    let rest = value.strip_prefix(prefix)?;
-    let extracted = rest.strip_suffix(suffix)?;
-    if extracted.is_empty() || extracted.contains('/') {
-        return None;
-    }
-    Some(extracted.to_string())
 }

@@ -3,12 +3,15 @@ use std::collections::BTreeMap;
 use chrono::Duration;
 use roomci_device_model::{ContactModel, LightingEvent, LightingModel, ModbusModel};
 use roomci_edge::EdgeModel;
-use roomci_mqtt::{device_id_from_command_topic, BrokerModel};
+use roomci_mqtt::{
+    device_id_from_command_topic, state_topic_for_command_topic, BrokerModel, DeviceCommandPublish,
+};
 use roomci_ops::{OpsEvent, OpsModel};
 use roomci_scenario::{
-    yaml_map_to_json, CommandTarget, Condition, ValidatedAutomationStep, ValidatedEventKind,
-    ValidatedFaultKind, ValidatedIntercomStep, ValidatedMqttPublishStep, ValidatedOpsStep,
-    ValidatedScenario, ValidatedScheduledEvent, ValidatedSensorReadingStep, ValidatedStepKind,
+    validate_mqtt_contract_publish, yaml_map_to_json, CommandTarget, Condition,
+    MqttConnectionContract, ValidatedAutomationStep, ValidatedEventKind, ValidatedFaultKind,
+    ValidatedIntercomStep, ValidatedMqttPublishStep, ValidatedOpsStep, ValidatedScenario,
+    ValidatedScheduledEvent, ValidatedSensorReadingStep, ValidatedStepKind,
 };
 
 use crate::{AssertionResult, CoreError, StateMap, TimelineEvent};
@@ -17,6 +20,7 @@ use crate::{AssertionResult, CoreError, StateMap, TimelineEvent};
 pub(crate) struct RuntimeState {
     pub(crate) states: BTreeMap<String, StateMap>,
     pub(crate) protocols: BTreeMap<String, Option<String>>,
+    pub(crate) mqtt_contracts: Vec<MqttConnectionContract>,
     pub(crate) broker: BrokerModel,
     pub(crate) edge: EdgeModel,
     pub(crate) edge_primary_failed_at: Option<Duration>,
@@ -35,6 +39,7 @@ pub(crate) struct RuntimeState {
     pub(crate) access: AccessRuntimeState,
     pub(crate) commissioning: CommissioningRuntimeState,
     pub(crate) timeline: Vec<TimelineEvent>,
+    pub(crate) runtime_failures: Vec<AssertionResult>,
 }
 
 #[derive(Debug)]
@@ -80,6 +85,7 @@ impl RuntimeState {
         Self {
             states,
             protocols,
+            mqtt_contracts: scenario.raw().mqtt.contracts.clone(),
             broker: BrokerModel::new(true, runtime_inputs.broker_cloud_enabled),
             edge: runtime_inputs.edge.clone(),
             edge_primary_failed_at: None,
@@ -109,6 +115,7 @@ impl RuntimeState {
                 site: domain_config.commissioning.site.clone(),
             },
             timeline: Vec::new(),
+            runtime_failures: Vec::new(),
         }
     }
 
@@ -515,12 +522,45 @@ impl RuntimeState {
             .get(publish.topic.as_str())
             .copied()
             .unwrap_or(1);
-        let Some(device_id) = device_id_from_command_topic(publish.topic.as_str()) else {
-            self.push(
+
+        let payload = yaml_map_to_json(&publish.payload);
+        let (device_id, state_topic) = if self.mqtt_contracts.is_empty() {
+            let Some(device_id) = device_id_from_command_topic(publish.topic.as_str()) else {
+                self.reject_mqtt_publish(
+                    at,
+                    "mqtt.local",
+                    format!("topic is not a device command topic: {}", publish.topic),
+                );
+                return;
+            };
+            let Some(state_topic) = state_topic_for_command_topic(publish.topic.as_str()) else {
+                self.reject_mqtt_publish(
+                    at,
+                    "mqtt.local",
+                    format!("topic is not a device command topic: {}", publish.topic),
+                );
+                return;
+            };
+            (device_id, state_topic)
+        } else {
+            match validate_mqtt_contract_publish(
+                &self.mqtt_contracts,
+                publish.topic.as_str(),
+                &payload,
+            ) {
+                Ok(matched) => (matched.device_id, matched.state_topic),
+                Err(error) => {
+                    self.reject_mqtt_publish(at, "mqtt.local", error.to_string());
+                    return;
+                }
+            }
+        };
+
+        if !self.states.contains_key(&device_id) {
+            self.reject_mqtt_publish(
                 at,
-                "mqtt_publish_failed",
-                Some("mqtt.local".to_string()),
-                format!("topic is not a device command topic: {}", publish.topic),
+                device_id.clone(),
+                format!("MQTT publish referenced unknown device id: {device_id}"),
             );
             return;
         };
@@ -549,14 +589,17 @@ impl RuntimeState {
             }
         }
 
-        let payload = yaml_map_to_json(&publish.payload);
-        match self.broker.publish_device_command(
-            "mqtt.local",
-            publish.client.as_str(),
-            publish.topic.as_str(),
-            payload,
-            deliveries,
-        ) {
+        match self
+            .broker
+            .publish_device_command_with_topics(DeviceCommandPublish {
+                broker: "mqtt.local",
+                client: publish.client.as_str(),
+                command_topic: publish.topic.as_str(),
+                device_id: &device_id,
+                state_topic: &state_topic,
+                payload,
+                deliveries,
+            }) {
             Ok(outcome) => {
                 if let (Some(device_id), Some(retained_payload)) =
                     (outcome.device_id.clone(), outcome.retained_payload)
@@ -588,6 +631,31 @@ impl RuntimeState {
                 );
             }
         }
+    }
+
+    fn reject_mqtt_publish(
+        &mut self,
+        at: Duration,
+        target: impl Into<String>,
+        message: impl Into<String>,
+    ) {
+        let message = message.into();
+        self.push(
+            at,
+            "mqtt_publish_failed",
+            Some(target.into()),
+            message.clone(),
+        );
+        self.runtime_failures.push(AssertionResult {
+            name: "mqtt_publish_contract".to_string(),
+            assertion_type: "mqtt_contract".to_string(),
+            passed: false,
+            message,
+            impact_level: Some("contract".to_string()),
+            impact_message: Some(
+                "MQTT publish did not satisfy the scenario command/state contract".to_string(),
+            ),
+        });
     }
 
     fn apply_ops_step(&mut self, at: Duration, ops: &ValidatedOpsStep) {

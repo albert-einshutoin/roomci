@@ -37,6 +37,17 @@ pub struct PublishOutcome {
     pub deliveries: u32,
 }
 
+/// Fully matched device-command publish produced by a scenario MQTT contract.
+pub struct DeviceCommandPublish<'a> {
+    pub broker: &'a str,
+    pub client: &'a str,
+    pub command_topic: &'a str,
+    pub device_id: &'a str,
+    pub state_topic: &'a str,
+    pub payload: Payload,
+    pub deliveries: u32,
+}
+
 /// In-memory broker model for the local and cloud MQTT brokers.
 ///
 /// Use [`BrokerModel::new`] to construct one with explicit online states, then
@@ -99,24 +110,52 @@ impl BrokerModel {
             .ok_or_else(|| MqttError::InvalidCommandTopic(topic.to_string()))?;
         let state_topic = state_topic_for_command_topic(topic)
             .ok_or_else(|| MqttError::InvalidCommandTopic(topic.to_string()))?;
+        self.publish_device_command_with_topics(DeviceCommandPublish {
+            broker,
+            client,
+            command_topic: topic,
+            device_id: &device_id,
+            state_topic: &state_topic,
+            payload,
+            deliveries,
+        })
+    }
 
+    /// Publish a device command after a scenario MQTT contract has already
+    /// matched the concrete command and state topics.
+    pub fn publish_device_command_with_topics(
+        &mut self,
+        publish: DeviceCommandPublish<'_>,
+    ) -> Result<PublishOutcome, MqttError> {
+        if !self.is_online(publish.broker) {
+            return Err(MqttError::BrokerOffline(publish.broker.to_string()));
+        }
+        if publish.device_id.is_empty()
+            || publish.device_id.contains('/')
+            || publish.state_topic.is_empty()
+        {
+            return Err(MqttError::InvalidCommandTopic(
+                publish.command_topic.to_string(),
+            ));
+        }
         // QoS1 can deliver the same command multiple times. For retained state,
         // the semantic result is the final payload, so repeated deliveries are idempotent.
-        let delivery_count = deliveries.max(1);
+        let delivery_count = publish.deliveries.max(1);
         for _ in 0..delivery_count {
-            self.retained.insert(state_topic.clone(), payload.clone());
+            self.retained
+                .insert(publish.state_topic.to_string(), publish.payload.clone());
         }
         self.client_inboxes
-            .entry(client.to_string())
+            .entry(publish.client.to_string())
             .or_default()
-            .insert(state_topic.clone(), payload.clone());
+            .insert(publish.state_topic.to_string(), publish.payload.clone());
 
         Ok(PublishOutcome {
-            broker: broker.to_string(),
-            command_topic: topic.to_string(),
-            state_topic: Some(state_topic),
-            device_id: Some(device_id),
-            retained_payload: Some(payload),
+            broker: publish.broker.to_string(),
+            command_topic: publish.command_topic.to_string(),
+            state_topic: Some(publish.state_topic.to_string()),
+            device_id: Some(publish.device_id.to_string()),
+            retained_payload: Some(publish.payload),
             deliveries: delivery_count,
         })
     }
@@ -139,9 +178,14 @@ pub fn device_id_from_command_topic(topic: &str) -> Option<String> {
         return None;
     }
     let device_index = parts.iter().position(|part| *part == "device")?;
-    parts
-        .get(device_index + 1)
-        .map(|value| (*value).to_string())
+    if device_index + 2 != parts.len() - 1 {
+        return None;
+    }
+    let value = parts.get(device_index + 1)?;
+    if value.is_empty() {
+        return None;
+    }
+    Some((*value).to_string())
 }
 
 /// Derive the state topic that mirrors a `.../command` topic, or return
@@ -235,6 +279,15 @@ mod tests {
             .unwrap_err();
 
         assert!(matches!(error, MqttError::InvalidCommandTopic(_)));
+    }
+
+    #[test]
+    fn malformed_device_command_topic_is_rejected() {
+        assert_eq!(device_id_from_command_topic("house/device//command"), None);
+        assert_eq!(
+            device_id_from_command_topic("house/device/living_light/extra/command"),
+            None
+        );
     }
 
     #[test]

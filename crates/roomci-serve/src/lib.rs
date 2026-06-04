@@ -22,6 +22,10 @@ const MAX_HTTP_BODY_BYTES: usize = 1024 * 1024;
 const MAX_MQTT_PACKET_BYTES: usize = 1024 * 1024;
 const HTTP_CLIENT_TIMEOUT_SECS: u64 = 2;
 const HTTP_MAX_INFLIGHT_CONNECTIONS: usize = 32;
+const MQTT_CLIENT_TIMEOUT_SECS: u64 = 2;
+const MQTT_MAX_INFLIGHT_CONNECTIONS: usize = 32;
+const MODBUS_CLIENT_TIMEOUT_SECS: u64 = 2;
+const MODBUS_MAX_INFLIGHT_CONNECTIONS: usize = 32;
 const MQTT_PROTOCOL_NAME: &str = "MQTT";
 const MQTT_PROTOCOL_LEVEL_3_1_1: u8 = 4;
 const MQTT_CONNACK_ACCEPTED: u8 = 0x00;
@@ -44,9 +48,8 @@ pub(crate) use modbus::{apply_modbus_tcp_request, modbus_tcp_response, ModbusTcp
 pub(crate) use mqtt::serve_mqtt;
 #[cfg(test)]
 pub(crate) use mqtt::{
-    apply_external_mqtt_publish, extract_placeholder_value, handle_mqtt_client, match_contract,
-    mqtt_retained_replay_for_subscribe, parse_mqtt_publish, parse_mqtt_subscribe, read_mqtt_packet,
-    MqttPublish,
+    apply_external_mqtt_publish, handle_mqtt_client, mqtt_retained_replay_for_subscribe,
+    parse_mqtt_publish, parse_mqtt_subscribe, read_mqtt_packet, MqttPublish,
 };
 
 /// Configuration for a `roomci serve` process.
@@ -90,6 +93,11 @@ pub fn run_serve(options: ServeOptions) -> Result<(), ServeError> {
             "refusing to bind non-loopback host {}; pass --allow-non-loopback to override",
             options.host
         )));
+    }
+    if options.allow_non_loopback && !is_loopback_host(&options.host) {
+        eprintln!(
+            "warning: --allow-non-loopback exposes HTTP/MQTT/Modbus PoC ports; bind only on trusted networks"
+        );
     }
     serve_http(
         options.scenario,
@@ -195,6 +203,29 @@ fn serve_http(
     serve_http_listener(listener, state);
 
     Ok(())
+}
+
+struct ConnectionPermit {
+    active: Arc<Mutex<usize>>,
+}
+
+impl Drop for ConnectionPermit {
+    fn drop(&mut self) {
+        if let Ok(mut active) = self.active.lock() {
+            *active = active.saturating_sub(1);
+        }
+    }
+}
+
+fn acquire_connection_permit(active: &Arc<Mutex<usize>>, limit: usize) -> Option<ConnectionPermit> {
+    let mut active_count = active.lock().ok()?;
+    if *active_count >= limit {
+        return None;
+    }
+    *active_count += 1;
+    Some(ConnectionPermit {
+        active: Arc::clone(active),
+    })
 }
 
 fn modbus_unit_map(scenario: &ScenarioFile) -> BTreeMap<u8, String> {

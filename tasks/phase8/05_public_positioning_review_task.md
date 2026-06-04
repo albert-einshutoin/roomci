@@ -15,5 +15,5 @@ Make the hospitality-focused narrative strong without overclaiming private knowl
 ## Review Findings
 
 - `docs/19_interview_positioning.md` already includes good "avoid saying" guidance.
-- `LICENSE-NOTE.txt` explicitly says public publishing should review names, examples, and claims for accuracy.
+- `NOTICE.md` explicitly says public publishing should review names, examples, and claims for accuracy.
 - The product is strongest when presented as an external deterministic QA engine, not a production controller replacement.

@@ -2,7 +2,7 @@
 
 Phase 23 is complete when:
 
-- `Cargo.toml`, `README*`, `LICENSE`, and `LICENSE-NOTE.txt` agree on
+- `Cargo.toml`, `README*`, `LICENSE`, and `NOTICE.md` agree on
   `Apache-2.0`.
 - Public docs no longer depend on the stale `albert-einshutoin` namespace.
 - Public docs avoid vendor-specific hospitality name-dropping unless the text
@@ -13,4 +13,3 @@ Phase 23 is complete when:
   rushed into the trust cleanup.
 - `cargo fmt --all --check`, `cargo test --workspace --all-targets`, and
   `make protocol-evidence` pass.
-

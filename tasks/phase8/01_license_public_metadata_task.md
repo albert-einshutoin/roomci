@@ -8,11 +8,11 @@ Fix public metadata inconsistencies before publishing the repository.
 
 - Add a real `LICENSE` file for the selected public license.
 - Ensure `Cargo.toml`, README badge, and repository files agree on the license.
-- Keep or update `LICENSE-NOTE.txt` so it explains only the source/provenance caution, not a missing license state.
+- Keep or update `NOTICE.md` so it explains only the source/provenance caution, not a missing license state.
 - Verify README license link resolves to an existing file.
 
 ## Review Findings
 
 - `Cargo.toml` declares `license = "Apache-2.0"`.
 - README links the MIT badge to `LICENSE`.
-- The repository currently has `LICENSE-NOTE.txt`, but no `LICENSE` file.
+- The repository keeps the Apache-2.0 `LICENSE` as the canonical license file.

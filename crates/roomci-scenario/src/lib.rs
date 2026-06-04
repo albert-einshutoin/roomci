@@ -72,6 +72,92 @@ pub enum ScenarioError {
     Ops(#[from] OpsError),
 }
 
+/// A publish topic matched to one configured MQTT command/state contract.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MqttContractPublishMatch<'a> {
+    pub contract: &'a MqttConnectionContract,
+    pub device_id: String,
+    pub state_topic: String,
+}
+
+/// Errors produced while checking a concrete MQTT publish against contracts.
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum MqttContractPublishError {
+    #[error("topic did not match any configured MQTT contract: {topic}")]
+    TopicMismatch { topic: String },
+    #[error("payload missing required fields for {contract}: {fields}")]
+    MissingRequiredFields { contract: String, fields: String },
+}
+
+/// Match and validate a concrete MQTT publish against configured contracts.
+pub fn validate_mqtt_contract_publish<'a>(
+    contracts: &'a [MqttConnectionContract],
+    topic: &str,
+    payload: &BTreeMap<String, serde_json::Value>,
+) -> Result<MqttContractPublishMatch<'a>, MqttContractPublishError> {
+    let matched = match_mqtt_contracts(contracts, topic).ok_or_else(|| {
+        MqttContractPublishError::TopicMismatch {
+            topic: topic.to_string(),
+        }
+    })?;
+
+    let missing_fields = matched
+        .contract
+        .payload
+        .required_fields
+        .iter()
+        .filter(|field| !payload.contains_key(*field))
+        .cloned()
+        .collect::<Vec<_>>();
+    if !missing_fields.is_empty() {
+        return Err(MqttContractPublishError::MissingRequiredFields {
+            contract: matched.contract.name.clone(),
+            fields: missing_fields.join(", "),
+        });
+    }
+
+    Ok(matched)
+}
+
+/// Return the first MQTT contract whose command topic matches the publish topic.
+pub fn match_mqtt_contracts<'a>(
+    contracts: &'a [MqttConnectionContract],
+    topic: &str,
+) -> Option<MqttContractPublishMatch<'a>> {
+    contracts
+        .iter()
+        .find_map(|contract| match_mqtt_contract(contract, topic))
+}
+
+/// Match one MQTT contract against a concrete command topic.
+pub fn match_mqtt_contract<'a>(
+    contract: &'a MqttConnectionContract,
+    topic: &str,
+) -> Option<MqttContractPublishMatch<'a>> {
+    let device_id = extract_mqtt_placeholder_value(&contract.command_topic, topic, "{device_id}")?;
+    let state_topic = contract.state_topic.replace("{device_id}", &device_id);
+    Some(MqttContractPublishMatch {
+        contract,
+        device_id,
+        state_topic,
+    })
+}
+
+/// Extract a single path-segment placeholder value from a concrete topic.
+pub fn extract_mqtt_placeholder_value(
+    template: &str,
+    value: &str,
+    placeholder: &str,
+) -> Option<String> {
+    let (prefix, suffix) = template.split_once(placeholder)?;
+    let rest = value.strip_prefix(prefix)?;
+    let extracted = rest.strip_suffix(suffix)?;
+    if extracted.is_empty() || extracted.contains('/') {
+        return None;
+    }
+    Some(extracted.to_string())
+}
+
 /// Read a scenario YAML file from disk and deserialize it.
 ///
 /// Wraps I/O and YAML parsing errors with the file path so the caller gets

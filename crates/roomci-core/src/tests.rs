@@ -245,6 +245,145 @@ assertions:
 }
 
 #[test]
+fn mqtt_contract_missing_required_fields_fails_run() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: mqtt_contract_missing_required_fields
+mqtt:
+  local:
+    retained: true
+  contracts:
+    - name: device_state
+      command_topic: fleet/demo/device/{device_id}/command
+      state_topic: fleet/demo/device/{device_id}/state
+      payload:
+        required_fields: [online, sample_interval_seconds]
+devices:
+  - id: env_sensor_01
+    type: sensor
+    protocol: mqtt
+    state:
+      online: false
+      sample_interval_seconds: 60
+steps:
+  - at: T
+    mqtt_publish:
+      client: edge_contract_test
+      topic: fleet/demo/device/env_sensor_01/command
+      payload:
+        online: true
+"#,
+    )
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Failed);
+    assert!(report.retained_messages.is_empty());
+    assert!(report.assertions.iter().any(|assertion| {
+        assertion.assertion_type == "mqtt_contract"
+            && assertion
+                .message
+                .contains("payload missing required fields")
+    }));
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "mqtt_publish_failed"
+            && event.message.contains("sample_interval_seconds")));
+}
+
+#[test]
+fn mqtt_contract_unmatched_command_topic_fails_run() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: mqtt_contract_unmatched_command_topic
+mqtt:
+  local:
+    retained: true
+  contracts:
+    - name: device_state
+      command_topic: fleet/demo/device/{device_id}/command
+      state_topic: fleet/demo/device/{device_id}/state
+      payload:
+        required_fields: [online]
+devices:
+  - id: env_sensor_01
+    type: sensor
+    protocol: mqtt
+    state:
+      online: false
+steps:
+  - at: T
+    mqtt_publish:
+      client: edge_contract_test
+      topic: fleet/demo/device/env_sensor_01/set
+      payload:
+        online: true
+"#,
+    )
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Failed);
+    assert!(report.retained_messages.is_empty());
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "mqtt_publish_failed"
+            && event.message.contains("topic did not match")));
+}
+
+#[test]
+fn mqtt_publish_unknown_device_id_fails_run() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: mqtt_publish_unknown_device
+mqtt:
+  local:
+    retained: true
+  contracts:
+    - name: device_state
+      command_topic: fleet/demo/device/{device_id}/command
+      state_topic: fleet/demo/device/{device_id}/state
+      payload:
+        required_fields: [online]
+devices:
+  - id: env_sensor_01
+    type: sensor
+    protocol: mqtt
+    state:
+      online: false
+steps:
+  - at: T
+    mqtt_publish:
+      client: edge_contract_test
+      topic: fleet/demo/device/unknown_sensor/command
+      payload:
+        online: true
+"#,
+    )
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Failed);
+    assert!(report.retained_messages.is_empty());
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "mqtt_publish_failed"
+            && event.message.contains("unknown device id")));
+}
+
+#[test]
 fn starlink_failover_passes() {
     let scenario = load_scenario(fixture("examples/starlink_failover.yaml")).unwrap();
 

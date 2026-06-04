@@ -97,6 +97,33 @@ fn run_generates_reports_for_latest_local_first_scenario() {
 }
 
 #[test]
+fn run_warns_when_multiple_scenarios_share_single_report_output() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let json = tempdir.path().join("roomci.json");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg(fixture("examples/generic_mqtt_retained_state.yaml"))
+        .arg("--report-json")
+        .arg(&json)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("single report output flags write only the last scenario"));
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(json).unwrap()).unwrap();
+    assert_eq!(report["scenario_name"], "generic_mqtt_retained_state");
+}
+
+#[test]
 fn run_generates_timeline_and_observability_exports_with_run_id() {
     let tempdir = tempfile::tempdir().unwrap();
     let json = tempdir.path().join("roomci.json");

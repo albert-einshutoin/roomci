@@ -8,9 +8,11 @@ use std::{
     time::Duration,
 };
 
-use roomci_core::run_scenario;
+use roomci_core::{run_scenario, RunResult};
 use roomci_device_model::ModbusModel;
-use roomci_scenario::{load_scenario, ScenarioFile};
+use roomci_scenario::{
+    extract_mqtt_placeholder_value, load_scenario, match_mqtt_contract, ScenarioFile,
+};
 use serde_json::json;
 
 fn fixture(path: &str) -> PathBuf {
@@ -90,18 +92,18 @@ fn mqtt_helpers_parse_and_match_contracts() {
 
     let state = serve_state();
     let contract = &state.lock().unwrap().scenario.mqtt.contracts[0];
-    let (_, device_id, state_topic) = match_contract(contract, topic).unwrap();
-    assert_eq!(device_id, "env_sensor_01");
+    let matched = match_mqtt_contract(contract, topic).unwrap();
+    assert_eq!(matched.device_id, "env_sensor_01");
     assert_eq!(
-        state_topic,
+        matched.state_topic,
         "fleet/demo/site/lab/device/env_sensor_01/state"
     );
     assert_eq!(
-        extract_placeholder_value("a/{device_id}/b", "a/device-01/b", "{device_id}"),
+        extract_mqtt_placeholder_value("a/{device_id}/b", "a/device-01/b", "{device_id}"),
         Some("device-01".to_string())
     );
     assert_eq!(
-        extract_placeholder_value("a/{device_id}/b", "a/site/device-01/b", "{device_id}"),
+        extract_mqtt_placeholder_value("a/{device_id}/b", "a/site/device-01/b", "{device_id}"),
         None
     );
 }
@@ -149,6 +151,68 @@ fn external_mqtt_publish_updates_and_rejects_by_contract() {
     assert!(timeline.contains("external_mqtt_retained_state_updated"));
     assert!(timeline.contains("payload missing required fields"));
     assert!(timeline.contains("topic did not match"));
+}
+
+#[test]
+fn mqtt_contract_required_fields_match_run_and_serve() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: mqtt_contract_same_decision
+mqtt:
+  local:
+    retained: true
+  contracts:
+    - name: device_state
+      command_topic: fleet/demo/device/{device_id}/command
+      state_topic: fleet/demo/device/{device_id}/state
+      payload:
+        required_fields: [online, sample_interval_seconds]
+devices:
+  - id: env_sensor_01
+    type: sensor
+    protocol: mqtt
+    state:
+      online: false
+      sample_interval_seconds: 60
+steps:
+  - at: T
+    mqtt_publish:
+      client: edge_contract_test
+      topic: fleet/demo/device/env_sensor_01/command
+      payload:
+        online: true
+"#,
+    )
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+    assert_eq!(report.result, RunResult::Failed);
+    let run_message = report
+        .assertions
+        .iter()
+        .find(|assertion| assertion.assertion_type == "mqtt_contract")
+        .map(|assertion| assertion.message.clone())
+        .expect("run should record MQTT contract failure");
+
+    let state = serve_state_for_scenario(scenario);
+    {
+        let mut state = state.lock().unwrap();
+        apply_external_mqtt_publish(
+            &mut state,
+            MqttPublish {
+                topic: "fleet/demo/device/env_sensor_01/command".to_string(),
+                payload: BTreeMap::from([("online".to_string(), json!(true))]),
+            },
+        );
+        let serve_message = state
+            .external_observation_timeline
+            .last()
+            .map(|event| event.message.clone())
+            .expect("serve should record MQTT contract rejection");
+        assert_eq!(serve_message, run_message);
+    }
 }
 
 #[test]

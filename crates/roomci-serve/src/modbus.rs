@@ -4,13 +4,16 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     sync::{Arc, Mutex},
     thread,
+    time::Duration,
 };
 
 use roomci_device_model::{DeviceModelError, ModbusModel};
 
 use crate::{
-    lock_serve_state, ServeError, ServeState, MODBUS_EXCEPTION_ILLEGAL_ADDRESS,
+    acquire_connection_permit, lock_serve_state, ServeError, ServeState,
+    MODBUS_CLIENT_TIMEOUT_SECS, MODBUS_EXCEPTION_ILLEGAL_ADDRESS,
     MODBUS_EXCEPTION_ILLEGAL_FUNCTION, MODBUS_EXCEPTION_ILLEGAL_VALUE,
+    MODBUS_MAX_INFLIGHT_CONNECTIONS,
 };
 
 pub(crate) fn serve_modbus(
@@ -18,11 +21,21 @@ pub(crate) fn serve_modbus(
     address: SocketAddr,
     state: Arc<Mutex<ServeState>>,
 ) {
+    let active_connections = Arc::new(Mutex::new(0_usize));
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                let Some(permit) =
+                    acquire_connection_permit(&active_connections, MODBUS_MAX_INFLIGHT_CONNECTIONS)
+                else {
+                    eprintln!(
+                        "modbus connection limit reached on {address}; dropping new connection"
+                    );
+                    continue;
+                };
                 let state = Arc::clone(&state);
                 thread::spawn(move || {
+                    let _permit = permit;
                     if let Err(error) = handle_modbus_client(stream, state) {
                         eprintln!("modbus request error on {address}: {error}");
                     }
@@ -37,6 +50,14 @@ fn handle_modbus_client(
     mut stream: TcpStream,
     state: Arc<Mutex<ServeState>>,
 ) -> Result<(), ServeError> {
+    let timeout = Some(Duration::from_secs(MODBUS_CLIENT_TIMEOUT_SECS));
+    stream
+        .set_read_timeout(timeout)
+        .map_err(|error| ServeError::Runtime(error.to_string()))?;
+    stream
+        .set_write_timeout(timeout)
+        .map_err(|error| ServeError::Runtime(error.to_string()))?;
+
     loop {
         let Some(request) = read_modbus_tcp_request(&mut stream)? else {
             return Ok(());

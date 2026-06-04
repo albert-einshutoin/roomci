@@ -500,7 +500,7 @@ pub struct ValidatedMqttPublishStep {
     pub client: Identifier,
     pub topic: MqttTopic,
     /// Adapter payload boundary: scenario MQTT payloads stay schema-compatible
-    /// maps because Phase 26 contract validation will specialize them per topic.
+    /// maps; runtime contract validation specializes required fields per topic.
     pub payload: BTreeMap<String, serde_yaml::Value>,
 }
 

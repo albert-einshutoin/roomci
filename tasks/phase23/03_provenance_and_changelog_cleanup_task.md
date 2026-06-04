@@ -6,7 +6,7 @@
 
 ## Problem
 
-`LICENSE-NOTE.txt` is too vague for OSS publication, and the changelog's many
+`NOTICE.md` is the publication-facing provenance note, and the changelog's many
 same-day phase entries can be misread as fabricated calendar releases.
 
 ## Scope
@@ -18,6 +18,5 @@ same-day phase entries can be misread as fabricated calendar releases.
 
 ## Acceptance Criteria
 
-- `LICENSE-NOTE.txt` can be read without guessing what the project is claiming.
+- `NOTICE.md` can be read without guessing what the project is claiming.
 - `CHANGELOG.md` explains the phase-based history before the version entries.
-
