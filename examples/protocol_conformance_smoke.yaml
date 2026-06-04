@@ -43,6 +43,14 @@ modbus:
           value: 221
           unit: celsius
 
+devices:
+  - id: env_sensor_01
+    type: sensor
+    protocol: mqtt
+    state:
+      online: false
+      sample_interval_seconds: 60
+
 steps:
   - at: T
     mqtt_publish:

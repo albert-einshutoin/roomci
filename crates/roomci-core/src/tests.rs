@@ -109,6 +109,23 @@ fn modbus_floor_heating_passes() {
 }
 
 #[test]
+fn protocol_conformance_smoke_passes() {
+    let scenario = load_scenario(fixture("examples/protocol_conformance_smoke.yaml")).unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "mqtt_retained_state_updated"));
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "modbus_write"));
+}
+
+#[test]
 fn dali_scene_partial_failure_is_detected() {
     let scenario = load_scenario(fixture("examples/dali_scene_partial_failure.yaml")).unwrap();
 
