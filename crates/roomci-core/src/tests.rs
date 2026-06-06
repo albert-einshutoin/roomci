@@ -132,24 +132,28 @@ fn hardware_ci_mqtt_room_fleet_usecase_passes() {
     let report = run_scenario(&scenario).unwrap();
 
     assert_eq!(report.result, RunResult::Passed);
-    assert!(report.retained_messages.contains_key(
-        "fleet/hardware-ci/site/lab/room/room101/device/room101_light_panel/state"
-    ));
-    assert!(report.retained_messages.contains_key(
-        "fleet/hardware-ci/site/lab/room/room101/device/room101_thermostat/state"
-    ));
     assert!(report
-        .timeline
-        .iter()
-        .filter(|event| event.event_type == "mqtt_retained_state_updated")
-        .count()
-        >= 2);
+        .retained_messages
+        .contains_key("fleet/hardware-ci/site/lab/room/room101/device/room101_light_panel/state"));
+    assert!(report
+        .retained_messages
+        .contains_key("fleet/hardware-ci/site/lab/room/room101/device/room101_thermostat/state"));
+    assert!(
+        report
+            .timeline
+            .iter()
+            .filter(|event| event.event_type == "mqtt_retained_state_updated")
+            .count()
+            >= 2
+    );
 }
 
 #[test]
 fn hardware_ci_modbus_bms_commissioning_usecase_passes() {
-    let scenario =
-        load_scenario(fixture("examples/hardware_ci_modbus_bms_commissioning.yaml")).unwrap();
+    let scenario = load_scenario(fixture(
+        "examples/hardware_ci_modbus_bms_commissioning.yaml",
+    ))
+    .unwrap();
 
     let report = run_scenario(&scenario).unwrap();
 
@@ -172,15 +176,17 @@ fn hardware_ci_modbus_bms_commissioning_usecase_passes() {
 
 #[test]
 fn hardware_ci_mixed_protocol_regression_usecase_passes() {
-    let scenario =
-        load_scenario(fixture("examples/hardware_ci_mixed_protocol_regression.yaml")).unwrap();
+    let scenario = load_scenario(fixture(
+        "examples/hardware_ci_mixed_protocol_regression.yaml",
+    ))
+    .unwrap();
 
     let report = run_scenario(&scenario).unwrap();
 
     assert_eq!(report.result, RunResult::Passed);
-    assert!(report.retained_messages.contains_key(
-        "fleet/hardware-ci/site/lab/zone/zone_a/device/edge_gateway_01/state"
-    ));
+    assert!(report
+        .retained_messages
+        .contains_key("fleet/hardware-ci/site/lab/zone/zone_a/device/edge_gateway_01/state"));
     assert!(report
         .timeline
         .iter()

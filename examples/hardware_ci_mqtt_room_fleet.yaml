@@ -1,0 +1,71 @@
+version: "0.1"
+scenario:
+  name: hardware_ci_mqtt_room_fleet
+  description: Multi-engineer MQTT capture replay for a real room lighting and thermostat fleet.
+  tags: [hardware-ci, mqtt, smart-home, docker]
+
+mqtt:
+  local:
+    retained: true
+  contracts:
+    - name: room101_light_panel_command
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/hardware-ci/site/lab/room/room101/light/{device_id}/command
+      state_topic: fleet/hardware-ci/site/lab/room/room101/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [power, brightness]
+    - name: room101_thermostat_command
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/hardware-ci/site/lab/room/room101/climate/{device_id}/command
+      state_topic: fleet/hardware-ci/site/lab/room/room101/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [mode, target_temperature_c, fan_mode]
+
+devices:
+  - id: room101_light_panel
+    type: light_panel
+    protocol: mqtt
+    state:
+      power: false
+      brightness: 0
+  - id: room101_thermostat
+    type: thermostat
+    protocol: mqtt
+    state:
+      mode: "off"
+      target_temperature_c: 24.0
+      fan_mode: auto
+
+steps:
+  - at: T
+    mqtt_publish:
+      client: lighting_engineer_fixture
+      topic: fleet/hardware-ci/site/lab/room/room101/light/room101_light_panel/command
+      payload:
+        power: true
+        brightness: 72
+  - at: T+1s
+    mqtt_publish:
+      client: climate_engineer_fixture
+      topic: fleet/hardware-ci/site/lab/room/room101/climate/room101_thermostat/command
+      payload:
+        mode: heat
+        target_temperature_c: 21.5
+        fan_mode: auto
+
+assertions:
+  - at: T+1s
+    mqtt:
+      topic: fleet/hardware-ci/site/lab/room/room101/device/room101_light_panel/state
+      retained:
+        power: true
+        brightness: 72
+  - at: T+2s
+    mqtt:
+      topic: fleet/hardware-ci/site/lab/room/room101/device/room101_thermostat/state
+      retained:
+        mode: heat
+        target_temperature_c: 21.5
+        fan_mode: auto

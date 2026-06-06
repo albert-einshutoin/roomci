@@ -1,0 +1,122 @@
+version: "0.1"
+scenario:
+  name: hardware_ci_mixed_protocol_regression
+  description: Platform QA combines MQTT, Modbus, BMS, and network-fault captures from multiple hardware owners into one Docker CI regression.
+  tags: [hardware-ci, mqtt, modbus, bms, network, regression, docker]
+
+mqtt:
+  local:
+    retained: true
+  contracts:
+    - name: field_lab_edge_gateway_command
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/hardware-ci/site/lab/zone/zone_a/device/{device_id}/command
+      state_topic: fleet/hardware-ci/site/lab/zone/zone_a/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [online, firmware, safe_mode]
+
+modbus:
+  devices:
+    - id: vav_controller_01
+      unit_id: 7
+      holding_registers:
+        40001:
+          name: target_airflow
+          type: decimal_0_1
+          value: 180
+          unit: lps
+        40002:
+          name: damper_position_percent
+          type: integer
+          value: 35
+          unit: percent
+      input_registers:
+        30001:
+          name: duct_temperature
+          type: decimal_0_1
+          value: 192
+          unit: celsius
+
+contacts:
+  inputs:
+    - id: field_lab_smoke_detector_01
+      state: off
+      location: field_lab
+      criticality: emergency
+
+alerts:
+  - id: field_lab_smoke_detected
+    source: contact.field_lab_smoke_detector_01
+    severity: emergency
+    location: field_lab
+    notify:
+      slack: true
+      phone: true
+    runbook_url: https://example.com/runbooks/field-lab-smoke
+
+devices:
+  - id: edge_gateway_01
+    type: edge_gateway
+    protocol: mqtt
+    state:
+      online: false
+      firmware: "0.0.0"
+      safe_mode: true
+
+steps:
+  - at: T
+    fault:
+      target: network.segment.field_lab
+      type: isolated
+  - at: T+1s
+    mqtt_publish:
+      client: platform_qa_fixture
+      topic: fleet/hardware-ci/site/lab/zone/zone_a/device/edge_gateway_01/command
+      payload:
+        online: true
+        firmware: "1.4.2"
+        safe_mode: true
+  - at: T+2s
+    modbus_write:
+      device: vav_controller_01
+      register: 40001
+      value: 215
+  - at: T+3s
+    modbus_write:
+      device: vav_controller_01
+      register: 40002
+      value: 55
+  - at: T+4s
+    contact:
+      id: field_lab_smoke_detector_01
+      state: on
+  - at: T+30s
+    ops:
+      action: acknowledge
+      alert_id: field_lab_smoke_detected
+      assignee: qa_oncall_01
+
+assertions:
+  - at: T+2s
+    mqtt:
+      topic: fleet/hardware-ci/site/lab/zone/zone_a/device/edge_gateway_01/state
+      retained:
+        online: true
+        firmware: "1.4.2"
+        safe_mode: true
+  - at: T+3s
+    modbus:
+      device: vav_controller_01
+      register: 40001
+      readable_value: 21.5
+  - at: T+5s
+    ops:
+      alert_id: field_lab_smoke_detected
+      slack_notification_sent: true
+      phone_call_triggered: true
+      runbook_url_included: true
+  - at: T+35s
+    ops:
+      alert_id: field_lab_smoke_detected
+      ticket_status: acknowledged

@@ -60,6 +60,7 @@ Guest impact: Lighting scene did not match intended guest ambience.
 プロダクト境界については、[`docs/HOSPITALITY_STACK_COVERAGE.md`](docs/HOSPITALITY_STACK_COVERAGE.md) および [`docs/CORE_QA_JOURNEY.md`](docs/CORE_QA_JOURNEY.md) を参照してください。プロトコル サブセット主張については、[`docs/PROTOCOL_CONFORMANCE_REGISTRY.md`](docs/PROTOCOL_CONFORMANCE_REGISTRY.md) を参照してください。
 
 評価者オンボーディングの場合は、[`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md)、[`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md)、[`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md) を使用してください。
+実機 capture を Docker CI で replay するユースケースは、[`docs/HARDWARE_TO_DOCKER_CI_USECASES.ja.md`](docs/HARDWARE_TO_DOCKER_CI_USECASES.ja.md) を参照してください。
 
 ## クイックスタート
 
@@ -75,6 +76,9 @@ make demo-generic-mqtt
 
 # 外部コントローラーコンテナを使用したブラックボックス serve モード PoC
 make compose-poc
+
+# 実機 contract replay を Docker CI ユースケースとして実行
+make hardware-ci-usecases-smoke
 
 # フル ローカル検証
 make verify
@@ -131,6 +135,7 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 | ホスピタリティ ドメインパック | ホスピタリティとスマートホーム エンジニアリングチーム | `make demo-hospitality` |
 | 汎用 MQTT コントラクト | MQTT / edge デバイス プラットフォームチーム | `make demo-generic-mqtt` |
 | Serve モード PoC | 外部コントローラー統合形状を検証するチーム | `make compose-poc` |
+| Hardware-to-Docker CI | 実機 capture を再現可能な CI evidence に変換するチーム | `make hardware-ci-usecases-smoke` |
 
 ## 合格デモシナリオ
 
