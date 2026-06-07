@@ -328,6 +328,11 @@ make poc-building-automation
 make poc-bms-ops
 ```
 
+Each PoC target writes one JSON/Markdown/JUnit report set per scenario under
+`reports/`. When `roomci run` is called directly with multiple scenarios, report
+flags still write the last scenario only; use per-scenario commands for
+presentation evidence.
+
 ## Core concept
 
 The reusable core is a QA contract emulator:

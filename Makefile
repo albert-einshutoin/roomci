@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke protocol-profile-smoke hardware-ci-usecases-smoke vscode-assets-check s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke protocol-profile-smoke hardware-ci-usecases-smoke poc-report-artifact-check vscode-assets-check s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -99,6 +99,7 @@ verify:
 	$(MAKE) s-tier-evidence-smoke
 	$(MAKE) developer-experience-smoke
 	$(MAKE) protocol-profile-smoke
+	$(MAKE) poc-report-artifact-check
 	$(MAKE) vscode-assets-check
 
 docker-demo:
@@ -166,19 +167,22 @@ protocol-profile-smoke:
 		examples/bacnet_contract_profile.yaml \
 		examples/knx_group_address_profile.yaml \
 		examples/opcua_contract_profile.yaml
-	cargo run -p roomci-cli -- run \
-		examples/matter_gateway_profile.yaml \
-		examples/bacnet_contract_profile.yaml \
-		examples/knx_group_address_profile.yaml \
-		examples/opcua_contract_profile.yaml \
-		--report-json reports/protocol_profiles.json \
-		--report-md reports/protocol_profiles.md \
-		--junit reports/protocol_profiles.xml
+	@set -e; \
+	for scenario in $(PROTOCOL_PROFILE_SCENARIOS); do \
+		name=$$(basename "$$scenario" .yaml); \
+		cargo run -p roomci-cli -- run "$$scenario" \
+			--report-json "reports/protocol_profile_$${name}.json" \
+			--report-md "reports/protocol_profile_$${name}.md" \
+			--junit "reports/protocol_profile_$${name}.xml"; \
+	done
 
 hardware-ci-usecases-smoke:
 	docker compose -f compose/docker-compose.yml build hardware-ci-usecases
 	docker compose -f compose/docker-compose.yml run --rm hardware-ci-usecases
 	docker compose -f compose/docker-compose.yml down
+
+poc-report-artifact-check:
+	python3 scripts/poc_report_artifact_check.py
 
 vscode-assets-check:
 	find tools/vscode-roomci -name '*.json' -print0 | xargs -0 -n1 python3 -m json.tool >/dev/null
@@ -204,7 +208,14 @@ poc-generic-mqtt:
 
 poc-core-qa:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/hospitality_local_first_room.yaml adapter-contracts/examples/building_automation_bms.yaml
-	cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml examples/modbus_floor_heating.yaml examples/bms_sauna_emergency_alert.yaml examples/starlink_failover.yaml examples/comfort_auto_mode.yaml examples/comfort_timeseries_replay.yaml examples/access_permission_drift.yaml examples/commissioning_checklist.yaml examples/intercom_relay_safe_mock.yaml examples/network_control_panel_fault_profiles.yaml --report-json reports/poc_core_qa.json --report-md reports/poc_core_qa.md --junit reports/poc_core_qa.xml
+	@set -e; \
+	for scenario in $(HOSPITALITY_SCENARIOS); do \
+		name=$$(basename "$$scenario" .yaml); \
+		cargo run -p roomci-cli -- run "$$scenario" \
+			--report-json "reports/poc_core_qa_$${name}.json" \
+			--report-md "reports/poc_core_qa_$${name}.md" \
+			--junit "reports/poc_core_qa_$${name}.xml"; \
+	done
 
 poc-hospitality:
 	cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/hospitality_local_first_room.yaml
