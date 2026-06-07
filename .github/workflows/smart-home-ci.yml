@@ -194,5 +194,8 @@ jobs:
       - name: Protocol profile smoke
         run: make protocol-profile-smoke
 
+      - name: PoC report artifact contract
+        run: make poc-report-artifact-check
+
       - name: VSCode authoring assets
         run: make vscode-assets-check

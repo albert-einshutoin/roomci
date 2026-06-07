@@ -322,6 +322,11 @@ make poc-building-automation
 make poc-bms-ops
 ```
 
+各 PoC ターゲットは `reports/` 配下にシナリオ単位の
+JSON/Markdown/JUnit レポート セットを書き出します。`roomci run` を直接
+複数シナリオで呼び出した場合、レポート フラグは最後のシナリオだけを書き出すため、
+提示用エビデンスではシナリオ単位のコマンドを使います。
+
 ## コア概念
 
 再利用可能なコアは QA コントラクト エミュレーターです：

@@ -11,6 +11,7 @@ make adapter-samples-smoke
 make s-tier-evidence-smoke
 make developer-experience-smoke
 make protocol-profile-smoke
+make poc-report-artifact-check
 make vscode-assets-check
 make protocol-evidence
 ```
@@ -32,7 +33,9 @@ Current release-candidate evidence:
 - `make developer-experience-smoke` runs the Python reference client and
   generates debugger JSON/Markdown artifacts.
 - `make protocol-profile-smoke` validates Matter, BACnet, KNX, and OPC UA
-  contract-profile examples and dry-run scenario fixtures.
+  contract-profile examples and writes per-scenario report artifacts.
+- `make poc-report-artifact-check` rejects PoC recipes that combine multiple
+  scenario files with one report output set.
 - `make vscode-assets-check` validates local VSCode schema associations,
   snippets, tasks, and schema sync for scenario authoring.
 - `make protocol-evidence` checks the claim registry, including Phase 17
@@ -45,6 +48,7 @@ Current release-candidate evidence:
 | Pack | Command | Report Artifacts |
 |---|---|---|
 | Generic MQTT edge-device fleet | `make poc-generic-mqtt` | `reports/poc_generic_mqtt_*.{json,md,xml}` |
+| Core QA scenario suite | `make poc-core-qa` | `reports/poc_core_qa_*.{json,md,xml}` |
 | Hospitality smart home local-first room | `make poc-hospitality` | `reports/poc_hospitality_*.{json,md,xml}` |
 | Building automation / BMS | `make poc-building-automation` | `reports/poc_building_*.{json,md,xml}` |
 | BMS / operations escalation | `make poc-bms-ops` | `reports/poc_bms_ops_*.{json,md,xml}` |
