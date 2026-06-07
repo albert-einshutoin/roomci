@@ -60,6 +60,7 @@ For the full interview walkthrough, see [`docs/INTERVIEW_DEMO.md`](docs/INTERVIE
 For protocol subset claims, see [`docs/PROTOCOL_CONFORMANCE_REGISTRY.md`](docs/PROTOCOL_CONFORMANCE_REGISTRY.md).
 
 For evaluator onboarding, use [`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md), [`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md), and [`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md).
+For real hardware capture replay in Docker CI, see [`docs/HARDWARE_TO_DOCKER_CI_USECASES.md`](docs/HARDWARE_TO_DOCKER_CI_USECASES.md).
 
 ## Quick start
 
@@ -75,6 +76,9 @@ make demo-generic-mqtt
 
 # Black-box serve-mode PoC with an external controller container
 make compose-poc
+
+# Real-hardware contract replay as Docker CI use cases
+make hardware-ci-usecases-smoke
 
 # Full local verification
 make verify
@@ -131,6 +135,7 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 | Hospitality domain pack | Hospitality and smart-home engineering teams | `make demo-hospitality` |
 | Generic MQTT contracts | MQTT / edge-device platform teams | `make demo-generic-mqtt` |
 | Serve-mode PoC | Teams validating external-controller integration shape | `make compose-poc` |
+| Hardware-to-Docker CI | Teams converting real-device captures into repeatable CI evidence | `make hardware-ci-usecases-smoke` |
 
 ## Passing demo scenarios
 

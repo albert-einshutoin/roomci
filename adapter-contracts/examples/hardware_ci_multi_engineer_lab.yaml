@@ -1,0 +1,155 @@
+version: adapter.v1
+adapter:
+  name: hardware-ci-multi-engineer-lab
+  domain_pack: hardware-ci
+  owner: roomci
+site:
+  id: hardware-ci-lab
+  rooms:
+    - id: room101
+    - id: plant-room
+    - id: field-lab
+devices:
+  - id: room101_light_panel
+    type: light_panel
+    protocol: mqtt
+  - id: room101_thermostat
+    type: thermostat
+    protocol: mqtt
+  - id: ahu_supply_fan_01
+    type: air_handler
+    protocol: modbus
+  - id: condenser_pump_01
+    type: pump
+    protocol: modbus
+  - id: plantroom_leak_sensor_01
+    type: contact_input
+    protocol: dry_contact
+  - id: edge_gateway_01
+    type: edge_gateway
+    protocol: mqtt
+  - id: vav_controller_01
+    type: vav_controller
+    protocol: modbus
+  - id: field_lab_smoke_detector_01
+    type: contact_input
+    protocol: dry_contact
+mqtt:
+  contracts:
+    - name: room101_light_panel_command
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/hardware-ci/site/lab/room/room101/light/{device_id}/command
+      state_topic: fleet/hardware-ci/site/lab/room/room101/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [power, brightness]
+    - name: room101_thermostat_command
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/hardware-ci/site/lab/room/room101/climate/{device_id}/command
+      state_topic: fleet/hardware-ci/site/lab/room/room101/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [mode, target_temperature_c, fan_mode]
+    - name: field_lab_edge_gateway_command
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/hardware-ci/site/lab/zone/zone_a/device/{device_id}/command
+      state_topic: fleet/hardware-ci/site/lab/zone/zone_a/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [online, firmware, safe_mode]
+modbus:
+  devices:
+    - id: ahu_supply_fan_01
+      unit_id: 3
+      registers:
+        - address: 30001
+          name: supply_air_temperature
+          type: input
+          access: read
+          scale: 0.1
+          unit: celsius
+        - address: 40002
+          name: fan_enable
+          type: holding
+          access: read_write
+          scale: 1
+          unit: boolean
+        - address: 40003
+          name: supply_air_setpoint
+          type: holding
+          access: read_write
+          scale: 0.1
+          unit: celsius
+    - id: condenser_pump_01
+      unit_id: 4
+      registers:
+        - address: 40010
+          name: pump_enable
+          type: holding
+          access: read_write
+          scale: 1
+          unit: boolean
+        - address: 40011
+          name: speed_percent
+          type: holding
+          access: read_write
+          scale: 1
+          unit: percent
+    - id: vav_controller_01
+      unit_id: 7
+      registers:
+        - address: 30001
+          name: duct_temperature
+          type: input
+          access: read
+          scale: 0.1
+          unit: celsius
+        - address: 40001
+          name: target_airflow
+          type: holding
+          access: read_write
+          scale: 0.1
+          unit: lps
+        - address: 40002
+          name: damper_position_percent
+          type: holding
+          access: read_write
+          scale: 1
+          unit: percent
+bms:
+  alerts:
+    - id: plantroom_leak_detected
+      source: contact.plantroom_leak_sensor_01
+      severity: critical
+      schema_version: bms.alert.v1
+      content_type: application/json
+      severity_enum: [info, warning, critical, emergency]
+      replay_window_seconds: 300
+      channels: [bms-dashboard, pager]
+      ticket_lifecycle: [open, acknowledged, resolved]
+    - id: field_lab_smoke_detected
+      source: contact.field_lab_smoke_detector_01
+      severity: emergency
+      schema_version: bms.alert.v1
+      content_type: application/json
+      severity_enum: [info, warning, critical, emergency]
+      replay_window_seconds: 120
+      channels: [slack, phone, bms-dashboard]
+      ticket_lifecycle: [open, acknowledged, resolved]
+edge:
+  commands:
+    - name: route-room101-light-command
+      source: lighting_engineer_fixture
+      target: room101_light_panel
+      expected_state: retained_state_updated
+    - name: route-field-lab-gateway-command
+      source: platform_qa_fixture
+      target: edge_gateway_01
+      expected_state: retained_state_updated
+acceptance:
+  criteria:
+    - MQTT command/state captures from separate room engineers update deterministic retained state.
+    - Modbus writes from facilities engineers preserve register scale and write permissions.
+    - BMS dry-contact captures open and acknowledge critical tickets with notification evidence.
+    - A mixed-protocol regression can replay multiple hardware-owner captures in Docker CI.
+  report_formats: [json, markdown, junit, timeline-json, observability-json]

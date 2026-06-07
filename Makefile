@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke protocol-profile-smoke vscode-assets-check s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke protocol-profile-smoke hardware-ci-usecases-smoke vscode-assets-check s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -23,6 +23,11 @@ PROTOCOL_PROFILE_SCENARIOS := \
 	examples/knx_group_address_profile.yaml \
 	examples/opcua_contract_profile.yaml
 
+HARDWARE_CI_SCENARIOS := \
+	examples/hardware_ci_mqtt_room_fleet.yaml \
+	examples/hardware_ci_modbus_bms_commissioning.yaml \
+	examples/hardware_ci_mixed_protocol_regression.yaml
+
 PASSING_SCENARIOS := \
 	$(HOSPITALITY_SCENARIOS) \
 	$(GENERIC_MQTT_SCENARIOS)
@@ -30,6 +35,7 @@ PASSING_SCENARIOS := \
 ALL_SCENARIOS := \
 	$(PASSING_SCENARIOS) \
 	$(PROTOCOL_PROFILE_SCENARIOS) \
+	$(HARDWARE_CI_SCENARIOS) \
 	examples/dali_scene_partial_failure.yaml
 
 demo:
@@ -82,6 +88,7 @@ verify:
 		/scenarios/generic_mqtt_duplicate_delivery.yaml
 	docker compose -f compose/docker-compose.yml build scenario-smoke
 	docker compose -f compose/docker-compose.yml run --rm scenario-smoke
+	$(MAKE) hardware-ci-usecases-smoke
 	docker compose -f compose/docker-compose.yml build roomci-serve external-controller protocol-smoke
 	docker compose -f compose/docker-compose.yml run --rm external-controller
 	docker compose -f compose/docker-compose.yml run --rm protocol-smoke
@@ -167,6 +174,11 @@ protocol-profile-smoke:
 		--report-json reports/protocol_profiles.json \
 		--report-md reports/protocol_profiles.md \
 		--junit reports/protocol_profiles.xml
+
+hardware-ci-usecases-smoke:
+	docker compose -f compose/docker-compose.yml build hardware-ci-usecases
+	docker compose -f compose/docker-compose.yml run --rm hardware-ci-usecases
+	docker compose -f compose/docker-compose.yml down
 
 vscode-assets-check:
 	find tools/vscode-roomci -name '*.json' -print0 | xargs -0 -n1 python3 -m json.tool >/dev/null

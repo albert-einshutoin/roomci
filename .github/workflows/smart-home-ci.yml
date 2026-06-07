@@ -83,7 +83,10 @@ jobs:
             /scenarios/matter_gateway_profile.yaml \
             /scenarios/bacnet_contract_profile.yaml \
             /scenarios/knx_group_address_profile.yaml \
-            /scenarios/opcua_contract_profile.yaml
+            /scenarios/opcua_contract_profile.yaml \
+            /scenarios/hardware_ci_mqtt_room_fleet.yaml \
+            /scenarios/hardware_ci_modbus_bms_commissioning.yaml \
+            /scenarios/hardware_ci_mixed_protocol_regression.yaml
 
       - name: Run passing demo scenarios
         run: |
@@ -149,6 +152,8 @@ jobs:
         run: |
           docker compose -f compose/docker-compose.yml build scenario-smoke
           docker compose -f compose/docker-compose.yml run --rm scenario-smoke
+          docker compose -f compose/docker-compose.yml build hardware-ci-usecases
+          docker compose -f compose/docker-compose.yml run --rm hardware-ci-usecases
           docker compose -f compose/docker-compose.yml build roomci-serve external-controller protocol-smoke
           docker compose -f compose/docker-compose.yml run --rm external-controller
           docker compose -f compose/docker-compose.yml run --rm protocol-smoke

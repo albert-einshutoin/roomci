@@ -126,6 +126,80 @@ fn protocol_conformance_smoke_passes() {
 }
 
 #[test]
+fn hardware_ci_mqtt_room_fleet_usecase_passes() {
+    let scenario = load_scenario(fixture("examples/hardware_ci_mqtt_room_fleet.yaml")).unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    assert!(report
+        .retained_messages
+        .contains_key("fleet/hardware-ci/site/lab/room/room101/device/room101_light_panel/state"));
+    assert!(report
+        .retained_messages
+        .contains_key("fleet/hardware-ci/site/lab/room/room101/device/room101_thermostat/state"));
+    assert!(
+        report
+            .timeline
+            .iter()
+            .filter(|event| event.event_type == "mqtt_retained_state_updated")
+            .count()
+            >= 2
+    );
+}
+
+#[test]
+fn hardware_ci_modbus_bms_commissioning_usecase_passes() {
+    let scenario = load_scenario(fixture(
+        "examples/hardware_ci_modbus_bms_commissioning.yaml",
+    ))
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "modbus_write"
+            && event.target.as_deref() == Some("ahu_supply_fan_01")));
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "contact_changed"
+            && event.target.as_deref() == Some("plantroom_leak_sensor_01")));
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "ops_ticket_acknowledged"));
+}
+
+#[test]
+fn hardware_ci_mixed_protocol_regression_usecase_passes() {
+    let scenario = load_scenario(fixture(
+        "examples/hardware_ci_mixed_protocol_regression.yaml",
+    ))
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    assert!(report
+        .retained_messages
+        .contains_key("fleet/hardware-ci/site/lab/zone/zone_a/device/edge_gateway_01/state"));
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "fault_activated"
+            && event.target.as_deref() == Some("network.segment.field_lab")));
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "modbus_write"
+            && event.target.as_deref() == Some("vav_controller_01")));
+}
+
+#[test]
 fn dali_scene_partial_failure_is_detected() {
     let scenario = load_scenario(fixture("examples/dali_scene_partial_failure.yaml")).unwrap();
 

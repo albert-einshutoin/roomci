@@ -24,6 +24,7 @@ its own.
 | Developers | [Developer workflow](DEVELOPER_WORKFLOW.md) | First run, Python automation, scenario debugging, and CI artifact review |
 | Developers | [Python reference client](PYTHON_SDK.md) | Python HTTP reference client and MQTT/Modbus smoke path |
 | Evidence | [Evaluation evidence pack](EVALUATION_EVIDENCE_PACK.md) | Commands, PoC packs, scorecards, report artifacts, and unsupported-feature disclosure |
+| Hardware CI | [実機ハードウェアを Docker CI に落とし込むユースケース](HARDWARE_TO_DOCKER_CI_USECASES.ja.md) | 実機 capture replay pattern、Docker gate、プレゼン骨子 |
 | Onboarding | [Integration onboarding](INTEGRATION_ONBOARDING.md) | 15-minute path, HTTP API, troubleshooting, and client snippets |
 | Category | [Category readiness](CATEGORY_READINESS.md) | Comparison against real-device staging, brokers, mocks, Home Assistant, cloud emulators, and HIL |
 | Positioning | [Dual-track positioning](DUAL_TRACK_POSITIONING.md) | Industry-wide product story plus hospitality domain-pack story |
@@ -70,6 +71,7 @@ its own.
 | # | Document | What it covers |
 |---|---|---|
 | 17 | [Docker / CI design](17_docker_ci_design.md) | Container layout and GitHub Actions integration |
+| Hardware CI | [実機ハードウェアを Docker CI に落とし込むユースケース](HARDWARE_TO_DOCKER_CI_USECASES.ja.md) | 複数エンジニアの実機 capture を Docker CI scenario に変換する |
 | Serve | [HTTP serve MVP plan](HTTP_SERVE_MVP_PLAN.md) | Planned localhost-bound control/report API before MQTT-compatible serve mode |
 | Serve | [HTTP serve behavior](HTTP_SERVE_BEHAVIOR.md) | Current HTTP connection, timeout, and overload behavior |
 | Serve | [External protocol depth](EXTERNAL_PROTOCOL_DEPTH.md) | MQTT subset boundary and BMS/contact external endpoint |

@@ -1,0 +1,121 @@
+version: "0.1"
+scenario:
+  name: hardware_ci_modbus_bms_commissioning
+  description: Facilities engineers replay Modbus register writes and BMS contact escalation captured from plant-room hardware.
+  tags: [hardware-ci, modbus, bms, commissioning, docker]
+
+modbus:
+  devices:
+    - id: ahu_supply_fan_01
+      unit_id: 3
+      holding_registers:
+        40002:
+          name: fan_enable
+          type: boolean
+          value: false
+          unit: boolean
+        40003:
+          name: supply_air_setpoint
+          type: decimal_0_1
+          value: 210
+          unit: celsius
+      input_registers:
+        30001:
+          name: supply_air_temperature
+          type: decimal_0_1
+          value: 206
+          unit: celsius
+    - id: condenser_pump_01
+      unit_id: 4
+      holding_registers:
+        40010:
+          name: pump_enable
+          type: boolean
+          value: false
+          unit: boolean
+        40011:
+          name: speed_percent
+          type: integer
+          value: 0
+          unit: percent
+      input_registers:
+        30010:
+          name: differential_pressure
+          type: integer
+          value: 18
+          unit: kpa
+
+contacts:
+  inputs:
+    - id: plantroom_leak_sensor_01
+      state: off
+      location: plant_room
+      criticality: critical
+
+alerts:
+  - id: plantroom_leak_detected
+    source: contact.plantroom_leak_sensor_01
+    severity: critical
+    location: plant_room
+    notify:
+      slack: true
+      phone: true
+    runbook_url: https://example.com/runbooks/plantroom-leak
+
+steps:
+  - at: T
+    modbus_write:
+      device: ahu_supply_fan_01
+      register: 40002
+      value: true
+  - at: T+1s
+    modbus_write:
+      device: ahu_supply_fan_01
+      register: 40003
+      value: 220
+  - at: T+2s
+    modbus_write:
+      device: condenser_pump_01
+      register: 40010
+      value: true
+  - at: T+3s
+    modbus_write:
+      device: condenser_pump_01
+      register: 40011
+      value: 85
+  - at: T+4s
+    contact:
+      id: plantroom_leak_sensor_01
+      state: on
+  - at: T+20s
+    ops:
+      action: acknowledge
+      alert_id: plantroom_leak_detected
+      assignee: facilities_oncall_01
+
+assertions:
+  - at: T+2s
+    modbus:
+      device: ahu_supply_fan_01
+      register: 40002
+      value: true
+  - at: T+2s
+    modbus:
+      device: ahu_supply_fan_01
+      register: 40003
+      readable_value: 22.0
+  - at: T+4s
+    modbus:
+      device: condenser_pump_01
+      register: 40011
+      value: 85
+  - at: T+5s
+    ops:
+      alert_id: plantroom_leak_detected
+      slack_notification_sent: true
+      phone_call_triggered: true
+      runbook_url_included: true
+  - at: T+25s
+    ops:
+      alert_id: plantroom_leak_detected
+      ticket_status: acknowledged

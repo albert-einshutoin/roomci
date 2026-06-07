@@ -26,6 +26,7 @@ its own.
 | Developers | [Python reference client](PYTHON_SDK.md) | Python HTTP reference client and MQTT/Modbus smoke path |
 | Developers | [VSCode local authoring assets](../tools/vscode-roomci/README.md) | Local schema associations, snippets, and tasks for scenario authoring |
 | Evidence | [Evaluation evidence pack](EVALUATION_EVIDENCE_PACK.md) | Commands, PoC packs, scorecards, report artifacts, and unsupported-feature disclosure |
+| Hardware CI | [Hardware-to-Docker CI use cases](HARDWARE_TO_DOCKER_CI_USECASES.md) | Real-device capture replay patterns, Docker gate, and presentation outline |
 | Onboarding | [Integration onboarding](INTEGRATION_ONBOARDING.md) | 15-minute path, HTTP API, troubleshooting, and client snippets |
 | Category | [Category readiness](CATEGORY_READINESS.md) | Stable link for comparisons now maintained in the product guide |
 | Positioning | [Dual-track positioning](DUAL_TRACK_POSITIONING.md) | Stable link for industry/domain-pack positioning now maintained in the product guide |
@@ -72,6 +73,7 @@ its own.
 | # | Document | What it covers |
 |---|---|---|
 | 17 | [Docker / CI design](17_docker_ci_design.md) | Container layout and GitHub Actions integration |
+| Hardware CI | [Hardware-to-Docker CI use cases](HARDWARE_TO_DOCKER_CI_USECASES.md) | Turning multi-engineer real-device captures into Docker CI scenarios |
 | Serve | [HTTP serve MVP plan](HTTP_SERVE_MVP_PLAN.md) | Planned localhost-bound control/report API before MQTT-compatible serve mode |
 | Serve | [HTTP serve behavior](HTTP_SERVE_BEHAVIOR.md) | Current HTTP connection, timeout, and overload behavior |
 | Serve | [External protocol depth](EXTERNAL_PROTOCOL_DEPTH.md) | MQTT subset boundary and BMS/contact external endpoint |

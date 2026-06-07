@@ -167,3 +167,35 @@ services:
     volumes:
       - ../examples:/scenarios:ro
       - ../reports:/reports
+
+  hardware-ci-usecases:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        roomci adapter validate /adapter-contracts/examples/hardware_ci_multi_engineer_lab.yaml &&
+        roomci validate \
+          /scenarios/hardware_ci_mqtt_room_fleet.yaml \
+          /scenarios/hardware_ci_modbus_bms_commissioning.yaml \
+          /scenarios/hardware_ci_mixed_protocol_regression.yaml &&
+        for scenario in \
+          hardware_ci_mqtt_room_fleet.yaml \
+          hardware_ci_modbus_bms_commissioning.yaml \
+          hardware_ci_mixed_protocol_regression.yaml
+        do
+          name="$${scenario%.yaml}"
+          roomci run "/scenarios/$${scenario}" \
+            --junit "/reports/$${name}.xml" \
+            --report-md "/reports/$${name}.md" \
+            --report-json "/reports/$${name}.json" \
+            --timeline-json "/reports/$${name}.timeline.json" \
+            --timeline-ndjson "/reports/$${name}.timeline.ndjson" \
+            --observability-json "/reports/$${name}.observability.json"
+        done
+    volumes:
+      - ../adapter-contracts:/adapter-contracts:ro
+      - ../examples:/scenarios:ro
+      - ../reports:/reports
