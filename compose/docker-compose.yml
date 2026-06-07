@@ -175,6 +175,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        set -e
         roomci adapter validate /adapter-contracts/examples/hardware_ci_multi_engineer_lab.yaml &&
         roomci validate \
           /scenarios/hardware_ci_mqtt_room_fleet.yaml \
