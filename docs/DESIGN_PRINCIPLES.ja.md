@@ -2,36 +2,36 @@
 
 ## Guest Impact First
 
-`roomci` treats smart-home failures as stay-experience risks. Assertions and reports should explain guest-visible impact, not only internal state mismatch.
+`roomci` はスマートホームの障害を宿泊体験リスクとして扱います。アサーションとレポートは、内部状態の不一致だけでなく、ゲストに見える影響を説明すべきです。
 
-## Field Failures Before 機能 Completeness
+## 機能完全性より現場障害
 
-The product prioritizes failure modes that are hard to reproduce outside the site: cloud outage, edge failover, contact alarms, scene partial failure, access drift, and commissioning gaps.
+本製品は、現場外では再現が難しい障害モードを優先します。例: クラウド障害、エッジフェイルオーバー、接点アラーム、シーン部分障害、アクセスドリフト、コミッショニングギャップ。
 
-## Behavioral Simulation Over Protocol Completeness
+## プロトコル完全性より挙動シミュレーション
 
-The MVP models protocol behavior at the QA contract level. It does not attempt full KNX, DALI, BACnet, SIP, Matter, or Modbus compatibility.
+MVP は QA contract レベルでプロトコル挙動をモデル化します。KNX、DALI、BACnet、SIP、Matter、Modbus の完全互換は目指しません。
 
-## CI Reproducibility Over Hardware Fidelity
+## ハードウェア忠実度より CI 再現性
 
-The primary target is local and CI execution without real devices. Deterministic virtual time is more valuable than emulating every hardware edge case.
+主なターゲットは、実機なしでのローカル／CI 実行です。決定論的な仮想時間は、すべてのハードウェアエッジケースをエミュレートすることよりも価値があります。
 
-## Operations Are Product Surface
+## 運用はプロダクトの表層
 
-BMS alerts, Slack notifications, phone escalation, tickets, and runbooks are part of the product experience because they determine how quickly a guest-impacting issue is handled.
+BMS アラート、Slack 通知、電話エスカレーション、チケット、runbook は、ゲストに影響する問題がどれだけ早く対処されるかを左右するため、プロダクト体験の一部です。
 
-## Commissioning Knowledge Should Become Code
+## コミッショニング知識はコード化すべき
 
-Room/device declarations, register maps, scenes, contacts, and access-control expectations should become executable scenarios instead of remaining only in field notes.
+客室／デバイス宣言、register map、シーン、接点、アクセス制御の期待値は、現場メモに留まらず実行可能なシナリオになるべきです。
 
-## Local-first Reliability Matters
+## ローカルファーストの信頼性が重要
 
-The cloud can fail without breaking the stay experience if local control, local MQTT, and edge routing keep working.
+ローカル制御、ローカル MQTT、エッジルーティングが継続すれば、クラウドが障害でも宿泊体験は壊れません。
 
-## Do Not Claim Internal Compatibility
+## 内部互換性を謳わない
 
-`roomci` models common hospitality smart-home and building-automation patterns. It must not claim access to or compatibility with any organization's private internal systems.
+`roomci` は一般的なホスピタリティ向けスマートホームおよびビルディングオートメーションパターンをモデル化します。特定組織の private 内部システムへのアクセスや互換性を謳ってはなりません。
 
-## Small External Engine
+## 小さな外部エンジン
 
-The tool should stay useful as an external QA binary and Docker image. It should complement production stacks rather than replace them.
+本ツールは外部 QA バイナリおよび Docker イメージとして有用であり続けるべきです。本番スタックを置き換えるのではなく、補完する位置づけです。

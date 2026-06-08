@@ -1,71 +1,71 @@
 # アダプターコントラクトキット
 
-Adapter contracts describe company-specific protocol details without hard-coding those details into `roomci` runtime code.
+アダプターコントラクトは、企業固有のプロトコル詳細を `roomci` のランタイムコードにハードコードせずに記述するためのものです。
 
-Use them when a company wants to evaluate `roomci` against its own MQTT topics, Modbus register maps, BMSアラート flows, edge-controller commands, device identity model, auth assumptions, and acceptance criteria.
+企業が自社の MQTT topic、Modbus register map、BMS アラートフロー、edge-controller コマンド、デバイス ID モデル、認証前提、受入基準に対して `roomci` を評価したい場合に使用します。
 
-## Files
+## ファイル
 
-- Template: [`adapter-contracts/templates/company_adapter_contract.yaml`](../adapter-contracts/templates/company_adapter_contract.yaml)
-- Generic MQTT example: [`adapter-contracts/examples/generic_mqtt_edge_device.yaml`](../adapter-contracts/examples/generic_mqtt_edge_device.yaml)
-- Hospitality local-first example: [`adapter-contracts/examples/hospitality_local_first_room.yaml`](../adapter-contracts/examples/hospitality_local_first_room.yaml)
-- Building automation / BMS example: [`adapter-contracts/examples/building_automation_bms.yaml`](../adapter-contracts/examples/building_automation_bms.yaml)
+- テンプレート: [`adapter-contracts/templates/company_adapter_contract.yaml`](../adapter-contracts/templates/company_adapter_contract.yaml)
+- Generic MQTT 例: [`adapter-contracts/examples/generic_mqtt_edge_device.yaml`](../adapter-contracts/examples/generic_mqtt_edge_device.yaml)
+- Hospitality local-first 例: [`adapter-contracts/examples/hospitality_local_first_room.yaml`](../adapter-contracts/examples/hospitality_local_first_room.yaml)
+- Building automation / BMS 例: [`adapter-contracts/examples/building_automation_bms.yaml`](../adapter-contracts/examples/building_automation_bms.yaml)
 
-## Validate
+## 検証
 
 ```bash
 cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/generic_mqtt_edge_device.yaml
 ```
 
-Validate every shipped adapter contract:
+同梱されているすべてのアダプターコントラクトを検証する:
 
 ```bash
 cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml
 ```
 
-## Required Customer Inputs
+## 顧客から必要な入力
 
-For MQTT:
+MQTT の場合:
 
-- topic templates
-- device-id extraction rule
-- required JSON payload fields
-- retained-state expectation
-- QoS/session expectation
+- topic テンプレート
+- device-id 抽出ルール
+- 必須 JSON payload フィールド
+- retained state の期待値
+- QoS / session の期待値
 
-For Modbus:
+Modbus の場合:
 
-- device id and unit id
-- register address
-- register type
-- scale and unit
-- read/write access mode
+- device id と unit id
+- register アドレス
+- register タイプ
+- scale と unit
+- read/write アクセスモード
 
-For BMS / operations:
+BMS / operations の場合:
 
 - alert source
 - severity
 - schema version
-- content type, currently `application/json`
-- severity enum, such as `info`, `warning`, `critical`, `emergency`
-- optional HMAC metadata: header, `hmac-sha256`, and secret reference
-- replay window in seconds
-- notification channels
+- content type（現在は `application/json`）
+- severity enum（例: `info`, `warning`, `critical`, `emergency`）
+- 任意の HMAC メタデータ: header、`hmac-sha256`、secret 参照
+- replay window（秒）
+- notification channel
 - ticket lifecycle
-- acknowledgement expectation
+- acknowledgement の期待値
 
-For edge controllers:
+edge controller の場合:
 
 - command source
 - command target
-- expected state transition
+- 期待される state transition
 
-For evaluation:
+evaluation の場合:
 
-- non-production auth assumptions
-- pass/fail acceptance criteria
-- expected report formats
+- 非本番環境の認証前提
+- pass/fail 受入基準
+- 期待される report 形式
 
-## Boundary
+## 境界
 
-The adapter contract kit does not make `roomci` compatible with a private system by itself. It makes missing private details explicit, validates that a supplied contract is structurally usable, and gives the emulator a stable input format for future adapter dispatch work.
+アダプターコントラクトキット単体では、プライベートシステムとの `roomci` 互換性は実現しません。不足しているプライベート詳細を明示し、提供されたコントラクトが構造的に利用可能かを検証し、将来のアダプター dispatch 作業向けに安定した入力形式をエミュレーターに与えます。

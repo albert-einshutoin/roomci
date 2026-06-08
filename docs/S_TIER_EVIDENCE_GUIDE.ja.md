@@ -1,77 +1,71 @@
-# Sティア証拠ガイド
+# S Tier エビデンスガイド
 
-This guide is the copy-paste path for evaluating `roomci` as a release-candidate
-QA contract emulator.
+このガイドは、リリース候補の QA コントラクトエミュレーターとして `roomci` を評価するための、コピー&ペースト可能な手順です。
 
-S Tier evidence means the project can prove adapter CI, timeline export, trace
-metadata, observability artifacts, and GitHub Actions integration without
-claiming hosted observability, production orchestration, or protocol
-certification.
+S Tier エビデンスとは、ホスト型可観測性、本番オーケストレーション、プロトコル認証を主張せずに、アダプター CI、タイムラインエクスポート、トレースメタデータ、可観測性アーティファクト、GitHub Actions 統合を証明できることを意味します。
 
-## Local Gate
+## ローカルゲート
 
-Run the complete local approximation:
+完全なローカル近似を実行する:
 
 ```bash
 make verify
 ```
 
-Run the focused S Tier artifact gate:
+S Tier アーティファクトゲートに焦点を当てて実行する:
 
 ```bash
 make s-tier-evidence-smoke
 ```
 
-Expected artifacts:
+期待されるアーティファクト:
 
-| Artifact | Path | 目的 |
+| アーティファクト | パス | 目的 |
 |---|---|---|
-| Full JSON report | `reports/phase19-smoke.json` | Complete run report with `schema_version` and `run_id` |
-| Markdown report | `reports/phase19-smoke.md` | Human-readable evaluator summary |
-| JUnit report | `reports/phase19-smoke.xml` | CI test report |
-| Timeline JSON | `reports/phase19-smoke.timeline.json` | Stable `roomci.timeline.v1` event array |
-| Timeline NDJSON | `reports/phase19-smoke.timeline.ndjson` | One timeline event per line |
-| Observability JSON | `reports/phase19-smoke.observability.json` | Deterministic counters and run summary |
+| 完全 JSON レポート | `reports/phase19-smoke.json` | `schema_version` と `run_id` を含む完全な実行レポート |
+| Markdown レポート | `reports/phase19-smoke.md` | 評価者向けの人間が読める要約 |
+| JUnit レポート | `reports/phase19-smoke.xml` | CI テストレポート |
+| タイムライン JSON | `reports/phase19-smoke.timeline.json` | 安定した `roomci.timeline.v1` イベント配列 |
+| タイムライン NDJSON | `reports/phase19-smoke.timeline.ndjson` | 1 タイムラインイベント 1 行 |
+| 可観測性 JSON | `reports/phase19-smoke.observability.json` | 決定論的カウンターと実行要約 |
 
-## Adapter CI
+## アダプター CI
 
-Run:
+実行:
 
 ```bash
 make adapter-samples-smoke
 ```
 
-This starts `roomci serve` in Docker Compose and runs the Go and TypeScript
-adapter samples against HTTP, MQTT, and Modbus TCP surfaces.
+Docker Compose で `roomci serve` を起動し、Go と TypeScript のアダプターサンプルを HTTP、MQTT、Modbus TCP サーフェスに対して実行します。
 
-## Claim Evidence
+## 主張エビデンス
 
-Run:
+実行:
 
 ```bash
 make protocol-evidence
 ```
 
-This verifies that claims in `docs/protocol-evidence.json` point to real docs,
-examples, tests, and release-gate commands.
+`docs/protocol-evidence.json` の主張が、実際のドキュメント、例、テスト、リリースゲートコマンドを指していることを検証します。
 
 ## GitHub Actions
 
-The repository workflow at `.github/workflows/smart-home-ci.yml` runs:
+リポジトリワークフロー `.github/workflows/smart-home-ci.yml` は次を実行します:
 
-- Rust quality gates
-- Docker scenario suite
-- Phase 17 scenario artifacts
-- timeline JSON / NDJSON artifacts
-- observability JSON artifacts
-- protocol/domain evidence check
-- adapter sample smoke
+- Rust 品質ゲート
+- Docker シナリオスイート
+- Phase 17 シナリオアーティファクト
+- タイムライン JSON / NDJSON アーティファクト
+- 可観測性 JSON アーティファクト
+- プロトコル/ドメインエビデンスチェック
+- アダプターサンプルスモーク
 
-The workflow uploads `reports/` as an artifact.
+ワークフローは `reports/` をアーティファクトとしてアップロードします。
 
-## Artifact Contract
+## アーティファクトコントラクト
 
-Timeline events use `roomci.timeline.v1`:
+タイムラインイベントは `roomci.timeline.v1` を使用します:
 
 ```json
 {
@@ -89,7 +83,7 @@ Timeline events use `roomci.timeline.v1`:
 }
 ```
 
-Observability artifacts use `roomci.observability.v1`:
+可観測性アーティファクトは `roomci.observability.v1` を使用します:
 
 ```json
 {
@@ -109,8 +103,6 @@ Observability artifacts use `roomci.observability.v1`:
 }
 ```
 
-## Boundary
+## 境界
 
-These artifacts are export contracts only. `roomci` does not run Grafana,
-InfluxDB, Prometheus, OpenTelemetry Collector, Jaeger, production alerting,
-production orchestration, or a production incident-response system.
+これらのアーティファクトはエクスポートコントラクトのみです。`roomci` は Grafana、InfluxDB、Prometheus、OpenTelemetry Collector、Jaeger、本番アラート、本番オーケストレーション、本番インシデント対応システムを実行しません。

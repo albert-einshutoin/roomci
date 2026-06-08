@@ -1,23 +1,23 @@
-# Modbus TCP Serve Subset
+# Modbus TCP Serve サブセット
 
-`roomci serve --modbus-port <port>` starts a minimal Modbus TCP endpoint for pre-adoption building-automation PoC tests.
+`roomci serve --modbus-port <port>` は、pre-adoption ビルディングオートメーション PoC テスト向けの最小 Modbus TCP endpoint を起動します。
 
-This is not a production PLC, gateway, or full Modbus conformance suite. It exists so an external Modbus TCP client can read and write a declared register map while `roomci` records state through HTTP reports.
+これは production PLC、gateway、または full Modbus conformance suite ではありません。外部 Modbus TCP client が宣言済み register map を読み書きでき、`roomci` が HTTP レポート経由で state を記録するために存在します。
 
-## Supported
+## サポート
 
-- Modbus TCP MBAP header parsing.
-- Protocol id `0`.
-- Unit id mapping from scenario `modbus.devices[].unit_id`.
-- Function code `0x03`: read holding registers.
-- Function code `0x04`: read input registers.
-- Function code `0x06`: write single holding register.
-- Quantity `1..=125` for contiguous read requests.
-- Register address convention:
-  - direct scenario address if present, such as `40001`
-  - conventional zero-based Modbus client address, such as `0` mapping to `40001` for holding registers
-  - conventional zero-based input address, such as `0` mapping to `30001` for input registers
-- HTTP observation through:
+- Modbus TCP MBAP header parsing。
+- Protocol id `0`。
+- シナリオ `modbus.devices[].unit_id` からの unit id mapping。
+- Function code `0x03`: read holding registers。
+- Function code `0x04`: read input registers。
+- Function code `0x06`: write single holding register。
+- 連続 read リクエスト向け quantity `1..=125`。
+- Register address 規約:
+  - 直接シナリオ address（例: `40001`）
+  - 従来の zero-based Modbus client address（例: holding registers では `0` が `40001` にマップ）
+  - 従来の zero-based input address（例: input registers では `0` が `30001` にマップ）
+- 次による HTTP 観測:
   - `GET /state`
   - `GET /reports/latest.json`
   - `GET /reports/latest.md`
@@ -31,16 +31,16 @@ This is not a production PLC, gateway, or full Modbus conformance suite. It exis
 | Unknown unit id or register address | `0x02` illegal data address |
 | Invalid quantity, malformed request payload, or read-only write | `0x03` illegal data value |
 
-## Not Supported
+## 非サポート
 
-- Serial RTU behavior or electrical timing.
-- Full Modbus function-code coverage.
-- Multi-register writes.
-- Coils/discrete-input wire functions.
-- Vendor-specific device behavior.
-- Electrical commissioning or safety validation.
+- Serial RTU 挙動または electrical timing。
+- Full Modbus function-code coverage。
+- Multi-register writes。
+- Coils/discrete-input wire functions。
+- Vendor-specific device 挙動。
+- Electrical commissioning または safety validation。
 
-## Example
+## 例
 
 Scenario:
 
@@ -68,9 +68,9 @@ Smoke:
 make protocol-smoke-modbus
 ```
 
-## Real Integration Inputs
+## 実際の統合入力
 
-To adapt this endpoint to a real building-automation system, the integrator must provide:
+この endpoint を実際のビルディングオートメーションシステムに適応するには、integrator が次を提供する必要があります。
 
 - unit ids
 - register addresses

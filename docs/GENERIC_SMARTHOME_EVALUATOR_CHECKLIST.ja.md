@@ -1,23 +1,23 @@
-# Generic IoT / SmartHome Evaluator Checklist
+# 汎用 IoT / スマートホーム評価者チェックリスト
 
-Use this checklist when evaluating `roomci` for a non-hospitality smart-home, IoT, edge-device, or building-automation team.
+ホスピタリティ以外のスマートホーム、IoT、エッジデバイス、ビルディングオートメーションチーム向けに `roomci` を評価する際は、このチェックリストを使用してください。
 
-## What To Bring
+## 持参するもの
 
-- MQTT command/state topic templates.
-- MQTT payload schema and required fields.
-- Modbus unit ids, register addresses, access mode, scale, and units.
-- Device identity and room/site naming conventions.
-- BMS/webhook event contract if operations flows are in scope.
-- Network or edge-failover assumptions.
-- Optional B Tier protocol maps:
-  - Matter gateway endpoint/cluster/attribute/command maps.
-  - BACnet object/property maps.
-  - KNX group-address and datapoint maps.
-  - OPC UA namespace/node/attribute maps.
-- Pass/fail acceptance criteria and required report artifacts.
+- MQTT コマンド/状態トピックテンプレート。
+- MQTT ペイロードスキーマと必須フィールド。
+- Modbus ユニット ID、レジスタアドレス、アクセスモード、スケール、単位。
+- デバイス ID とルーム/サイト命名規則。
+- 運用フローがスコープ内なら BMS/webhook イベントコントラクト。
+- ネットワークまたはエッジフェイルオーバー前提。
+- 任意の B Tier プロトコルマップ:
+  - Matter ゲートウェイのエンドポイント/クラスター/属性/コマンドマップ。
+  - BACnet オブジェクト/プロパティマップ。
+  - KNX グループアドレスとデータポイントマップ。
+  - OPC UA 名前空間/ノード/属性マップ。
+- 合格/不合格の受入基準と必須レポートアーティファクト。
 
-## What To Run First
+## 最初に実行するもの
 
 ```bash
 make poc-generic-mqtt
@@ -28,31 +28,30 @@ make protocol-profile-smoke
 make protocol-evidence
 ```
 
-If you want to wire a controller-shaped client instead of only running Make
-targets, start from the small Go and TypeScript samples in
-[`examples/adapters`](../examples/adapters/).
+Make ターゲットだけでなくコントローラー型クライアントを配線したい場合は、
+[`examples/adapters`](../examples/adapters/) の小さな Go / TypeScript サンプルから始めてください。
 
-## What To Inspect
+## 確認するもの
 
 - `docs/PROTOCOL_SUPPORT_MATRIX.md`
 - `docs/PROTOCOL_CONFORMANCE_REGISTRY.md`
 - `docs/protocol-evidence.json`
 - `adapter-contracts/templates/company_adapter_contract.yaml`
-- generated reports under `reports/`
+- `reports/` 配下の生成レポート
 
-## Fit Scorecard
+## 適合スコアカード
 
-| Dimension | Good Fit Signal | Not a Fit Signal |
+| 観点 | 適合シグナル | 不適合シグナル |
 |---|---|---|
-| MQTT command/state QA | Topics and payloads can be mapped into contracts | You need a production broker replacement |
-| Building automation QA | Register maps and alert flows can be represented | You need electrical commissioning certification |
-| Local/CI workflow | Docker/Compose evidence is useful | Only real-device HIL is acceptable |
-| Operations evidence | Reports and mocked escalation are enough for pre-adoption QA | Real Slack/phone/ticket side effects are required by default |
-| Safety-sensitive access flows | Safe scenario evidence for intercom/relay is enough | Real unlock authorization or relay control must be validated |
-| Comfort and field faults | Deterministic time-series, network, and control-panel profiles are useful | Thermal physics, electrical timing, or live network chaos is required |
-| Protocol depth | Narrow conformance subsets are acceptable | Full protocol certification is required |
-| B Tier protocol profiles | Gateway/object/group-address/node maps can be expressed as contracts | You need Matter/BACnet/KNX/OPC UA wire endpoints or certification |
+| MQTT コマンド/状態 QA | トピックとペイロードをコントラクトにマップできる | 本番ブローカー代替が必要 |
+| ビルディングオートメーション QA | レジスタマップとアラートフローを表現できる | 電気コミッショニング認証が必要 |
+| ローカル/CI ワークフロー | Docker/Compose エビデンスが有用 | 実機 HIL のみ許容 |
+| 運用エビデンス | レポートとモックされたエスカレーションで導入前 QA に足りる | デフォルトで実 Slack/電話/チケットの副作用が必要 |
+| 安全に敏感なアクセスフロー | インターホン/リレーの安全なシナリオエビデンスで足りる | 実際の解錠認可またはリレー制御の検証が必須 |
+| 快適性と現場障害 | 決定論的時系列、ネットワーク、制御パネルプロフィールが有用 | 熱力学、電気タイミング、ライブネットワークカオスが必要 |
+| プロトコル深度 | 狭いコンフォーマンスサブセットで許容 | 完全なプロトコル認証が必要 |
+| B Tier プロトコルプロフィール | ゲートウェイ/オブジェクト/グループアドレス/ノードマップをコントラクトとして表現できる | Matter/BACnet/KNX/OPC UA のワイヤーエンドポイントまたは認証が必要 |
 
-## Boundary
+## 境界
 
-`roomci` is a QA contract emulator. It is not a cloud platform emulator, production BMS, protocol certification suite, or physical device replacement.
+`roomci` は QA コントラクトエミュレーターです。クラウドプラットフォームエミュレーター、本番 BMS、プロトコル認証スイート、物理デバイス代替ではありません。

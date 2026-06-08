@@ -2,22 +2,22 @@
 
 ## 目的
 
-The edge server / home control server emulator is the local brain of the simulated smart home.
+エッジサーバー / ホームコントロールサーバーエミュレータは、シミュレートされたスマートホームのローカル中枢である。
 
-It receives commands from the local MQTT broker, maps them to device-specific protocol actions, updates retained state, and handles local-first fallback behavior.
+ローカル MQTT ブローカーからコマンドを受信し、デバイス固有のプロトコルアクションにマッピングし、retained 状態を更新し、local-first フォールバック挙動を処理する。
 
 ## 責務
 
-- subscribe to local MQTT command topics
-- route commands to device adapters
-- publish retained state updates
-- run automation logic
-- handle local-only mode when cloud is unavailable
-- simulate primary/secondary failover
-- expose health endpoint
-- expose optional HTTP control API for tests
+- ローカル MQTT コマンドトピックを購読する
+- コマンドをデバイスアダプターにルーティングする
+- retained 状態更新を公開する
+- 自動化ロジックを実行する
+- クラウドが利用不可のときにローカルのみモードを処理する
+- プライマリ/セカンダリのフェイルオーバーをシミュレートする
+- ヘルスエンドポイントを公開する
+- テスト用の任意 HTTP 制御 API を公開する
 
-## Edge server model
+## エッジサーバーモデル
 
 ```yaml
 edge:
@@ -31,9 +31,9 @@ edge:
     cloud_broker: mqtt://cloud-broker:1883
 ```
 
-## Command routing example
+## コマンドルーティング例
 
-Input MQTT command:
+入力 MQTT コマンド:
 
 ```json
 {
@@ -43,7 +43,7 @@ Input MQTT command:
 }
 ```
 
-Edge server expands this into protocol commands:
+エッジサーバーはこれをプロトコルコマンドに展開する:
 
 ```txt
 DALI fixture D411S10 -> set_level 60
@@ -52,9 +52,9 @@ KNX group 1/0/1 -> write true
 HVAC living -> set target_temperature 24
 ```
 
-## Edge failover
+## エッジフェイルオーバー
 
-Scenario:
+シナリオ:
 
 ```yaml
 scenario:
@@ -77,18 +77,18 @@ assertions:
     condition: unaffected
 ```
 
-## Local-only mode
+## ローカルのみモード
 
-When cloud is offline:
+クラウドがオフラインのとき:
 
-- local MQTT remains available
-- edge server continues local device control
-- cloud bridge buffers or marks state as pending
-- operations report shows degraded cloud sync but guest controls remain functional
+- ローカル MQTT は利用可能なまま
+- エッジサーバーはローカルデバイス制御を継続する
+- クラウドブリッジは状態をバッファするか pending としてマークする
+- 運用レポートはクラウド同期の劣化を示すが、ゲスト操作は機能し続ける
 
-## Health endpoints
+## ヘルスエンドポイント
 
-Recommended HTTP endpoints:
+推奨 HTTP エンドポイント:
 
 ```txt
 GET  /health
@@ -98,18 +98,18 @@ POST /edge/recover
 GET  /edge/events
 ```
 
-## Lua hook future
+## Lua フック（将来）
 
-A future version can support Lua hooks for control logic in hospitality or building-automation platforms that use Lua automation engines.
+将来バージョンでは、Lua 自動化エンジンを使うホスピタリティまたはビルディングオートメーションプラットフォーム向けに、制御ロジック用 Lua フックをサポートできる。
 
-Example:
+例:
 
 ```yaml
 hooks:
   on_scene_activate: scripts/welcome_scene.lua
 ```
 
-Example Lua:
+Lua の例:
 
 ```lua
 function on_scene_activate(ctx)
@@ -120,6 +120,6 @@ function on_scene_activate(ctx)
 end
 ```
 
-## Go backend sample future
+## Go バックエンドサンプル（将来）
 
-A Go sample should demonstrate how a backend service can interact with `roomci` over HTTP/MQTT without knowing that real devices are absent.
+Go サンプルは、実デバイスが存在しないことを知らなくても、バックエンドサービスが HTTP/MQTT 経由で `roomci` と対話する方法を示すべきである。

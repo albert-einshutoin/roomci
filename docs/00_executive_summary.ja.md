@@ -2,77 +2,77 @@
 
 ## プロジェクト
 
-`roomci` is a Docker-based local and CI emulator for smart-home commissioning, local-first control, BMS operations, and field-failure testing.
+`roomci` は、スマートホームのコミッショニング、ローカルファースト制御、BMS 運用、現場障害テストのための Docker ベースのローカル／CI エミュレーターです。
 
 ## これが重要な理由
 
-Smart-home systems in hospitality do not fail like ordinary web applications. A failure can mean:
+ホスピタリティ向けスマートホームシステムは、一般的な Web アプリケーションのように失敗しません。障害は次のような意味を持ちます。
 
-- the iPad controller cannot operate lighting or HVAC
-- the room becomes uncomfortable
-- an emergency button alert does not reach staff
-- a door/intercom/contact relay does not behave as expected
-- a network segment misconfiguration exposes a control network
-- a cloud outage breaks remote operations
-- commissioning knowledge remains trapped in individual experts
+- iPad コントローラーで照明や HVAC を操作できない
+- 客室が不快な状態になる
+- 非常ボタンのアラートがスタッフに届かない
+- ドア／インターホン／接点リレーが期待どおりに動作しない
+- ネットワークセグメントの誤設定で制御ネットワークが露出する
+- クラウド障害でリモート運用が機能しなくなる
+- コミッショニングの知識が個人の専門家に閉じ込められたままになる
 
-The strongest opportunity is not to emulate “every IoT device in the world.” The strongest opportunity is to make **one building / one smart home / one operational flow** reproducible in Docker.
+最大の機会は「世界のすべての IoT デバイスをエミュレートする」ことではありません。最大の機会は、**1 棟のビル／1 つのスマートホーム／1 つの運用フロー**を Docker で再現可能にすることです。
 
 ## 最終的な概念
 
 ```txt
 roomci
-Local-first Smart Home QA & Operations Emulator for CI
+ローカルファーストのスマートホーム QA・運用エミュレーター（CI 向け）
 ```
 
-## 設計 thesis
+## 設計方針
 
-The system should be built around the following ideas:
+本システムは、次の考え方を中心に構築すべきです。
 
-1. **Local-first operation**  
-   Core guest experience must continue even if cloud, internet, VPN, or upstream services fail.
+1. **ローカルファーストの運用**  
+   クラウド、インターネット、VPN、上流サービスが障害でも、コアとなるゲスト体験は継続する必要があります。
 
-2. **MQTT-centered state synchronization**  
-   Local broker, retained messages, QoS1 duplicate/retry behavior, and reconnect synchronization are central.
+2. **MQTT を中心とした状態同期**  
+   ローカルブローカー、保持メッセージ、QoS1 の重複／リトライ挙動、再接続時の同期が中核です。
 
-3. **Edge server as the operational brain**  
-   The house-level home control server runs local control logic and routes commands to devices.
+3. **エッジサーバーを運用の頭脳とする**  
+   物件レベルのホーム制御サーバーがローカル制御ロジックを実行し、デバイスへコマンドをルーティングします。
 
-4. **Building automation protocol mocks**  
-   DALI, KNX-like bus, Modbus, contact I/O, HVAC, lighting, sauna, bath, and sensor models should be represented at a practical QA level.
+4. **ビルディングオートメーションプロトコルのモック**  
+   DALI、KNX 系バス、Modbus、接点 I/O、HVAC、照明、サウナ、浴室、センサーモデルを実用的な QA レベルで表現します。
 
-5. **BMS and operations are first-class**  
-   Slack notification, phone escalation, runbook links, ticket states, recovery notifications, Grafana-like metrics, and time-series exports matter as much as device commands.
+5. **BMS と運用を第一級の関心事とする**  
+   Slack 通知、電話エスカレーション、ランブックリンク、チケット状態、復旧通知、Grafana 相当のメトリクス、時系列エクスポートは、デバイスコマンドと同様に重要です。
 
-6. **Commissioning knowledge should become code**  
-   Field QA checklists, network checks, device mappings, and maintenance expectations should be executable scenarios.
+6. **コミッショニングの知識をコード化する**  
+   現場 QA チェックリスト、ネットワーク検証、デバイスマッピング、メンテナンス前提を実行可能なシナリオにします。
 
-## MVP scope
+## MVP スコープ
 
-The recommended MVP is intentionally narrow:
+推奨 MVP は意図的に狭く絞っています。
 
-- `roomci-core`: scenario runner, virtual time, assertions, report generator
-- `roomci-mqtt`: local MQTT broker model, retained state, QoS1 failure modes
-- `roomci-edge`: edge server emulator
-- `roomci-devices`: Modbus TCP mock, DALI-like lighting, contact I/O, HVAC mock
-- `roomci-ops`: BMSアラート, Slack/phone/ticket/runbook mock
-- `roomci-network`: cloud outage, WAN outage, backup WAN failover, VLAN model
-- Docker Compose and GitHub Actions examples
+- `roomci-core`: シナリオランナー、仮想時間、アサーション、レポート生成
+- `roomci-mqtt`: ローカル MQTT ブローカーモデル、保持状態、QoS1 障害モード
+- `roomci-edge`: エッジサーバーエミュレーター
+- `roomci-devices`: Modbus TCP モック、DALI 風照明、接点 I/O、HVAC モック
+- `roomci-ops`: BMS アラート、Slack／電話／チケット／ランブック モック
+- `roomci-network`: クラウド障害、WAN 障害、バックアップ WAN フェイルオーバー、VLAN モデル
+- Docker Compose と GitHub Actions のサンプル
 
-## Strongest demos
+## 最も説得力のあるデモ
 
-1. Cloud outage while local iPad control still works
-2. Modbus floor-heating register map with 0.1°C control
-3. DALI scene partial failure detection
-4. Sauna emergency button contact input triggers Slack + phone escalation
-5. Edge server primary failure switches to secondary
-6. backup-WAN WAN failover preserves operational communication
-7. HVAC auto mode maintains target discomfort index without user override
+1. クラウド障害時もローカル iPad 制御が動作し続ける
+2. Modbus 床暖房レジスタマップによる 0.1°C 制御
+3. DALI シーンの部分障害検知
+4. サウナ非常ボタンの接点入力が Slack + 電話エスカレーションを起動
+5. エッジサーバー主系障害時の副系への切替
+6. バックアップ WAN フェイルオーバーによる運用通信の維持
+7. HVAC 自動モードがユーザー操作なしで目標不快指数を維持
 
 ## 非目的
 
-- Full protocol conformance for KNX / DALI / BACnet / Matter
-- Production BMS replacement
-- Real device control in v0.1
-- Firmware emulation
-- SIP/PBX completeness
+- KNX / DALI / BACnet / Matter の完全プロトコル適合
+- 本番 BMS の置き換え
+- v0.1 での実デバイス制御
+- ファームウェアエミュレーション
+- SIP/PBX の完全実装

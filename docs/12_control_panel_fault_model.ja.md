@@ -1,12 +1,12 @@
 # 12. 制御パネル障害モデル
 
-## なぜ model the control panel?
+## 制御パネルをモデル化する理由
 
-The control panel is the physical heart of a smart home. It connects lighting, HVAC, locks, sauna, bath, sensors, relays, edge servers, and power systems.
+制御パネルはスマートホームの物理的な心臓部です。照明、HVAC、ロック、サウナ、風呂、センサー、リレー、エッジサーバー、電源システムを接続します。
 
-A useful emulator should model not only devices but also the failure modes around the control panel.
+有用なエミュレーターは、デバイスだけでなく、制御パネル周辺の障害モードもモデル化する必要があります。
 
-## Control panel components
+## 制御パネルコンポーネント
 
 ```yaml
 control_panel:
@@ -33,19 +33,19 @@ control_panel:
     secondary: edge_secondary
 ```
 
-## Faults
+## 障害
 
-| Fault | Meaning |
+| 障害 | 意味 |
 |---|---|
-| psu_failure | one 24V power supply fails |
-| ups_degraded | UPS battery health below threshold |
-| circuit_trip | a protected circuit trips |
-| short_circuit | simulated short on one branch |
-| edge_primary_failure | primary edge server stops |
-| edge_failover_failed | secondary does not take over |
-| module_offline | one control module becomes unreachable |
+| psu_failure | 24V 電源の 1 台が故障 |
+| ups_degraded | UPS バッテリー健全性が閾値未満 |
+| circuit_trip | 保護回路がトリップ |
+| short_circuit | 1 分岐上の短絡をシミュレート |
+| edge_primary_failure | プライマリエッジサーバーが停止 |
+| edge_failover_failed | セカンダリが引き継がない |
+| module_offline | 制御モジュールの 1 台が到達不能になる |
 
-Executable Phase 17 profiles:
+実行可能な Phase 17 プロファイル:
 
 | Target | Type | Timeline Evidence |
 |---|---|---|
@@ -54,10 +54,9 @@ Executable Phase 17 profiles:
 | `control_panel.psu.<id>` | `degraded` | `control_panel_redundant_psu_degraded` |
 | `edge.secondary` | `takeover_failed` | `edge_redundancy_takeover_failed` |
 
-These profiles are QA evidence only. They do not validate wiring safety,
-breaker behavior, or physical redundancy.
+これらのプロファイルは QA エビデンス専用です。配線の安全性、ブレーカー動作、物理的な冗長性は検証しません。
 
-## Scenario: PSU failure
+## シナリオ: PSU 故障
 
 ```yaml
 scenario:
@@ -77,7 +76,7 @@ assertions:
     event: psu_failure_alert_sent
 ```
 
-## Scenario: circuit protector trip
+## シナリオ: 回路保護装置のトリップ
 
 ```yaml
 scenario:
@@ -100,7 +99,7 @@ assertions:
     event: circuit_trip_alert_sent
 ```
 
-## Scenario: edge failover
+## シナリオ: エッジフェイルオーバー
 
 ```yaml
 scenario:
@@ -123,19 +122,19 @@ assertions:
     condition: unaffected
 ```
 
-## Reporting requirements
+## レポート要件
 
-A control-panel fault report should include:
+制御パネル障害レポートには次を含める必要があります。
 
-- failed component
-- affected circuits/devices
-- guest impact
-- operations impact
-- likely field checks
-- whether redundancy worked
-- whether BMSアラート fired
+- 故障したコンポーネント
+- 影響を受けた回路／デバイス
+- ゲストへの影響
+- 運用への影響
+- 想定される現場確認項目
+- 冗長性が機能したかどうか
+- BMS アラートが発火したかどうか
 
-Example:
+例:
 
 ```txt
 PASS edge_server_failover

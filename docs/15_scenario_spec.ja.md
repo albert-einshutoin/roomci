@@ -2,23 +2,23 @@
 
 ## 概要
 
-A scenario describes a reproducible smart-home field situation.
+シナリオは、再現可能なスマートホーム現場状況を記述します。
 
-A scenario should define:
+シナリオは次を定義する必要があります。
 
-- environment
-- devices
-- network
-- MQTT brokers
-- external inputs
-- commissioning metadata
-- operations/BMS rules
-- timeline steps
-- faults
-- assertions
-- reporting metadata
+- 環境（environment）
+- デバイス
+- ネットワーク
+- MQTT ブローカー
+- 外部入力
+- コミッショニングメタデータ
+- 運用／BMS ルール
+- タイムラインステップ
+- 障害（faults）
+- アサーション
+- レポートメタデータ
 
-## Top-level structure
+## トップレベル構造
 
 ```yaml
 version: "0.1"
@@ -40,9 +40,9 @@ assertions: []
 report: {}
 ```
 
-## Time model
+## 時間モデル
 
-Use symbolic relative time:
+記号的な相対時間を使用します。
 
 ```txt
 T
@@ -51,11 +51,11 @@ T+5m
 T-30m
 ```
 
-The scenario runner converts this into virtual time.
+シナリオランナーはこれを仮想時間に変換します。
 
-## Fault declaration
+## 障害宣言
 
-Faults can be declared globally:
+障害はグローバルに宣言できます。
 
 ```yaml
 faults:
@@ -64,7 +64,7 @@ faults:
     type: offline
 ```
 
-Or inside steps:
+またはステップ内に記述できます。
 
 ```yaml
 steps:
@@ -74,21 +74,21 @@ steps:
       type: offline
 ```
 
-## Assertions
+## アサーション
 
-Assertions should support:
+アサーションは次をサポートする必要があります。
 
-- device state
-- MQTT retained message
-- operations notification
-- network reachability
-- comfort metric
-- access-control drift
-- commissioning checklist generation
-- ticket state
-- guest impact
+- デバイス状態
+- MQTT 保持メッセージ
+- 運用通知
+- ネットワーク到達性
+- 快適性メトリクス
+- アクセス制御ドリフト
+- コミッショニングチェックリスト生成
+- チケット状態
+- ゲストへの影響
 
-Example:
+例:
 
 ```yaml
 assertions:
@@ -97,9 +97,7 @@ assertions:
     condition: unaffected
 ```
 
-Access-control drift assertions compare `inputs.identity_group` with
-`inputs.access_system_group` and pass when the scenario intentionally detects
-stale access users:
+アクセス制御ドリフトのアサーションは `inputs.identity_group` と `inputs.access_system_group` を比較し、シナリオが意図的に古いアクセスユーザーを検出した場合に合格します。
 
 ```yaml
 inputs:
@@ -115,8 +113,7 @@ assertions:
       access_control_drift: detected
 ```
 
-Commissioning checklist assertions count declared room devices and pass when
-field checks can be generated:
+コミッショニングチェックリストのアサーションは、宣言された部屋デバイスをカウントし、現場確認項目を生成できる場合に合格します。
 
 ```yaml
 commissioning:
@@ -133,7 +130,7 @@ assertions:
       commissioning_checklist: generated
 ```
 
-## Example: local-first scenario
+## 例: ローカルファーストシナリオ
 
 ```yaml
 version: "0.1"
@@ -180,9 +177,9 @@ assertions:
     guest_experience: unaffected
 ```
 
-## Scenario tags
+## シナリオタグ
 
-Recommended tags:
+推奨タグ:
 
 ```txt
 mqtt
@@ -199,7 +196,7 @@ intercom
 access-control
 ```
 
-## Reporting fields
+## レポートフィールド
 
 ```yaml
 report:

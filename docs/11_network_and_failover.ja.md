@@ -1,15 +1,15 @@
 # 11. ネットワークおよびフェイルオーバー
 
-## なぜ network emulation matters
+## ネットワークエミュレーションが重要な理由
 
-A local-first smart home depends on the local network. Internet failures should not break core guest controls, but they still affect VOD, workcation use, remote monitoring, staff communication, and cloud sync.
+ローカルファーストのスマートホームはローカルネットワークに依存します。インターネット障害はコアとなるゲスト制御を壊してはいけませんが、VOD、ワーケーション利用、リモート監視、スタッフ通信、クラウド同期には影響します。
 
-`roomci` should model both:
+`roomci` は次の両方をモデル化する必要があります。
 
-1. local network health for smart-home control
-2. internet/WAN health for operations and cloud integration
+1. スマートホーム制御用のローカルネットワーク健全性
+2. 運用およびクラウド連携用のインターネット／WAN 健全性
 
-## Network model
+## ネットワークモデル
 
 ```yaml
 network:
@@ -33,7 +33,7 @@ network:
       allow: true
 ```
 
-## VLAN isolation assertion
+## VLAN 分離アサーション
 
 ```yaml
 assert:
@@ -43,7 +43,7 @@ assert:
     reachable: false
 ```
 
-## WAN model
+## WAN モデル
 
 ```yaml
 wan:
@@ -60,7 +60,7 @@ wan:
     expected_within: 30s
 ```
 
-## Fault types
+## 障害タイプ
 
 ```txt
 wan_down
@@ -75,8 +75,7 @@ backup_wan_degraded
 power_domain_outage
 ```
 
-Executable Phase 17 fault profiles use the existing `fault` step and emit
-timeline/final-state BMS evidence:
+実行可能な Phase 17 障害プロファイルは既存の `fault` ステップを使用し、タイムライン／最終状態の BMS エビデンスを出力します。
 
 ```yaml
 steps:
@@ -98,7 +97,7 @@ assertions:
       network_control_panel_faults: observed
 ```
 
-## Demo: backup WAN failover
+## デモ: バックアップ WAN フェイルオーバー
 
 ```yaml
 scenario:
@@ -124,7 +123,7 @@ steps:
         slack_notification_sent: true
 ```
 
-## Report example
+## レポート例
 
 ```txt
 PASS starlink_failover
@@ -143,19 +142,19 @@ Operations:
 - Slack failover notification sent
 ```
 
-## Local-only mode
+## ローカルのみモード
 
-When WAN is down:
+WAN がダウンしているとき:
 
-- local MQTT should work
-- edge server should work
-- DALI/Modbus/contact I/O should work
-- cloud sync may be delayed
-- ops notification may use local fallback or queue
+- ローカル MQTT は動作する必要がある
+- エッジサーバーは動作する必要がある
+- DALI/Modbus/接点 I/O は動作する必要がある
+- クラウド同期は遅延する可能性がある
+- 運用通知はローカルフォールバックまたはキューイングを使用する可能性がある
 
-## Future: network-vendor profiles
+## 将来: ネットワークベンダープロファイル
 
-Future modules can emulate vendor-style health data:
+将来のモジュールはベンダー風の健全性データをエミュレートできます。
 
 ```yaml
 network_profiles:

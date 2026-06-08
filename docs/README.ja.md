@@ -1,85 +1,87 @@
-# roomci documentation index
+# roomci ドキュメント索引
 
-This directory is the canonical home for roomci design notes. Documents are
-numbered so they read top-to-bottom as a small book, but each one stands on
-its own.
+このディレクトリは roomci 設計ノートの正本です。文書は番号付きで、
+上から下へ小さな本のように読めるよう並んでいますが、各文書は独立して
+参照できます。
 
-## Orientation
+## オリエンテーション
 
-| # | Document | What it covers |
+| # | 文書 | 内容 |
 |---|---|---|
-| 00 | [Executive summary](00_executive_summary.md) | One-page overview of roomci, who it is for, and how it is used |
-| Positioning | [Product positioning](PRODUCT_POSITIONING.md) | QA contract emulator category, audience, and scope boundaries |
-| Domains | [Domain packs](DOMAIN_PACKS.md) | Core emulator modules and reusable domain packs |
-| MQTT | [Generic MQTT contracts](GENERIC_MQTT_CONTRACTS.md) | Generic MQTT command/state examples and current supported subset |
-| MQTT serve | [MQTT serve subset](MQTT_SERVE_SUBSET.md) | Minimal MQTT 3.1.1 CONNECT + QoS0 PUBLISH ingress for PoC tests |
-| Modbus serve | [Modbus TCP subset](MODBUS_TCP_SUBSET.md) | Minimal Modbus TCP read/write endpoint for PoC tests |
-| Protocols | [Protocol support matrix](PROTOCOL_SUPPORT_MATRIX.md) | Source of truth for behavior models, serve endpoints, tested external surfaces, and non-goals |
-| Protocols | [Protocol conformance registry](PROTOCOL_CONFORMANCE_REGISTRY.md) | Official references, implemented subsets, black-box verification commands, and explicit rejections |
-| Protocols | [B Tier protocol profiles](B_TIER_PROTOCOL_PROFILES.md) | Matter, BACnet, KNX, and OPC UA contract-profile fixtures and non-goals |
-| Coverage | [Hospitality stack coverage](HOSPITALITY_STACK_COVERAGE.md) | What roomci covers, mocks, defers, or rejects from a hospitality smart-home stack |
-| Journey | [Core QA journey](CORE_QA_JOURNEY.md) | End-to-end local MQTT, edge, device, fault, BMS, comfort, and evidence path |
-| Adapters | [Adapter contract kit](ADAPTER_CONTRACT_KIT.md) | Templates, examples, and validation for company-specific protocol contracts |
-| Adapters | [Adapter SDK samples](ADAPTER_SDK_SAMPLES.md) | Small Go, TypeScript, and Lua-like examples for HTTP, MQTT, and Modbus adapter wiring |
-| Developers | [Developer workflow](DEVELOPER_WORKFLOW.md) | First run, Python automation, scenario debugging, and CI artifact review |
-| Developers | [Python reference client](PYTHON_SDK.md) | Python HTTP reference client and MQTT/Modbus smoke path |
-| Evidence | [Evaluation evidence pack](EVALUATION_EVIDENCE_PACK.md) | Commands, PoC packs, scorecards, report artifacts, and unsupported-feature disclosure |
-| Hardware CI | [実機ハードウェアを Docker CI に落とし込むユースケース](HARDWARE_TO_DOCKER_CI_USECASES.ja.md) | 実機 capture replay pattern、Docker gate、プレゼン骨子 |
-| Onboarding | [Integration onboarding](INTEGRATION_ONBOARDING.md) | 15-minute path, HTTP API, troubleshooting, and client snippets |
-| Category | [Category readiness](CATEGORY_READINESS.md) | Comparison against real-device staging, brokers, mocks, Home Assistant, cloud emulators, and HIL |
-| Positioning | [Dual-track positioning](DUAL_TRACK_POSITIONING.md) | Industry-wide product story plus hospitality domain-pack story |
-| Principles | [設計 principles](DESIGN_PRINCIPLES.md) | Product philosophy and scope boundaries |
+| 00 | [エグゼクティブサマリー](00_executive_summary.md) | roomci の 1 ページ概要、対象読者、使い方 |
+| Guide | [プロダクトガイド](PRODUCT_GUIDE.md) | 正本カテゴリ、読者、ドメインパック、評価者ジャーニー、比較、非目標 |
+| Positioning | [プロダクトポジショニング](PRODUCT_POSITIONING.md) | 正本プロダクトガイドへの安定リンク |
+| Domains | [ドメインパック](DOMAIN_PACKS.md) | コアエミュレーターモジュールと再利用可能なドメインパック |
+| MQTT | [汎用 MQTT コントラクト](GENERIC_MQTT_CONTRACTS.md) | 汎用 MQTT コマンド/状態の例と現在サポートされるサブセット |
+| MQTT serve | [MQTT serve サブセット](MQTT_SERVE_SUBSET.md) | PoC テスト向けの最小 MQTT 3.1.1 CONNECT + QoS0 PUBLISH 入力 |
+| Modbus serve | [Modbus TCP サブセット](MODBUS_TCP_SUBSET.md) | PoC テスト向けの最小 Modbus TCP 読み書きエンドポイント |
+| Protocols | [プロトコルサポートマトリックス](PROTOCOL_SUPPORT_MATRIX.md) | 動作モデル、serve エンドポイント、テスト済み外部サーフェス、非目標の正本 |
+| Protocols | [プロトコルコンフォーマンスレジストリ](PROTOCOL_CONFORMANCE_REGISTRY.md) | 公式リファレンス、実装サブセット、ブラックボックス検証コマンド、明示的な拒否 |
+| Protocols | [B Tier プロトコルプロフィール](B_TIER_PROTOCOL_PROFILES.md) | Matter、BACnet、KNX、OPC UA の contract-profile フィクスチャと非目標 |
+| Coverage | [ホスピタリティドメインパックカバレッジ](HOSPITALITY_STACK_COVERAGE.md) | ホスピタリティドメインパックのスコープ境界への安定リンク |
+| Journey | [コア QA ジャーニー](CORE_QA_JOURNEY.md) | プロダクトガイドで維持される評価者ジャーニーへの安定リンク |
+| Adapters | [アダプターコントラクトキット](ADAPTER_CONTRACT_KIT.md) | 企業固有プロトコルコントラクトのテンプレート、例、検証 |
+| Adapters | [アダプター SDK サンプル](ADAPTER_SDK_SAMPLES.md) | HTTP、MQTT、Modbus アダプター配線向けの Go、TypeScript、Lua 風の小さな例 |
+| Developers | [開発者ワークフロー](DEVELOPER_WORKFLOW.md) | 初回実行、Python 自動化、シナリオデバッグ、CI アーティファクトレビュー |
+| Developers | [Python リファレンスクライアント](PYTHON_SDK.md) | Python HTTP リファレンスクライアントと MQTT/Modbus スモークパス |
+| Developers | [VSCode ローカル作成アセット](../tools/vscode-roomci/README.md) | シナリオ作成向けのローカル schema association、スニペット、タスク |
+| Evidence | [評価エビデンスパック](EVALUATION_EVIDENCE_PACK.md) | コマンド、PoC パック、スコアカード、レポートアーティファクト、非対応機能の開示 |
+| Hardware CI | [実機ハードウェアを Docker CI に落とし込むユースケース](HARDWARE_TO_DOCKER_CI_USECASES.md) | 実機キャプチャのリプレイパターン、Docker ゲート、プレゼン骨子 |
+| Onboarding | [統合オンボーディング](INTEGRATION_ONBOARDING.md) | 15 分パス、HTTP API、トラブルシューティング、クライアントスニペット |
+| Category | [カテゴリ readiness](CATEGORY_READINESS.md) | プロダクトガイドで維持される比較への安定リンク |
+| Positioning | [デュアルトラックポジショニング](DUAL_TRACK_POSITIONING.md) | プロダクトガイドで維持される業界/ドメインパックポジショニングへの安定リンク |
+| Principles | [設計原則](DESIGN_PRINCIPLES.md) | プロダクト哲学とスコープ境界 |
 
-## Product
+## プロダクト
 
-| # | Document | What it covers |
+| # | 文書 | 内容 |
 |---|---|---|
-| 02 | [Product requirements](02_product_requirements.md) | Personas, jobs-to-be-done, and success metrics for the QA emulator |
-| 18 | [MVP roadmap](18_mvp_roadmap.md) | Phase plan from Phase 0 (contract) through Phase 7 (production readiness) |
+| 02 | [プロダクト要件](02_product_requirements.md) | QA エミュレーター向けのペルソナ、ジョブ、成功指標 |
+| 18 | [MVP ロードマップ](18_mvp_roadmap.md) | Phase 0（コントラクト）から Phase 7（本番 readiness）までのフェーズ計画 |
 
 ## アーキテクチャ
 
-| # | Document | What it covers |
+| # | 文書 | 内容 |
 |---|---|---|
-| 03 | [アーキテクチャ](03_architecture.md) | Crate boundaries, runtime model, virtual-time clock |
-| 04 | [Local-first MQTT architecture](04_local_first_mqtt_architecture.md) | Retained state, QoS1, reconnect, local vs cloud broker |
-| 05 | [Edge server emulator](05_edge_server_emulator.md) | Primary/secondary redundancy and failover model |
-| 06 | [Device model](06_device_model.md) | Per-device state, command capability matrix |
-| 11 | [Network and failover](11_network_and_failover.md) | WAN failure, backup link activation, comfort-during-outage |
+| 03 | [アーキテクチャ](03_architecture.md) | crate 境界、ランタイムモデル、仮想時間クロック |
+| 04 | [ローカルファースト MQTT アーキテクチャ](04_local_first_mqtt_architecture.md) | 保持状態、QoS1、再接続、ローカル vs クラウドブローカー |
+| 05 | [エッジサーバーエミュレーター](05_edge_server_emulator.md) | 主系/副系冗長とフェイルオーバーモデル |
+| 06 | [デバイスモデル](06_device_model.md) | デバイスごとの状態、コマンド能力マトリックス |
+| 11 | [ネットワークとフェイルオーバー](11_network_and_failover.md) | WAN 障害、バックアップ回線の有効化、障害中の快適性 |
 
-## Protocols and integrations
+## プロトコルと統合
 
-| # | Document | What it covers |
+| # | 文書 | 内容 |
 |---|---|---|
-| 07 | [Building automation protocol strategy](07_building_automation_protocol_strategy.md) | なぜ Modbus/DALI/BACnet/KNX and how they fit together |
-| 08 | [Modbus strategy](08_modbus_strategy.md) | Register-map shape, read-only enforcement, decimal types |
-| 09 | [DALI lighting strategy](09_dali_lighting_strategy.md) | Scene targets, per-fixture levels, command-drop faults |
-| 10 | [BMS operations emulation](10_bms_operations_emulation.md) | Alert pipeline, Slack/phone escalation, runbook URLs |
-| 14 | [Intercom and access control](14_intercom_and_access_control.md) | Future intercom and access-control integration |
+| 07 | [ビルディングオートメーションプロトコル戦略](07_building_automation_protocol_strategy.md) | Modbus/DALI/BACnet/KNX を採用する理由と統合方法 |
+| 08 | [Modbus 戦略](08_modbus_strategy.md) | レジスタマップの形状、読み取り専用の強制、小数型 |
+| 09 | [DALI 照明戦略](09_dali_lighting_strategy.md) | シーンターゲット、フィクスチャごとのレベル、コマンドドロップ障害 |
+| 10 | [BMS 運用エミュレーション](10_bms_operations_emulation.md) | アラートパイプライン、Slack/電話エスカレーション、ランブック URL |
+| 14 | [インターホンとアクセス制御](14_intercom_and_access_control.md) | 将来のインターホン/アクセス制御統合 |
 
-## Scenarios and faults
+## シナリオと障害
 
-| # | Document | What it covers |
+| # | 文書 | 内容 |
 |---|---|---|
-| 12 | [Control panel fault model](12_control_panel_fault_model.md) | iPad/controller faults the emulator can inject |
-| 13 | [Comfort automation](13_comfort_automation.md) | Pre-arrival climate, comfort metric, automation contract |
-| 15 | [Scenario spec](15_scenario_spec.md) | YAML format reference for `examples/*.yaml` |
-| 16 | [Fault injection](16_fault_injection.md) | Catalog of faults, targeting rules, end conditions |
+| 12 | [制御パネル障害モデル](12_control_panel_fault_model.md) | エミュレーターが注入できる iPad/コントローラー障害 |
+| 13 | [快適性自動化](13_comfort_automation.md) | 到着前の空調、快適性指標、自動化コントラクト |
+| 15 | [シナリオ仕様](15_scenario_spec.md) | `examples/*.yaml` 向け YAML 形式リファレンス |
+| 16 | [障害注入](16_fault_injection.md) | 障害カタログ、ターゲット指定ルール、終了条件 |
 
-## Delivery
+## デリバリー
 
-| # | Document | What it covers |
+| # | 文書 | 内容 |
 |---|---|---|
-| 17 | [Docker / CI design](17_docker_ci_design.md) | Container layout and GitHub Actions integration |
-| Hardware CI | [実機ハードウェアを Docker CI に落とし込むユースケース](HARDWARE_TO_DOCKER_CI_USECASES.ja.md) | 複数エンジニアの実機 capture を Docker CI scenario に変換する |
-| Serve | [HTTP serve MVP plan](HTTP_SERVE_MVP_PLAN.md) | Planned localhost-bound control/report API before MQTT-compatible serve mode |
-| Serve | [HTTP serve behavior](HTTP_SERVE_BEHAVIOR.md) | Current HTTP connection, timeout, and overload behavior |
-| Serve | [External protocol depth](EXTERNAL_PROTOCOL_DEPTH.md) | MQTT subset boundary and BMS/contact external endpoint |
-| PoC | [Pre-adoption PoC checklist](PRE_ADOPTION_POC_CHECKLIST.md) | Integration checklist for external protocol contracts and acceptance criteria |
-| PoC | [Generic SmartHome evaluator checklist](GENERIC_SMARTHOME_EVALUATOR_CHECKLIST.md) | Evaluation checklist for generic IoT, SmartHome, edge-device, and building-automation teams |
-| Release | [Release checklist](RELEASE_CHECKLIST.md) | Reproducible gates for CI, Docker, Compose, reports, docs, and coverage |
-| Release | [S Tier evidence guide](S_TIER_EVIDENCE_GUIDE.md) | Copy-paste evaluator path for adapter CI, timeline export, trace metadata, observability artifacts, and GitHub Actions evidence |
-| 20 | [Appendix: future integrations](20_appendix_future_integrations.md) | Out-of-scope work and where it would live |
+| 17 | [Docker / CI 設計](17_docker_ci_design.md) | コンテナレイアウトと GitHub Actions 統合 |
+| Hardware CI | [実機ハードウェアを Docker CI に落とし込むユースケース](HARDWARE_TO_DOCKER_CI_USECASES.md) | 複数エンジニアの実機キャプチャを Docker CI シナリオに変換する |
+| Serve | [HTTP serve MVP プラン](HTTP_SERVE_MVP_PLAN.md) | MQTT 互換 serve モード前の localhost バインド制御/レポート API 計画 |
+| Serve | [HTTP serve 動作](HTTP_SERVE_BEHAVIOR.md) | 現在の HTTP 接続、タイムアウト、過負荷時の挙動 |
+| Serve | [外部プロトコル深度](EXTERNAL_PROTOCOL_DEPTH.md) | MQTT サブセット境界と BMS/接点の外部エンドポイント |
+| PoC | [導入前 PoC チェックリスト](PRE_ADOPTION_POC_CHECKLIST.md) | 外部プロトコルコントラクトと受入基準向けの統合チェックリスト |
+| PoC | [汎用スマートホーム評価者チェックリスト](GENERIC_SMARTHOME_EVALUATOR_CHECKLIST.md) | 汎用 IoT、スマートホーム、エッジデバイス、ビルディングオートメーションチーム向け評価チェックリスト |
+| Release | [リリースチェックリスト](RELEASE_CHECKLIST.md) | CI、Docker、Compose、レポート、ドキュメント、カバレッジの再現可能ゲート |
+| Release | [S Tier エビデンスガイド](S_TIER_EVIDENCE_GUIDE.md) | アダプター CI、タイムラインエクスポート、トレースメタデータ、可観測性アーティファクト、GitHub Actions エビデンス向けのコピー&ペースト評価者パス |
+| 20 | [付録: 将来の統合](20_appendix_future_integrations.md) | スコープ外の作業と将来の所在 |
 
-For the API-level reference, run `cargo doc --no-deps --open` from the repo
-root; every public type and function in the workspace is documented.
+API レベルのリファレンスは、リポジトリルートから `cargo doc --no-deps --open` を
+実行してください。ワークスペース内の public type と function はすべて文書化されています。

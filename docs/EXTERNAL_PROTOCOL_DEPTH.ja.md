@@ -1,40 +1,40 @@
 # 外部プロトコル深度
 
-`roomci serve` now has two externally drivable surfaces:
+`roomci serve` には現在、外部から駆動可能な 2 つのサーフェスがあります:
 
-- MQTT 3.1.1 subset for command/state contract PoCs.
-- HTTP BMS/contact event endpoint for operations and contact-I/O PoCs.
+- コマンド/状態コントラクト PoC 向けの MQTT 3.1.1 サブセット
+- 運用/接点 I/O PoC 向けの HTTP BMS/接点イベントエンドポイント
 
-## MQTT Subset Boundary
+## MQTT サブセット境界
 
-Current supported MQTT serve subset:
+現在サポートされる MQTT serve サブセット:
 
-- protocol name `MQTT`
-- protocol level `4` (MQTT 3.1.1)
+- プロトコル名 `MQTT`
+- プロトコルレベル `4`（MQTT 3.1.1）
 - QoS0 `PUBLISH`
-- JSON object payloads
-- topic matching through `mqtt.contracts`
-- retained-state observation through HTTP `/state` and reports
+- JSON オブジェクトペイロード
+- `mqtt.contracts` によるトピックマッチング
+- HTTP `/state` とレポートによる保持状態の観測
 
-Current unsupported MQTT behavior:
+現在非対応の MQTT 動作:
 
-- QoS1/QoS2 wire acknowledgements
-- retained replay to MQTT subscribers
-- subscription handling
-- MQTT 5 properties
-- TLS, ACLs, auth, clustering, persistence
+- QoS1/QoS2 のワイヤー確認応答
+- MQTT サブスクライバーへの保持リプレイ
+- サブスクリプション処理
+- MQTT 5 プロパティ
+- TLS、ACL、認証、クラスタリング、永続化
 
-See [`MQTT_SERVE_SUBSET.md`](MQTT_SERVE_SUBSET.md).
+詳細は [`MQTT_SERVE_SUBSET.md`](MQTT_SERVE_SUBSET.md)。
 
-## BMS / Contact External Endpoint
+## BMS / 接点の外部エンドポイント
 
-Endpoint:
+エンドポイント:
 
 ```txt
 POST /external/bms/contact
 ```
 
-Payload:
+ペイロード:
 
 ```json
 {
@@ -44,77 +44,44 @@ Payload:
 }
 ```
 
-Required fields: `source` (string), `state` (string). Optional: `severity`
-(string). Unknown fields are ignored.
+必須フィールド: `source`（文字列）、`state`（文字列）。任意: `severity`（文字列）。未知のフィールドは無視されます。
 
-### Validation responses
+### 検証レスポンス
 
-| Body shape | HTTP | `error` |
+| ボディ形状 | HTTP | `error` |
 |---|---:|---|
-| valid JSON object with `source` and `state` strings | 202 | (n/a, returns `accepted:true`) |
-| missing `source` (or non-string `source`) | 400 | `missing_source` |
-| missing `state` (or non-string `state`) | 400 | `missing_state` |
-| body that does not parse as JSON | 400 | `invalid_json` |
+| `source` と `state` が文字列の有効な JSON オブジェクト | 202 | （該当なし、`accepted:true` を返す） |
+| `source` が欠落（または文字列以外の `source`） | 400 | `missing_source` |
+| `state` が欠落（または文字列以外の `state`） | 400 | `missing_state` |
+| JSON としてパースできないボディ | 400 | `invalid_json` |
 
-`severity` is **not** enum-validated — any string is accepted and stored
-under a sanitized form. The `application/json` Content-Type header is
-**not** enforced; the handler parses the body regardless of the request
-Content-Type. Stricter validation is deferred to the Adapter Contract
-Kit (Phase 11 Task 03) so the runtime stays library-agnostic for now.
+`severity` は **列挙型検証されません** — 任意の文字列が受理され、サニタイズされた形式で保存されます。`application/json` の Content-Type ヘッダーは **強制されません**。ハンドラーはリクエストの Content-Type に関係なくボディをパースします。より厳密な検証は、ランタイムをライブラリ非依存に保つため Adapter Contract Kit（Phase 11 Task 03）に延期されています。
 
-### Sanitization
+### サニタイズ
 
-External clients can feed adversarial values into `source`, `state`,
-and `severity`. To prevent collisions with MQTT device-id namespaces
-and to keep Markdown rendering safe:
+外部クライアントは `source`、`state`、`severity` に敵対的な値を渡せます。MQTT デバイス ID 名前空間との衝突防止と Markdown レンダリングの安全性のため:
 
-- `source`, `state`, and `severity` are sanitized for storage. Any
-  character outside `[A-Za-z0-9._:/-]` is replaced with `_`. Empty
-  values become `unknown`.
-- Timeline messages built from external input have their control
-  characters (newline, carriage return, other ASCII control bytes)
-  replaced with a space so Markdown reports cannot be hijacked.
+- `source`、`state`、`severity` は保存前にサニタイズされます。`[A-Za-z0-9._:/-]` 外の文字は `_` に置換されます。空値は `unknown` になります。
+- 外部入力から構築されたタイムラインメッセージの制御文字（改行、キャリッジリターン、その他の ASCII 制御バイト）はスペースに置換され、Markdown レポートが乗っ取られないようにします。
 
-The 202 response echoes the sanitized values so the controller can
-confirm exactly what the server stored.
+202 レスポンスはサニタイズされた値をエコーするため、コントローラーはサーバーが保存した内容を正確に確認できます。
 
-### Effects on serve state
+### serve 状態への影響
 
-- Appends a timeline event with `event_type:
-  external_bms_contact_observed` and `target` equal to the sanitized
-  source, queued on the external-observation overlay.
-- Stores the observation under `external_observations[<sanitized
-  source>]` so `GET /state` exposes it as a dedicated, observable
-  bucket separate from device retained state.
-- Survives `POST /run`: at the run success boundary the overlay
-  timeline events are appended to the new `latest_report.timeline`,
-  and each observation is merged into `latest_report.final_state`
-  under the key `external.bms.<sanitized source>`. The overlay is
-  drained at this point.
+- サニタイズされた `source` を `target` とする `event_type: external_bms_contact_observed` のタイムラインイベントを追加し、外部観測オーバーレイにキューイングします。
+- 観測を `external_observations[<サニタイズされた source>]` に保存し、`GET /state` がデバイスの保持状態とは別の専用の観測可能バケットとして公開します。
+- `POST /run` を跨いで存続します: 実行成功の境界でオーバーレイのタイムラインイベントは新しい `latest_report.timeline` に追加され、各観測は `external.bms.<サニタイズされた source>` キーで `latest_report.final_state` にマージされます。この時点でオーバーレイはドレインされます。
 
-This is the contract that makes the BMS endpoint useful for
-multi-step PoCs: an external controller can post a BMS event,
-optionally trigger `POST /run`, and still see that event in the
-rendered JSON/Markdown/JUnit reports.
+これが BMS エンドポイントをマルチステップ PoC に有用にするコントラクトです: 外部コントローラーは BMS イベントを post し、任意で `POST /run` をトリガーしても、レンダリングされた JSON/Markdown/JUnit レポートにそのイベントが残ります。
 
-### Example client
+### 例クライアント
 
 ```bash
 ROOMCI_URL=http://127.0.0.1:8080 examples/controllers/bms_webhook_poc_controller.sh
 ```
 
-The example controller asserts each step lands on the server: the
-202 response, the `external_observations` bucket on `/state`, the
-event_type on `/timeline`, `finished:true` on `/finish`, and the
-event presence in the rendered `latest.md`.
+例のコントローラーは各ステップがサーバーに到達することをアサートします: 202 レスポンス、`/state` の `external_observations` バケット、`/timeline` の event_type、`/finish` の `finished:true`、レンダリングされた `latest.md` 内のイベントの存在。
 
-## Boundary
+## 境界
 
-The BMS/contact endpoint is not a production BMS webhook
-implementation. It is a PoC input surface for external test clients
-that need to prove contact and operations events can update the
-same timeline/report model as scenario-mode steps. Hardened webhook
-features (HMAC signatures, replay protection, schema-versioning,
-retry semantics, Content-Type enforcement, severity enums) are
-deferred to the アダプターコントラクトキット and remain out of scope for
-the runtime itself.
+BMS/接点エンドポイントは本番 BMS webhook 実装ではありません。接点/運用イベントがシナリオモードのステップと同じタイムライン/レポートモデルを更新できることを証明する必要がある外部テストクライアント向けの PoC 入力サーフェスです。堅牢化された webhook 機能（HMAC 署名、リプレイ保護、スキーマバージョニング、リトライセマンティクス、Content-Type の強制、severity の列挙型）は Adapter Contract Kit に延期され、ランタイム自体のスコープ外です。

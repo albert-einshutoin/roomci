@@ -1,150 +1,150 @@
-# 18. MVPロードマップ
+# 18. MVP ロードマップ
 
-## v0.1: Local-first QA MVP
+## v0.1: ローカルファースト QA MVP
 
 ### 目的
 
-Demonstrate that one smart-home stack can be reproduced in Docker and tested in CI.
+1 つのスマートホームスタックを Docker で再現し、CI でテストできることを実証する。
 
 ### 機能
 
-- CLI: `roomci run`, `roomci validate`, `roomci serve --check`
-- Scenario YAML parser
-- Virtual time and event timeline
-- Local MQTT retained-state model
-- Edge server emulator
-- iPad controller simulator
-- Modbus TCP device mock
-- DALI-like lighting mock
-- Contact I/O mock
-- BMSアラート mock
-- Cloud outage and local-only scenario
-- Markdown / JSON / JUnit reports
-- Docker image
-- Docker Compose example
-- GitHub Actions example
+- CLI: `roomci run`、`roomci validate`、`roomci serve --check`
+- シナリオ YAML パーサー
+- 仮想時間とイベントタイムライン
+- ローカル MQTT 保持状態モデル
+- エッジサーバーエミュレーター
+- iPad コントローラーシミュレーター
+- Modbus TCP デバイスモック
+- DALI 風照明モック
+- 接点 I/O モック
+- BMS アラートモック
+- クラウド障害およびローカルのみシナリオ
+- Markdown / JSON / JUnit レポート
+- Docker イメージ
+- Docker Compose 例
+- GitHub Actions 例
 
-Long-running `roomci serve` adapters are post-v0.1. The current MVP includes `roomci serve --check` for service-mode configuration validation.
+長時間稼働の `roomci serve` アダプターは v0.1 以降です。現在の MVP には、サービスモード設定検証用の `roomci serve --check` が含まれます。
 
-### Required demos
+### 必須デモ
 
-1. Cloud outage but local lighting control works
-2. Modbus floor heating 0.1°C control
-3. DALI scene partial failure
-4. Sauna emergency contact triggers Slack/phone/ticket
-5. Edge server failover
+1. クラウド障害でもローカル照明制御は動作する
+2. Modbus 床暖房の 0.1°C 制御
+3. DALI シーンの部分障害
+4. サウナ非常接点が Slack/電話/チケットをトリガー
+5. エッジサーバーフェイルオーバー
 
-## v0.1.5: Cloud bridge and PMS automation
-
-### 機能
-
-- cloud MQTT broker mock
-- AWS IoT Core-like publish endpoint
-- rule-router mock
-- SQS-like queue
-- Cloud Run callback mock
-- PMS event emulator
-- checkout / cleaning-completed automation scenarios
-
-### Demos
-
-- checkout resets lights/HVAC/sauna/cold bath
-- cloud feedback queued and delivered after recovery
-- cloud command reaches local broker after bridge reconnect
-
-## v0.2: Field commissioning and operations depth
+## v0.1.5: クラウドブリッジと PMS 自動化
 
 ### 機能
 
-- KNX-like group address model
-- KNX throughput bottleneck simulation
-- DALI layout/group validation
-- VLAN isolation checker
-- backup WAN failover profile
-- control-panel power model
-- UPS/circuit protector simulation
-- comfort automation module
-- Lua hook support
-- Go backend sample
+- クラウド MQTT ブローカーモック
+- AWS IoT Core 風 publish エンドポイント
+- ルールルーターモック
+- SQS 風キュー
+- Cloud Run コールバックモック
+- PMS イベントエミュレーター
+- チェックアウト／清掃完了自動化シナリオ
 
-### Demos
+### デモ
 
-- KNX lighting throughput delay
-- VLAN leak exposes device-control network
-- backup WAN backup activates
-- HVAC auto mode reaches DI target
-- circuit short isolated by circuit protector
+- チェックアウトで照明/HVAC/サウナ/水風呂をリセット
+- クラウドフィードバックをキューイングし、復旧後に配信
+- ブリッジ再接続後にクラウドコマンドがローカルブローカーに到達
 
-## v0.3: Intercom, access control, and BMS maturity
+## v0.2: 現場コミッショニングと運用の深化
 
 ### 機能
 
-- intercom API mock
-- PIN check-in flow
-- SIP/DTMF event simulation
-- phone provider outage / local PBX fallback
-- access-control drift checker
-- identity-provider group sync mock
-- ONVIF-like camera event
-- PoE speaker webhook mock
-- floorplan-based BMS view concept
+- KNX 風グループアドレスモデル
+- KNX スループットボトルネックシミュレーション
+- DALI レイアウト／グループ検証
+- VLAN 分離チェッカー
+- バックアップ WAN フェイルオーバープロファイル
+- 制御パネル電源モデル
+- UPS/回路保護装置シミュレーション
+- 快適性自動化モジュール
+- Lua フックサポート
+- Go バックエンドサンプル
 
-### Demos
+### デモ
 
-- DTMF opens gate relay
-- staff call falls back to local PBX
-- retired user remains in access group and is detected
-- alert location shown on floorplan mock
+- KNX 照明のスループット遅延
+- VLAN リークでデバイス制御ネットワークが露出
+- バックアップ WAN がアクティブ化
+- HVAC 自動モードが DI ターゲットに到達
+- 回路短絡が回路保護装置で分離
 
-## v0.4+: Intelligence and scale
+## v0.3: インターコム、アクセス制御、BMS の成熟
 
 ### 機能
 
-- real time-series replay
-- AI-assisted incident summary
-- predictive anomaly detection sample
-- CAD/BIM export concept
-- device inventory and spare parts model
-- commissioning checklist generator
-- dogfooding feedback replay
+- インターコム API モック
+- PIN チェックインフロー
+- SIP/DTMF イベントシミュレーション
+- 電話プロバイダー障害 / ローカル PBX フォールバック
+- アクセス制御ドリフトチェッカー
+- ID プロバイダーグループ同期モック
+- ONVIF 風カメライベント
+- PoE スピーカー webhook モック
+- フロアプラン基盤の BMS ビュー概念
 
-## スコープ control rule
+### デモ
 
-If a feature does not improve one of the following, defer it:
+- DTMF でゲートリレーを開く
+- スタッフ呼び出しがローカル PBX にフォールバック
+- 退会済みユーザーがアクセスグループに残り、検出される
+- フロアプランモック上にアラート位置を表示
 
-- local-first guest experience reliability
-- commissioning repeatability
-- field debugging clarity
-- BMS/ops response quality
-- protocol/device integration confidence
-- interview/demo storytelling strength
+## v0.4+: インテリジェンスとスケール
 
-## Public repository milestones
+### 機能
 
-### Milestone 1
+- 実時系列リプレイ
+- AI 支援インシデントサマリー
+- 予測異常検知サンプル
+- CAD/BIM エクスポート概念
+- デバイスインベントリと予備部品モデル
+- コミッショニングチェックリストジェネレーター
+- dogfooding フィードバックリプレイ
+
+## スコープ管理ルール
+
+次のいずれかを改善しない機能は延期する。
+
+- ローカルファーストのゲスト体験の信頼性
+- コミッショニングの再現性
+- 現場デバッグの明確さ
+- BMS/運用対応の品質
+- プロトコル／デバイス統合の信頼性
+- 面接／デモのストーリーテリング力
+
+## 公開リポジトリのマイルストーン
+
+### マイルストーン 1
 
 - README
-- architecture docs
-- one working CLI stub
-- example scenarios
+- アーキテクチャドキュメント
+- 動作する CLI スタブ 1 つ
+- サンプルシナリオ
 
-### Milestone 2
+### マイルストーン 2
 
-- scenario runner
-- reports
-- local MQTT model
-- edge emulator
+- シナリオランナー
+- レポート
+- ローカル MQTT モデル
+- エッジエミュレーター
 
-### Milestone 3
+### マイルストーン 3
 
-- Modbus mock
-- DALI mock
-- contact alert
-- Docker image
+- Modbus モック
+- DALI モック
+- 接点アラート
+- Docker イメージ
 
-### Milestone 4
+### マイルストーン 4
 
 - GitHub Actions
-- 5 polished demos
-- demo video
-- article explaining design decisions
+- 洗練されたデモ 5 本
+- デモ動画
+- 設計判断を説明する記事

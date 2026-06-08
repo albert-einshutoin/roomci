@@ -1,19 +1,18 @@
 # アダプターSDKサンプル
 
-`roomci` does not require a first-party SDK. The useful integration contract is
-the public local surface:
+`roomci` には first-party SDK は不要です。有用な統合コントラクトは、公開されているローカル surface です:
 
 - HTTP: `POST /external/bms/contact`
-- MQTT: MQTT 3.1.1 CONNECT and QoS 0 PUBLISH/SUBSCRIBE subset
+- MQTT: MQTT 3.1.1 CONNECT および QoS 0 PUBLISH/SUBSCRIBE subset
 - Modbus: Modbus TCP holding-register read/write subset
 
-The sample clients live in [`examples/adapters`](../examples/adapters/):
+サンプルクライアントは [`examples/adapters`](../examples/adapters/) にあります:
 
-- Go sample: standard-library HTTP, raw MQTT packet, raw Modbus TCP request
-- TypeScript sample: Node `fetch` and `net`
-- Python reference client: HTTP helper plus paho-mqtt and pymodbus smoke
+- Go サンプル: standard-library HTTP、raw MQTT packet、raw Modbus TCP request
+- TypeScript サンプル: Node `fetch` と `net`
+- Python reference client: HTTP helper および paho-mqtt / pymodbus smoke
 
-## Commands
+## コマンド
 
 ```bash
 cargo run -p roomci-cli -- serve \
@@ -34,24 +33,23 @@ npx tsx examples/adapters/typescript-http-mqtt-modbus/index.ts
 python3 examples/adapters/python-http-mqtt-modbus/smoke.py
 ```
 
-Go and TypeScript are verified by:
+Go と TypeScript は次で検証します:
 
 ```bash
 make adapter-samples-smoke
 ```
 
-Python is verified by:
+Python は次で検証します:
 
 ```bash
 make python-sdk-smoke
 ```
 
-The Python sample is documented separately in [`PYTHON_SDK.md`](PYTHON_SDK.md).
+Python サンプルの詳細は [`PYTHON_SDK.md`](PYTHON_SDK.md) を参照してください。
 
-## Lua-like Hook Pseudocode
+## Lua-like Hook 疑似コード
 
-For embedded or gateway teams that use Lua-like hooks, keep the hook tiny and
-delegate private mapping to an adapter contract:
+Lua-like hook を使う embedded または gateway チーム向けに、hook は小さく保ち、プライベート mapping はアダプターコントラクトに委譲します:
 
 ```lua
 local event = {
@@ -67,5 +65,4 @@ http.post("http://127.0.0.1:8080/external/bms/contact", json.encode(event), {
 })
 ```
 
-This deliberately stays pseudocode because Lua runtimes differ by gateway,
-BMS, and embedded platform. The contract fields are the portable part.
+gateway、BMS、embedded platform ごとに Lua runtime が異なるため、意図的に疑似コードのままにしています。ポータブルな部分は contract フィールドです。

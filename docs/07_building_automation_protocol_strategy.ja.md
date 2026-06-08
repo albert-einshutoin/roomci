@@ -2,72 +2,72 @@
 
 ## 戦略
 
-`roomci` should not attempt to fully implement every protocol. It should emulate protocol behavior at the level needed for local QA, commissioning, and failure-mode testing.
+`roomci` はすべてのプロトコルを完全実装しようとすべきではない。ローカル QA、コミッショニング、障害モードテストに必要なレベルでプロトコル挙動をエミュレートすべきである。
 
-## Protocol priority
+## プロトコル優先度
 
-| Protocol / system | Priority | Rationale |
+| プロトコル / システム | 優先度 | 根拠 |
 |---|---:|---|
-| MQTT | v0.1 | Core local/cloud communication model |
-| Modbus TCP | v0.1 | Register-map validation and equipment control |
-| DALI-like | v0.1 | Lighting scene quality and partial failure testing |
-| Contact I/O | v0.1 | Alarms, relays, safety, intercom/gate control |
-| KNX-like | v0.1.5 | Legacy/standard bus model and throughput simulation |
-| BACnet-like | v0.2 | HVAC/BMS-style object model |
-| SIP / DTMF | v0.3 | Intercom and staff call workflows |
-| ONVIF-like | v0.3 | Door camera / NVR event model |
-| Matter / CSA Aliro | Future | Watch-mode and future standardization |
-| Home Assistant discovery | Appendix | General IoT integration, lower priority |
+| MQTT | v0.1 | ローカル/クラウド通信モデルの中核 |
+| Modbus TCP | v0.1 | レジスタマップ検証と機器制御 |
+| DALI-like | v0.1 | 照明シーン品質と部分障害テスト |
+| Contact I/O | v0.1 | アラーム、リレー、安全、インターコム/ゲート制御 |
+| KNX-like | v0.1.5 | レガシー/標準バスモデルとスループットシミュレーション |
+| BACnet-like | v0.2 | HVAC/BMS スタイルのオブジェクトモデル |
+| SIP / DTMF | v0.3 | インターコムとスタッフ呼び出しワークフロー |
+| ONVIF-like | v0.3 | ドアカメラ / NVR イベントモデル |
+| Matter / CSA Aliro | Future | ウォッチモードと将来の標準化 |
+| Home Assistant discovery | Appendix | 一般的な IoT 統合、低優先度 |
 
-## Mocking level definitions
+## モックレベル定義
 
-### Level 0: Conceptual model
+### Level 0: 概念モデル
 
-Only device type and state are modeled.
+デバイスタイプと状態のみをモデル化する。
 
-### Level 1: Command/state model
+### Level 1: コマンド/状態モデル
 
-Commands and state transitions are modeled, but protocol frames are not.
+コマンドと状態遷移をモデル化するが、プロトコルフレームはモデル化しない。
 
-### Level 2: Protocol-like interface
+### Level 2: プロトコルライクなインターフェース
 
-The emulator exposes an interface resembling real protocol concepts.
+エミュレータは実プロトコル概念に似たインターフェースを公開する。
 
-Examples:
+例:
 
 - Modbus holding registers
 - DALI fixture addresses
 - KNX group addresses
 
-### Level 3: Wire protocol subset
+### Level 3: ワイヤプロトコルサブセット
 
-The emulator speaks a subset of the real wire protocol.
+エミュレータは実ワイヤプロトコルのサブセットを話す。
 
-Use sparingly.
+慎重に使用する。
 
-### Level 4: Full compatibility
+### Level 4: 完全互換
 
-Not a goal for v0.x.
+v0.x の目標ではない。
 
-## Recommended MVP levels
+## 推奨 MVP レベル
 
-| Area | Level |
+| 領域 | レベル |
 |---|---:|
-| MQTT | Level 3-ish, via broker behavior |
-| Modbus TCP | Level 2 or Level 3 subset |
+| MQTT | Level 3 程度（ブローカー挙動経由） |
+| Modbus TCP | Level 2 または Level 3 サブセット |
 | DALI | Level 2 |
 | Contact I/O | Level 1 |
 | KNX | Level 2 |
 | BMS alerts | Level 1 |
-| SIP/DTMF | Level 1 initially |
+| SIP/DTMF | 当初は Level 1 |
 
-## なぜ avoid full compatibility early?
+## なぜ早期に完全互換性を避けるのか？
 
-Full compatibility requires deep protocol edge cases, certification concerns, vendor-specific differences, and extensive testing. The goal of `roomci` is to demonstrate smart-home QA insight, not to compete with industrial protocol stacks.
+完全互換性には、プロトコルの深いエッジケース、認証上の懸念、ベンダー固有の差異、広範なテストが必要になる。`roomci` の目標はスマートホーム QA の洞察を示すことであり、産業用プロトコルスタックと競合することではない。
 
-## Adapter interface
+## アダプターインターフェース
 
-A protocol adapter should implement:
+プロトコルアダプターは次を実装すべきである:
 
 ```rust
 trait DeviceAdapter {
@@ -78,11 +78,11 @@ trait DeviceAdapter {
 }
 ```
 
-## Field-debug output
+## フィールドデバッグ出力
 
-Every adapter should provide field-oriented hints.
+すべてのアダプターはフィールド向けのヒントを提供すべきである。
 
-Example:
+例:
 
 ```txt
 DALI fixture failed to reach expected level.

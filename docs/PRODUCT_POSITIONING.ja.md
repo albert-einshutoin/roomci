@@ -1,4 +1,4 @@
-# Product Positioning
+# プロダクト positioning
 
 現在の正本は [`PRODUCT_GUIDE.md`](PRODUCT_GUIDE.md) です。
 

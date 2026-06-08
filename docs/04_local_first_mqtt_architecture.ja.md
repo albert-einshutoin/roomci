@@ -1,18 +1,18 @@
 # 04. Local-first MQTT アーキテクチャ
 
-## なぜ MQTT is central
+## なぜ MQTT が中核なのか
 
-`roomci` should model MQTT as the main communication substrate, not as a secondary adapter.
+`roomci` は MQTT を二次的なアダプターではなく、主要な通信基盤としてモデル化すべきである。
 
-A local-first smart-home architecture uses MQTT because:
+local-first スマートホームアーキテクチャが MQTT を使う理由:
 
-- local devices and controllers can operate without cloud availability
-- retained messages simplify state synchronization
-- QoS 1 supports at-least-once delivery and shifts retry behavior to the protocol layer
-- reconnecting clients can recover the latest known state
-- local and cloud bridge patterns are easier to test
+- ローカルデバイスとコントローラはクラウド可用性なしで動作できる
+- retained メッセージが状態同期を簡素化する
+- QoS 1 が少なくとも1回の配信をサポートし、リトライ挙動をプロトコル層に移す
+- 再接続するクライアントが最新の既知状態を復旧できる
+- ローカルとクラウドのブリッジパターンがテストしやすい
 
-## Target topology
+## 目標トポロジ
 
 ```txt
 +-------------------+        MQTT         +---------------------+
@@ -39,9 +39,9 @@ Local MQTT Broker
 Cloud MQTT Broker Mock / AWS IoT Core-like endpoint
 ```
 
-## MQTT topic conventions
+## MQTT トピック規約
 
-Recommended default topic shape:
+推奨デフォルトのトピック形式:
 
 ```txt
 house/{house_id}/room/{room_id}/device/{device_id}/command
@@ -52,11 +52,11 @@ house/{house_id}/bms/alert/{alert_id}
 house/{house_id}/ops/ticket/{ticket_id}
 ```
 
-## Retained state model
+## Retained 状態モデル
 
-Every device should expose a retained state topic.
+すべてのデバイスは retained 状態トピックを公開すべきである。
 
-Example:
+例:
 
 ```json
 {
@@ -67,7 +67,7 @@ Example:
 }
 ```
 
-Scenario assertion:
+シナリオアサーション:
 
 ```yaml
 assert:
@@ -78,11 +78,11 @@ assert:
       brightness: 60
 ```
 
-## QoS 1 duplicate simulation
+## QoS 1 重複シミュレーション
 
-MQTT QoS 1 means a message may be delivered more than once. Device logic and edge routing should be duplicate-safe.
+MQTT QoS 1 はメッセージが複数回配信されうることを意味する。デバイスロジックとエッジルーティングは重複に安全であるべきである。
 
-Scenario example:
+シナリオ例:
 
 ```yaml
 faults:
@@ -93,15 +93,15 @@ faults:
     count: 2
 ```
 
-Expected behavior:
+期待される挙動:
 
-- device command is semantically idempotent
-- no double-counted side effects
-- final retained state is correct
+- デバイスコマンドは意味的にべき等である
+- 副作用が二重カウントされない
+- 最終的な retained 状態が正しい
 
-## Reconnect recovery
+## 再接続復旧
 
-Scenario:
+シナリオ:
 
 ```yaml
 steps:
@@ -126,9 +126,9 @@ steps:
           power: true
 ```
 
-## Cloud outage scenario
+## クラウド障害シナリオ
 
-Core guest experience should continue if cloud MQTT is offline.
+クラウド MQTT がオフラインでも、コアのゲスト体験は継続すべきである。
 
 ```yaml
 scenario:
@@ -157,14 +157,14 @@ steps:
       guest_experience: unaffected
 ```
 
-## Cloud bridge model
+## クラウドブリッジモデル
 
-The cloud bridge should model:
+クラウドブリッジは次をモデル化すべきである:
 
-- local to cloud state forwarding
-- cloud to local command forwarding
-- durable queue for feedback
-- loss/retry behavior
-- delayed synchronization after cloud recovery
+- ローカルからクラウドへの状態転送
+- クラウドからローカルへのコマンド転送
+- フィードバック用の永続キュー
+- 損失/リトライ挙動
+- クラウド復旧後の遅延同期
 
-This can be AWS IoT Core-like without being fully AWS IoT compatible.
+これは AWS IoT Core 完全互換でなくても、AWS IoT Core ライクにできる。

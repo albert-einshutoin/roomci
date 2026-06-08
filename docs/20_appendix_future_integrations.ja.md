@@ -1,41 +1,41 @@
-# 20. Appendix: 将来の統合
+# 20. 付録: 将来の統合
 
 ## Matter / CSA Aliro
 
-Matter and CSA Aliro are interesting future standards, but they are not MVP priorities.
+Matter と CSA Aliro は将来有望な標準ですが、MVP の優先事項ではありません。
 
-Use future positioning:
+将来の位置づけは次のとおりです。
 
 ```txt
-roomci has a Matter gateway contract_profile for evaluator-supplied endpoint,
-cluster, attribute, command, and expected-state maps. It does not implement
-Matter fabric, commissioning, transport, SDK integration, or certification.
+roomci には、評価者が供給するエンドポイント、クラスター、属性、コマンド、
+期待状態マップ向けの Matter ゲートウェイ contract_profile がある。
+Matter fabric、コミッショニング、トランスポート、SDK 統合、認証は実装しない。
 ```
 
 ## Home Assistant discovery
 
-Home Assistant MQTT Discovery-like support can make demos more familiar to smart-home developers, but hospitality and building-automation evaluators generally prioritize local MQTT, Modbus, DALI, BMS, and network operations over generic Home Assistant conventions.
+Home Assistant MQTT Discovery 相当のサポートは、スマートホーム開発者向けデモを馴染みやすくできますが、ホスピタリティやビルディングオートメーションの評価者は、一般的な Home Assistant 規約よりもローカル MQTT、Modbus、DALI、BMS、ネットワーク運用を優先する傾向があります。
 
-## AWS IoT Core-like bridge
+## AWS IoT Core 相当のブリッジ
 
-This is more relevant than generic Azure Device Twin support because the local/cloud MQTT architecture can use an AWS IoT Core-like broker, rule router, and queue.
+ローカル／クラウド MQTT アーキテクチャが AWS IoT Core 相当の broker、rule router、queue を利用できるため、一般的な Azure Device Twin サポートよりも関連性が高いです。
 
-Potential components:
+想定コンポーネント:
 
 - publish endpoint
 - rule routing
 - queueing
-- callback to Cloud Run-like service
+- Cloud Run 相当サービスへの callback
 - delayed delivery
-- replay after outage
+- 障害復旧後の replay
 
-## Azure Device Twin-like
+## Azure Device Twin 相当
 
-Useful as general IoT reference, but lower priority unless a target company uses Azure IoT.
+一般的な IoT 参照としては有用ですが、対象企業が Azure IoT を利用していない限り優先度は低いです。
 
-## BACnet-like BMS object model
+## BACnet 相当の BMS オブジェクトモデル
 
-Useful for future BMS maturity:
+将来の BMS 成熟度向上に有用:
 
 - analogInput
 - analogValue
@@ -44,13 +44,11 @@ Useful for future BMS maturity:
 - device status
 - alarm state
 
-Phase 21 adds a BACnet contract_profile for evaluator-supplied object/property
-maps. It does not implement a BACnet/IP endpoint, object services, COV, BBMD,
-routing, or certification.
+Phase 21 では、評価者が供給する object/property マップ向けに BACnet contract_profile を追加します。BACnet/IP endpoint、object services、COV、BBMD、routing、certification は実装しません。
 
 ## intercom API / ONVIF / SIP / DTMF
 
-Future module:
+将来モジュール:
 
 - PIN check-in
 - photo capture event
@@ -60,9 +58,9 @@ Future module:
 - local PBX fallback
 - ONVIF recording event
 
-## Access-control and identity-provider drift
+## アクセス制御と identity provider のドリフト
 
-Future module:
+将来モジュール:
 
 - identity group source
 - access-system group target
@@ -72,29 +70,29 @@ Future module:
 
 ## Grafana / InfluxDB / Prometheus
 
-MVP can export JSON/Prometheus-like metrics. Later versions can provide:
+MVP では JSON/Prometheus 相当のメトリクスをエクスポートできます。後続バージョンでは次を提供可能:
 
 - Influx line protocol
 - Grafana dashboard JSON
 - alert rule templates
 
-## CAD/BIM and floorplan
+## CAD/BIM と floorplan
 
-Future direction:
+将来の方向性:
 
-- fixture/device map from floorplan
-- alert location on drawing
-- commissioning checklist by room/area
-- control panel terminal mapping
+- floorplan からの fixture/device マップ
+- 図面上のアラート位置
+- 客室／エリア別のコミッショニングチェックリスト
+- 制御盤端子マッピング
 
-## AI-assisted operations
+## AI 支援運用
 
-Future AI integrations:
+将来の AI 統合:
 
-- incident summary generation
-- runbook suggestion
-- anomaly explanation
-- commissioning report draft
-- field issue clustering
+- インシデント要約の生成
+- ランブック提案
+- 異常の説明
+- コミッショニングレポート草案
+- 現場問題のクラスタリング
 
-AI should be assistant-layer, not core logic.
+AI は core logic ではなく assistant-layer として位置づけるべきです。

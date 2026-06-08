@@ -1,31 +1,31 @@
 # 統合オンボーディング
 
-This path is for a platform, IoT, smart-home, or building-automation engineer evaluating `roomci` from a clean checkout.
+このパスは、クリーンな checkout から `roomci` を評価する platform、IoT、smart-home、building-automation エンジニア向けです。
 
-## 15-minute Path
+## 15 分パス
 
-1. Pick a PoC pack:
+1. PoC パックを選ぶ:
    - Generic MQTT: `make poc-generic-mqtt`
    - Hospitality local-first: `make poc-hospitality`
    - Building automation / BMS: `make poc-building-automation`
    - BMS / operations: `make poc-bms-ops`
-2. Inspect the adapter contract used by that pack under `adapter-contracts/examples/`.
-3. Copy `adapter-contracts/templates/company_adapter_contract.yaml`.
-4. Replace topic templates, device ids, register maps, alert routes, auth assumptions, and acceptance criteria with your real non-production spec.
-5. Validate the contract:
+2. `adapter-contracts/examples/` 配下で、そのパックが使うアダプターコントラクトを確認する。
+3. `adapter-contracts/templates/company_adapter_contract.yaml` をコピーする。
+4. topic テンプレート、device id、register map、alert route、auth 前提、受入基準を、実際の非本番 spec に置き換える。
+5. コントラクトを検証する:
 
 ```bash
 cargo run -p roomci-cli -- adapter validate path/to/your_adapter_contract.yaml
 ```
 
-6. Start the HTTP/MQTT PoC surface:
+6. HTTP/MQTT PoC surface を起動する:
 
 ```bash
 cargo run -p roomci-cli -- serve --config examples/generic_mqtt_retained_state.yaml --port 8080 --mqtt-port 1883
 ```
 
-7. Drive it from your controller, test client, or script.
-8. Collect:
+7. controller、test client、または script から駆動する。
+8. 次を収集する:
    - `GET /state`
    - `GET /timeline`
    - `GET /reports/latest.json`
@@ -36,34 +36,34 @@ cargo run -p roomci-cli -- serve --config examples/generic_mqtt_retained_state.y
 
 | Method | Path | 目的 |
 |---|---|---|
-| `GET` | `/health` | Read `idle`, `running`, `passed`, or `failed` status |
-| `GET` | `/scenario` | Inspect loaded scenario metadata |
-| `GET` | `/state` | Inspect current emulator state |
-| `GET` | `/timeline` | Inspect emitted events |
-| `POST` | `/fault` | Inject a fault into the running state |
-| `POST` | `/run` | Execute the loaded scenario |
-| `POST` | `/finish` | Finalize and create the latest report |
+| `GET` | `/health` | `idle`、`running`、`passed`、`failed` ステータスを読み取る |
+| `GET` | `/scenario` | 読み込まれた scenario メタデータを確認する |
+| `GET` | `/state` | 現在の emulator state を確認する |
+| `GET` | `/timeline` | 発行された event を確認する |
+| `POST` | `/fault` | 実行中 state に fault を注入する |
+| `POST` | `/run` | 読み込まれた scenario を実行する |
+| `POST` | `/finish` | 確定し latest report を作成する |
 | `GET` | `/reports/latest.json` | JSON report |
 | `GET` | `/reports/latest.md` | Markdown report |
 | `GET` | `/reports/latest.junit.xml` | JUnit report |
 
-See [`HTTP_SERVE_BEHAVIOR.md`](HTTP_SERVE_BEHAVIOR.md) for timeout, overload, health, and run-lock semantics.
+timeout、overload、health、run-lock セマンティクスは [`HTTP_SERVE_BEHAVIOR.md`](HTTP_SERVE_BEHAVIOR.md) を参照してください。
 
-## Troubleshooting
+## トラブルシューティング
 
-| Symptom | Likely Cause | Fix |
+| 症状 | 想定原因 | 対処 |
 |---|---|---|
-| Port already in use | HTTP or MQTT port conflict | Use `--port 0`, `--mqtt-port 0`, or choose another port |
-| MQTT publish is ignored | Topic does not match `mqtt.contracts[].command_topic` | Update the adapter/scenario topic template and `{device_id}` placeholder |
-| MQTT publish is rejected | JSON payload is malformed or missing required fields | Match `payload.required_fields` in the adapter contract |
-| `CONNACK` returns `0x01` | MQTT client is not protocol name `MQTT`, level `4` | Use MQTT 3.1.1 for current serve subset |
-| Modbus request returns exception `0x02` | Unit id or register address is not in the scenario map | Update `modbus.devices[].unit_id` and register addresses |
-| Modbus write returns exception `0x03` | Register is read-only or value/quantity is outside the subset | Write only configured holding registers with one value |
-| `/health` returns HTTP 503 | Latest report failed | Read `/reports/latest.md` and `/timeline` for failure evidence |
-| Docker/Compose fails | Docker daemon, image build, or port issue | Run `docker build -t roomci:verify .`, then `make compose-poc` |
-| Report seems too narrow | Scenario has too few assertions | Add acceptance criteria to adapter contract and map them to scenario assertions |
+| Port already in use | HTTP または MQTT port の競合 | `--port 0`、`--mqtt-port 0` を使うか、別 port を選ぶ |
+| MQTT publish is ignored | topic が `mqtt.contracts[].command_topic` と一致しない | adapter/scenario の topic テンプレートと `{device_id}` placeholder を更新する |
+| MQTT publish is rejected | JSON payload が不正または必須 field が不足 | アダプターコントラクトの `payload.required_fields` に合わせる |
+| `CONNACK` returns `0x01` | MQTT client の protocol name が `MQTT`、level が `4` でない | 現在の serve subset では MQTT 3.1.1 を使用する |
+| Modbus request returns exception `0x02` | unit id または register address が scenario map にない | `modbus.devices[].unit_id` と register address を更新する |
+| Modbus write returns exception `0x03` | register が read-only、または value/quantity が subset 外 | 設定済み holding register に 1 value だけ書き込む |
+| `/health` returns HTTP 503 | latest report が failed | 失敗証拠として `/reports/latest.md` と `/timeline` を読む |
+| Docker/Compose fails | Docker daemon、image build、または port の問題 | `docker build -t roomci:verify .` を実行し、続けて `make compose-poc` |
+| Report seems too narrow | scenario の assertion が少なすぎる | アダプターコントラクトに受入基準を追加し、scenario assertion にマップする |
 
-## Client Snippets
+## Client Snippet
 
 HTTP health:
 
@@ -71,7 +71,7 @@ HTTP health:
 curl -fsS http://127.0.0.1:8080/health
 ```
 
-Inject a fault:
+fault を注入する:
 
 ```bash
 curl -fsS -X POST http://127.0.0.1:8080/fault \
@@ -79,7 +79,7 @@ curl -fsS -X POST http://127.0.0.1:8080/fault \
   -d '{"target":"mqtt.cloud","type":"offline"}'
 ```
 
-Collect Markdown evidence:
+Markdown evidence を収集する:
 
 ```bash
 curl -fsS http://127.0.0.1:8080/reports/latest.md > reports/latest.md

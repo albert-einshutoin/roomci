@@ -1,51 +1,51 @@
-# MQTT Serveサブセット
+# MQTT Serve サブセット
 
-`roomci serve --mqtt-port <port>` starts a minimal MQTT 3.1.1 ingress for pre-adoption PoC tests.
+`roomci serve --mqtt-port <port>` は、pre-adoption PoC テスト向けの最小 MQTT 3.1.1 ingress を起動します。
 
-This is not a production broker and not a conformance suite. It exists so an external controller can publish command payloads over a real MQTT-shaped TCP endpoint while `roomci` records retained-state behavior through the existing HTTP state/report API.
+これは production broker でも conformance suite でもありません。外部 controller が実際の MQTT 形状の TCP endpoint 経由で command payload を publish でき、`roomci` が既存 HTTP state/report API 経由で retained-state 挙動を記録するために存在します。
 
-The HTTP observation API used with this MQTT ingress is documented in [`HTTP_SERVE_BEHAVIOR.md`](HTTP_SERVE_BEHAVIOR.md).
+この MQTT ingress と併用する HTTP 観測 API は [`HTTP_SERVE_BEHAVIOR.md`](HTTP_SERVE_BEHAVIOR.md) に記載されています。
 
-## Supported
+## サポート
 
 - MQTT 3.1.1 `CONNECT`
-- `CONNACK` success response
+- 成功応答の `CONNACK`
 - QoS 0 `PUBLISH`
-- QoS 0 `SUBSCRIBE` / `SUBACK` for configured state topics
-- retained message replay to matching MQTT subscribers
+- 設定済み state topics 向け QoS 0 `SUBSCRIBE` / `SUBACK`
+- 一致する MQTT subscriber への retained message replay
 - `PINGREQ` / `PINGRESP`
 - `DISCONNECT`
 - UTF-8 topic names
 - JSON object payloads
-- one `{device_id}` placeholder in configured command/state topic mappings
-- retained-state observation through MQTT replay and:
+- 設定済み command/state topic mapping における 1 つの `{device_id}` placeholder
+- MQTT replay および次による retained-state 観測:
   - `GET /state`
   - `GET /timeline`
   - `GET /reports/latest.json`
   - `GET /reports/latest.md`
   - `GET /reports/latest.junit.xml`
 
-## Not Supported
+## 非サポート
 
-- QoS 1 / QoS 2 wire-level acknowledgements
+- QoS 1 / QoS 2 の wire-level acknowledgements
 - `UNSUBSCRIBE`
-- wildcard generality beyond exact configured state topics and `+` placeholders
-- sessions, will messages, keepalive enforcement
-- TLS, ACLs, authentication, clustering, persistence
+- 正確に設定された state topics と `+` placeholder を超える wildcard 一般性
+- sessions、will messages、keepalive enforcement
+- TLS、ACLs、authentication、clustering、persistence
 - MQTT 5 properties
 
-## CONNECT Validation
+## CONNECT 検証
 
-The MQTT ingress accepts only:
+MQTT ingress が受け付けるのは次のみです。
 
 - protocol name: `MQTT`
 - protocol level: `4` (MQTT 3.1.1)
 
-Unsupported protocol names or levels receive `CONNACK` return code `0x01` (`unacceptable protocol version`) and the TCP connection is closed. For example, MQTT 3.1 `MQIsdp` and MQTT 5 protocol level `5` are rejected.
+サポート外の protocol name または level は `CONNACK` return code `0x01` (`unacceptable protocol version`) を受け取り、TCP 接続はクローズされます。例: MQTT 3.1 の `MQIsdp` および MQTT 5 の protocol level `5` は拒否されます。
 
 ## Contract Config
 
-Scenario files can declare MQTT connection contracts:
+シナリオファイルで MQTT connection contracts を宣言できます。
 
 ```yaml
 mqtt:
@@ -61,19 +61,19 @@ mqtt:
         required_fields: [online, sample_interval_seconds]
 ```
 
-Validation rejects unsupported adapters, missing topic mappings, duplicate command mappings, and unsupported device-id extraction strategies.
+検証では、サポート外 adapter、欠落 topic mapping、重複 command mapping、サポート外 device-id 抽出戦略を拒否します。
 
-## Real Integration Inputs
+## 実際の統合入力
 
-To adapt this PoC to a real customer or vendor, the integrator must provide:
+この PoC を実際の顧客または vendor に適応するには、integrator が次を提供する必要があります。
 
 - command topics
 - state topics
-- payload schemas and required fields
-- QoS, retained, reconnect, and session expectations
-- auth/TLS/network assumptions
+- payload schemas および required fields
+- QoS、retained、reconnect、session の期待値
+- auth/TLS/network の前提
 - pass/fail acceptance criteria
-- Modbus register maps, if Modbus is involved
-- BMS webhook/API contracts, if operations flows are involved
+- Modbus が関与する場合は Modbus register maps
+- 運用フローが関与する場合は BMS webhook/API contracts
 
-Any organization's compatibility is not claimed without their actual integration contract.
+実際の integration contract なしに、特定組織の互換性を謳いません。

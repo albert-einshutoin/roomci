@@ -1,30 +1,27 @@
 # Python Reference Client
 
-`examples/adapters/python-http-mqtt-modbus` contains a small Python reference
-client for evaluator automation.
+`examples/adapters/python-http-mqtt-modbus` には、evaluator 自動化向けの小さな Python reference client が含まれています。
 
-It is not a production SDK. It does not provide auth, TLS policy, async IO,
-retry budgets, version negotiation, or PyPI packaging.
+これは本番 SDK ではありません。auth、TLS policy、async IO、retry budget、version negotiation、PyPI packaging は提供しません。
 
 ## Smoke Gate
 
-Run the reproducible Docker smoke:
+再現可能な Docker smoke を実行する:
 
 ```bash
 make python-sdk-smoke
 ```
 
-The smoke starts `roomci serve` with `examples/protocol_conformance_smoke.yaml`
-and then runs the Python sample against:
+smoke は `examples/protocol_conformance_smoke.yaml` で `roomci serve` を起動し、次に対して Python サンプルを実行します:
 
-- HTTP BMS/contact event submission
+- HTTP BMS/contact event 送信
 - MQTT 3.1.1 QoS 0 command publish
 - Modbus TCP holding-register write/read
-- HTTP state, timeline, finish, and latest report fetch
+- HTTP state、timeline、finish、latest report の取得
 
-## Manual Run
+## 手動実行
 
-Start `roomci serve`:
+`roomci serve` を起動する:
 
 ```bash
 cargo run -p roomci-cli -- serve \
@@ -33,7 +30,7 @@ cargo run -p roomci-cli -- serve \
   --modbus-port 1502
 ```
 
-Run the sample in another shell:
+別シェルでサンプルを実行する:
 
 ```bash
 ROOMCI_HTTP=http://127.0.0.1:8080 \
@@ -56,5 +53,4 @@ client.finish()
 client.latest_report_json()
 ```
 
-The MQTT and Modbus examples live in `smoke.py` because they depend on
-standard external client libraries, not the HTTP reference client itself.
+MQTT と Modbus の例は `smoke.py` にあります。これらは HTTP reference client 自体ではなく、標準的な外部 client library に依存するためです。

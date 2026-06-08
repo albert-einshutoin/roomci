@@ -1,39 +1,38 @@
-# 17. DockerおよびCI設計
+# 17. Docker および CI 設計
 
-## なぜ Docker-first
+## Docker ファーストである理由
 
-The point of `roomci` is to make smart-home dependencies reproducible without real devices or field environments.
+`roomci` の目的は、実機や現場環境なしにスマートホームの依存関係を再現可能にすることです。
 
-Docker enables:
+Docker により次が可能になります。
 
-- local reproduction
-- CI execution
-- service-emulation style local reproduction
-- isolation from host machines
-- deterministic startup
-- easy integration with backend/mobile tests
+- ローカルでの再現
+- CI 実行
+- サービスエミュレーション方式のローカル再現
+- ホストマシンからの分離
+- 決定論的な起動
+- バックエンド／モバイルテストとの容易な統合
 
-## Images
+## イメージ
 
-### MVP: single image
+### MVP: 単一イメージ
 
 ```txt
 ghcr.io/OWNER/roomci:latest
 ```
 
-`OWNER` is a publishing placeholder. Replace it with the actual GitHub
-Container Registry namespace only after a public image exists.
+`OWNER` は公開用のプレースホルダーです。公開イメージが存在してから、実際の GitHub Container Registry 名前空間に置き換えてください。
 
-The single image includes:
+単一イメージには次が含まれます。
 
-- scenario runner
-- service-mode config checker
-- MQTT behavior simulator
-- edge emulator
-- device mocks
-- BMS ops mocks
+- シナリオランナー
+- サービスモード設定チェッカー
+- MQTT 挙動シミュレーター
+- エッジエミュレーター
+- デバイスモック
+- BMS 運用モック
 
-### Future: split images
+### 将来: 分割イメージ
 
 ```txt
 roomci-core
@@ -45,11 +44,11 @@ roomci-ops
 roomci-network
 ```
 
-Start with one image to avoid overengineering.
+過剰設計を避けるため、最初は 1 つのイメージから始めます。
 
-## Docker run examples
+## Docker 実行例
 
-Scenario mode:
+シナリオモード:
 
 ```bash
 docker run --rm \
@@ -65,7 +64,7 @@ docker run --rm \
   --observability-json /reports/roomci.observability.json
 ```
 
-Service-mode config check:
+サービスモード設定チェック:
 
 ```bash
 docker run --rm \
@@ -74,15 +73,15 @@ docker run --rm \
   serve --config /scenarios/local_first_cloud_outage.yaml --check
 ```
 
-Serve-mode black-box PoC:
+Serve モードのブラックボックス PoC:
 
 ```bash
 make compose-poc
 ```
 
-This starts `roomci serve` as one Compose service and runs `examples/controllers/http_poc_controller.sh` as a separate external controller service. The controller talks to `roomci` through HTTP only and writes JSON, Markdown, and JUnit reports under `reports/`.
+これは `roomci serve` を 1 つの Compose サービスとして起動し、`examples/controllers/http_poc_controller.sh` を別の外部コントローラーサービスとして実行します。コントローラーは HTTP のみで `roomci` と通信し、`reports/` 配下に JSON、Markdown、JUnit レポートを書き出します。
 
-## Docker Compose pattern
+## Docker Compose パターン
 
 ```yaml
 services:
@@ -113,7 +112,7 @@ services:
       - ../reports:/reports
 ```
 
-## GitHub Actions pattern
+## GitHub Actions パターン
 
 ```yaml
 name: smart-home-ci
@@ -147,36 +146,36 @@ jobs:
           make s-tier-evidence-smoke
 ```
 
-## CI outputs
+## CI 出力
 
-Required:
+必須:
 
-- exit code 0/1
-- Markdown summary
-- JSON report
+- 終了コード 0/1
+- Markdown サマリー
+- JSON レポート
 - JUnit XML
 - timeline JSON
 - timeline NDJSON
 - observability JSON
 
-Useful:
+有用:
 
 - GitHub Step Summary
-- uploaded artifact
-- per-scenario timeline
-- trace/run correlation id
-- artifact-level observability counters
+- アップロードされたアーティファクト
+- シナリオごとのタイムライン
+- trace/run 相関 ID
+- アーティファクトレベルの observability カウンター
 
-## Report content
+## レポート内容
 
-A report should include:
+レポートには次を含める必要があります。
 
-- scenario name
-- pass/fail
-- timeline
-- failed assertions
-- guest impact
-- operations impact
-- possible field causes
-- suggested checks
-- links to runbooks
+- シナリオ名
+- 合格／不合格
+- タイムライン
+- 失敗したアサーション
+- ゲストへの影響
+- 運用への影響
+- 想定される現場原因
+- 推奨確認項目
+- runbook へのリンク

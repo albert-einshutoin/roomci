@@ -1,29 +1,29 @@
-# 10. BMSおよび運用エミュレーション
+# 10. BMS および運用エミュレーション
 
-## なぜ BMS belongs in roomci
+## roomci に BMS が含まれる理由
 
-A smart home does not end at device control. Operations teams need to know when something is wrong, who is responding, where to go, and what runbook to follow.
+スマートホームはデバイス制御で完結しません。運用チームは、何か異常が起きたとき、誰が対応するか、どこへ行くか、どの runbook に従うかを把握する必要があります。
 
-`roomci` should include BMS-like operations simulation because real field quality depends on the full chain:
+`roomci` には BMS 的な運用シミュレーションを含めるべきです。現場品質は次の一連の流れ全体に依存するからです。
 
 ```txt
 Device alarm -> Notification -> Human awareness -> Assignment -> Runbook -> Resolution -> Recovery notification
 ```
 
-## MVP features
+## MVP 機能
 
-- alert source model
-- Slack-like notification
-- phone-call escalation mock
+- アラートソースモデル
+- Slack 風通知
+- 電話エスカレーションのモック
 - runbook URL
-- ticket state
-- assignee
-- comments
-- recovery notification
-- Markdown report
-- optional Grafana-like metrics endpoint
+- チケット状態
+- 担当者（assignee）
+- コメント
+- 復旧通知
+- Markdown レポート
+- オプションの Grafana 風メトリクスエンドポイント
 
-## Alert model
+## アラートモデル
 
 ```yaml
 alerts:
@@ -37,11 +37,9 @@ alerts:
     runbook_url: https://example.com/runbooks/sauna-emergency
 ```
 
-## Adapter contract hardening
+## アダプターコントラクトの強化
 
-Company-specific BMS webhook assumptions belong in adapter contracts. The
-core runtime remains vendor-neutral, but validates enough shape to catch bad
-PoC wiring early:
+企業固有の BMS webhook 前提条件はアダプターコントラクトに属します。コアランタイムはベンダー中立のままですが、PoC の配線ミスを早期に検出できる十分な形状を検証します。
 
 ```yaml
 bms:
@@ -59,14 +57,11 @@ bms:
       replay_window_seconds: 300
 ```
 
-`roomci serve` also rejects unsupported external BMS severities and duplicate
-`replay_id` values on `POST /external/bms/contact`. HMAC metadata is declared
-in the adapter contract; the local PoC runtime does not verify production
-secrets.
+`roomci serve` は、`POST /external/bms/contact` 上でサポート外の外部 BMS severity および重複する `replay_id` も拒否します。HMAC メタデータはアダプターコントラクトで宣言されます。ローカル PoC ランタイムは本番シークレットを検証しません。
 
-## Notification model
+## 通知モデル
 
-Slack-like message:
+Slack 風メッセージ:
 
 ```json
 {
@@ -79,7 +74,7 @@ Slack-like message:
 }
 ```
 
-Phone-like escalation:
+電話風エスカレーション:
 
 ```json
 {
@@ -88,7 +83,7 @@ Phone-like escalation:
 }
 ```
 
-## Ticket state model
+## チケット状態モデル
 
 ```yaml
 ticket:
@@ -98,15 +93,15 @@ ticket:
   comments: []
 ```
 
-States:
+状態:
 
 ```txt
 open -> acknowledged -> assigned -> investigating -> resolved
 ```
 
-## Recovery notification
+## 復旧通知
 
-When a device returns to normal, `roomci` should emit a recovery event and attach it to the original alert thread.
+デバイスが正常に戻ったとき、`roomci` は復旧イベントを発行し、元のアラートスレッドに添付する必要があります。
 
 ```yaml
 steps:
@@ -124,22 +119,22 @@ steps:
         recovery_notification_sent: true
 ```
 
-## Time-series export
+## 時系列エクスポート
 
-For Grafana-like analysis, export metrics as:
+Grafana 風の分析のために、メトリクスを次の形式でエクスポートします。
 
 - JSON lines
 - Prometheus text format
-- Influx line protocol, future
+- Influx line protocol（将来）
 
-Example:
+例:
 
 ```txt
 roomci_contact_state{house="aoshima",device="sauna_emergency_button"} 1
 roomci_alert_active{severity="critical",alert="sauna_emergency_button"} 1
 ```
 
-## Demo: sauna emergency button
+## デモ: サウナ非常ボタン
 
 ```yaml
 scenario:
@@ -166,7 +161,7 @@ steps:
         ticket_status: acknowledged
 ```
 
-## Report example
+## レポート例
 
 ```txt
 PASS bms_sauna_emergency_alert

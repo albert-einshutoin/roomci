@@ -1,33 +1,27 @@
-# Hospitality Domain Pack Coverage
+# ホスピタリティドメインパック カバレッジ
 
-Hospitality は再利用可能な domain pack であり、特定企業の private
-compatibility claim ではありません。正本は
-[`PRODUCT_GUIDE.md`](PRODUCT_GUIDE.md) です。
+ホスピタリティは再利用可能な domain pack であり、特定企業の private compatibility claim ではありません。正本は [`PRODUCT_GUIDE.md`](PRODUCT_GUIDE.md) です。
 
-## Covered Today
+## 現在カバーしている内容
 
-- Local MQTT command/state behavior.
-- Edge primary/secondary failover.
-- Practical Modbus TCP register behavior.
-- DALI-like lighting scene checks.
-- Contact I/O and BMS alert evidence.
-- Backup WAN and network segmentation fault profiles.
-- Comfort time-series replay.
-- Safe intercom/relay evidence mocks.
-- Guest-impact reports.
+- ローカル MQTT command/state 挙動。
+- エッジ primary/secondary failover。
+- 実用的な Modbus TCP register 挙動。
+- DALI-like 照明シーンチェック。
+- Contact I/O および BMS alert エビデンス。
+- バックアップ WAN およびネットワークセグメンテーション fault profile。
+- 快適性時系列 replay。
+- 安全な intercom/relay エビデンス mock。
+- ゲスト影響レポート。
 
-## Mocked or Contract-Only
+## Mock または Contract のみ
 
-- Intercom と access-control events は scenario evidence のみです。
-- BMS contact ingestion は schema、severity、replay ID、signature を
-  contract boundary で検証します。
-- Company-specific な topic map、payload schema、register map、identity、
-  auth/TLS expectation、acceptance criteria は adapter contract として
-  供給する必要があります。
+- Intercom および access-control event は scenario evidence のみです。
+- BMS contact ingestion は contract boundary で schema、severity、replay ID、signature を検証します。
+- 企業固有の topic map、payload schema、register map、identity、auth/TLS expectation、acceptance criteria は adapter contract として供給する必要があります。
 
-## Out of Scope
+## スコープ外
 
-- 特定 hospitality operator の full private-stack compatibility。
-- Cloud、network、intercom、access-control、BMS、notification、CAD/BIM、
-  observability、identity platform の vendor emulator。
-- Real unlock authority、physical safety authority、production operation。
+- 特定ホスピタリティ operator の full private-stack compatibility。
+- cloud、network、intercom、access-control、BMS、notification、CAD/BIM、observability、identity platform の vendor emulator。
+- 実際の unlock authority、physical safety authority、production operation。

@@ -2,11 +2,11 @@
 
 ## 目的
 
-Fault injection is the core value of `roomci`. It allows teams to test whether smart-home systems continue operating or fail safely under realistic field conditions.
+障害注入は `roomci` の中核的な価値です。現実的な現場条件の下で、スマートホームシステムが継続稼働するか、安全に失敗するかをチームがテストできるようにします。
 
-## Fault categories
+## 障害カテゴリ
 
-### MQTT faults
+### MQTT 障害
 
 ```txt
 broker_offline
@@ -17,7 +17,7 @@ reconnect_storm
 bridge_queue_backlog
 ```
 
-### Edge faults
+### エッジ障害
 
 ```txt
 edge_primary_failure
@@ -27,7 +27,7 @@ state_sync_stale
 local_only_mode
 ```
 
-### Device faults
+### デバイス障害
 
 ```txt
 offline
@@ -39,7 +39,7 @@ error_code
 flapping
 ```
 
-### Modbus faults
+### Modbus 障害
 
 ```txt
 timeout
@@ -51,7 +51,7 @@ register_stuck
 endianness_mismatch
 ```
 
-### DALI faults
+### DALI 障害
 
 ```txt
 fixture_missing
@@ -62,7 +62,7 @@ delayed_scene
 throughput_limit
 ```
 
-### Contact I/O faults
+### 接点 I/O 障害
 
 ```txt
 contact_stuck_on
@@ -72,7 +72,7 @@ relay_failed_to_pulse
 false_alarm
 ```
 
-### Network faults
+### ネットワーク障害
 
 ```txt
 wan_down
@@ -85,7 +85,7 @@ router_reboot
 l3_switch_failure
 ```
 
-### Control panel faults
+### 制御パネル障害
 
 ```txt
 psu_failure
@@ -95,7 +95,7 @@ short_circuit
 edge_power_lost
 ```
 
-### Operations faults
+### 運用障害
 
 ```txt
 slack_delivery_failed
@@ -105,7 +105,7 @@ ticket_not_created
 recovery_notification_missing
 ```
 
-## Fault schema
+## 障害スキーマ
 
 ```yaml
 faults:
@@ -115,7 +115,7 @@ faults:
     duration: 10m
 ```
 
-## Target naming convention
+## ターゲット命名規則
 
 ```txt
 mqtt.local
@@ -130,17 +130,17 @@ ops.slack
 control_panel.CP-01.power.dc24v.psu_01
 ```
 
-## Fault severity
+## 障害の重大度
 
-Faults may include expected severity:
+障害には期待される重大度を含めることができます。
 
 ```yaml
 severity: high
 ```
 
-But actual guest impact should be computed by assertions whenever possible.
+ただし、実際のゲストへの影響は可能な限りアサーションで算出する必要があります。
 
-## Guest impact model
+## ゲスト影響モデル
 
 ```yaml
 assertions:
@@ -149,7 +149,7 @@ assertions:
       expected_impact: none
 ```
 
-Impact levels:
+影響レベル:
 
 ```txt
 none
@@ -159,7 +159,7 @@ high
 critical
 ```
 
-## Example: Slack failure with phone fallback
+## 例: Slack 障害と電話フォールバック
 
 ```yaml
 faults:
@@ -180,7 +180,7 @@ assertions:
       alert_ticket_created: true
 ```
 
-## Example: Modbus timeout
+## 例: Modbus タイムアウト
 
 ```yaml
 faults:

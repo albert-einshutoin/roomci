@@ -1,55 +1,55 @@
-# 一般的なMQTTコントラクト
+# 一般的な MQTT コントラクト
 
 ## 目的
 
-Generic MQTT scenarios show the reusable `roomci` core without hospitality-specific room, guest, or property naming.
+Generic MQTT シナリオは、ホスピタリティ固有の客室、ゲスト、物件命名なしで、再利用可能な `roomci` core を示します。
 
-The current MQTT model is a behavioral emulator. It validates a simple command/state contract:
+現在の MQTT モデルは behavioral emulator です。次の単純な command/state contract を検証します。
 
 ```txt
 .../device/<device_id>/command -> .../device/<device_id>/state
 ```
 
-The payload published to the command topic becomes retained state on the derived state topic after edge routing succeeds.
+command topic に publish された payload は、edge routing が成功した後、派生 state topic 上の retained state になります。
 
-## Current Supported Contract
+## 現在サポートされているコントラクト
 
-Supported today:
+現在サポート:
 
 - local broker availability state
-- retained command/state update behavior
-- duplicate delivery idempotency through a scheduled fault
-- edge routing into a declared device id
-- configurable `mqtt.contracts` topic mappings with `{device_id}` extraction
+- retained command/state update 挙動
+- scheduled fault による duplicate delivery idempotency
+- 宣言済み device id への edge routing
+- `{device_id}` 抽出付きの設定可能な `mqtt.contracts` topic mapping
 - serve-mode MQTT 3.1.1 `CONNECT` + QoS0 `PUBLISH` PoC ingress
-- JSON, Markdown, and JUnit reporting from the same run
+- 同一 run からの JSON、Markdown、JUnit レポート
 
-Not supported today:
+現在非サポート:
 
 - full MQTT broker conformance
-- arbitrary transformation language for topic/payload mapping
-- QoS2, session persistence, authorization, TLS, ACLs, or clustering
-- production broker replacement behavior
+- topic/payload mapping 向けの任意変換言語
+- QoS2、session persistence、authorization、TLS、ACLs、clustering
+- production broker 置き換え挙動
 
-See [`MQTT_SERVE_SUBSET.md`](MQTT_SERVE_SUBSET.md) for the serve-mode protocol boundary.
+serve-mode のプロトコル境界は [`MQTT_SERVE_SUBSET.md`](MQTT_SERVE_SUBSET.md) を参照してください。
 
-## Examples
+## 例
 
 ### Retained State
 
-`examples/generic_mqtt_retained_state.yaml` publishes a generic edge-device command:
+`examples/generic_mqtt_retained_state.yaml` は generic edge-device command を publish します。
 
 ```txt
 fleet/demo/site/lab/device/env_sensor_01/command
 ```
 
-The assertion checks the retained state topic:
+アサーションは retained state topic を検証します。
 
 ```txt
 fleet/demo/site/lab/device/env_sensor_01/state
 ```
 
-Run it with:
+実行:
 
 ```bash
 cargo run -p roomci-cli -- run examples/generic_mqtt_retained_state.yaml --verbose
@@ -57,23 +57,23 @@ cargo run -p roomci-cli -- run examples/generic_mqtt_retained_state.yaml --verbo
 
 ### Duplicate Delivery
 
-`examples/generic_mqtt_duplicate_delivery.yaml` injects a `duplicate_delivery` fault for a command topic and verifies the retained state still has one semantic final value.
+`examples/generic_mqtt_duplicate_delivery.yaml` は command topic に `duplicate_delivery` fault を注入し、retained state が意味的に 1 つの最終値を保持することを検証します。
 
-Run it with:
+実行:
 
 ```bash
 cargo run -p roomci-cli -- run examples/generic_mqtt_duplicate_delivery.yaml --verbose
 ```
 
-Or run both generic MQTT examples:
+両方の generic MQTT 例を実行:
 
 ```bash
 make demo-generic-mqtt
 ```
 
-## Configurable Topic Mapping
+## 設定可能な Topic Mapping
 
-For pre-adoption PoC use, scenarios can declare topic mappings:
+pre-adoption PoC 用途では、シナリオで topic mapping を宣言できます。
 
 ```yaml
 mqtt:
@@ -87,4 +87,4 @@ mqtt:
         required_fields: [online, sample_interval_seconds]
 ```
 
-That keeps vendor-specific MQTT naming out of code and lets a real integration contract be supplied later.
+これにより、vendor 固有の MQTT 命名をコードから切り離し、後から実際の integration contract を供給できます。

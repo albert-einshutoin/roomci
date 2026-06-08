@@ -1,24 +1,24 @@
-# 09. DALIライティング戦略
+# 09. DALI ライティング戦略
 
-## なぜ DALI matters
+## なぜ DALI が重要か
 
-Lighting is a major part of architectural experience. DALI-like simulation is useful because lighting failures are often experienced as quality degradation rather than obvious system crashes.
+照明は建築体験の主要な部分である。DALI ライクなシミュレーションは有用である。照明障害は明らかなシステムクラッシュではなく、品質劣化として体験されることが多いからだ。
 
-The goal is to model:
+モデル化の目標:
 
-- fixture addresses
-- groups
-- scenes
-- dimming levels
-- partial scene failure
-- command throughput
-- commissioning mistakes
+- フィクスチャアドレス
+- グループ
+- シーン
+- 調光レベル
+- 部分シーン障害
+- コマンドスループット
+- コミッショニングミス
 
 ## スコープ
 
-v0.1 should implement a DALI-like logical model, not a full DALI wire protocol.
+v0.1 は完全な DALI ワイヤプロトコルではなく、DALI ライクな論理モデルを実装すべきである。
 
-## Fixture model
+## フィクスチャモデル
 
 ```yaml
 lighting:
@@ -37,7 +37,7 @@ lighting:
       level: 0
 ```
 
-## Scene model
+## シーンモデル
 
 ```yaml
 scenes:
@@ -48,19 +48,19 @@ scenes:
       D512B01: 20
 ```
 
-## Common failure modes
+## 一般的な障害モード
 
-| Fault | Meaning |
+| 障害 | 意味 |
 |---|---|
-| command_drop | fixture never receives command |
-| delayed_response | fixture changes level too slowly |
-| wrong_address | command targets wrong fixture |
-| wrong_group | fixture not included in intended scene |
-| stuck_level | fixture remains at old dimming level |
-| gateway_timeout | bridge/gateway fails to execute command |
-| throughput_limit | too many commands sent too quickly |
+| command_drop | フィクスチャがコマンドを受信しない |
+| delayed_response | フィクスチャのレベル変化が遅すぎる |
+| wrong_address | コマンドが誤ったフィクスチャを対象にする |
+| wrong_group | フィクスチャが意図したシーンに含まれない |
+| stuck_level | フィクスチャが古い調光レベルのまま |
+| gateway_timeout | ブリッジ/ゲートウェイがコマンド実行に失敗する |
+| throughput_limit | コマンドが速すぎる、または多すぎる |
 
-## Scene consistency assertion
+## シーン整合性アサーション
 
 ```yaml
 assert:
@@ -68,9 +68,9 @@ assert:
   consistency: complete
 ```
 
-This checks whether every fixture reached its expected state.
+すべてのフィクスチャが期待状態に到達したかを確認する。
 
-## Demo: partial scene failure
+## デモ: 部分シーン障害
 
 ```yaml
 scenario:
@@ -91,7 +91,7 @@ steps:
       consistency: complete
 ```
 
-## Report example
+## レポート例
 
 ```txt
 FAIL welcome_scene_partial_failure
@@ -111,9 +111,9 @@ Possible field causes:
 - scene mapping config mismatch
 ```
 
-## KNX/DALI throughput scenario
+## KNX/DALI スループットシナリオ
 
-Some deployments may have lighting commands passing through a bus with lower throughput. A scenario can model slow scene transitions.
+一部の導入では、照明コマンドがスループットの低いバスを通過する場合がある。シナリオでシーン遷移の遅延をモデル化できる。
 
 ```yaml
 faults:
@@ -122,7 +122,7 @@ faults:
     commands_per_second: 20
 ```
 
-Assertion:
+アサーション:
 
 ```yaml
 assert:
@@ -130,9 +130,9 @@ assert:
   completed_within: 5s
 ```
 
-## Future: floorplan mapping
+## 将来: フロアプランマッピング
 
-A future module can map fixtures onto a floorplan/CAD coordinate system.
+将来モジュールでは、フィクスチャをフロアプラン/CAD 座標系にマッピングできる。
 
 ```yaml
 fixture_map:
@@ -142,4 +142,4 @@ fixture_map:
     drawing_ref: L-101
 ```
 
-This supports commissioning reports that tell field engineers exactly where to check.
+これにより、フィールドエンジニアがどこを確認すべきかを正確に伝えるコミッショニングレポートをサポートする。

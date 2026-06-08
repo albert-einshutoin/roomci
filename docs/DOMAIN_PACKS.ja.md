@@ -1,87 +1,87 @@
 # ドメインパック
 
-## Core
+## コア
 
-The reusable `roomci` core is domain-neutral:
+再利用可能な `roomci` core はドメイン中立です。
 
-- MQTT/device contracts: command topics, state topics, retained state, duplicate delivery, reconnect-oriented behavior.
-- Edge routing/failover: active edge routing, primary/secondary failover, local-first availability.
-- Failure injection: cloud outage, local broker outage, duplicate delivery, command drop, edge power loss, WAN failover.
-- Report generation: JSON, Markdown, JUnit, timeline, assertions, final state, guest/field impact messages.
-- CI execution: deterministic scenario mode, Docker image, Compose smoke tests, and quality gates.
+- MQTT/device contracts: command topics、state topics、retained state、duplicate delivery、reconnect 指向の挙動。
+- Edge routing/failover: active edge routing、primary/secondary failover、local-first availability。
+- Failure injection: cloud outage、local broker outage、duplicate delivery、command drop、edge power loss、WAN failover。
+- Report generation: JSON、Markdown、JUnit、timeline、assertions、final state、guest/field impact messages。
+- CI execution: deterministic scenario mode、Docker image、Compose smoke tests、quality gates。
 
-Domain packs are scenario conventions layered on top of that core. They should not require changing the runner unless the pack introduces a new reusable adapter or assertion type.
+ドメインパックは、この core の上に重ねるシナリオ規約です。パックが新しい再利用可能な adapter または assertion type を導入しない限り、runner の変更は不要です。
 
 ## ドメインパック
 
-### Generic MQTT Edge Devices
+### 汎用 MQTT エッジデバイス
 
-Generic MQTT examples avoid hospitality naming and show reusable command/state contracts.
+Generic MQTT の例はホスピタリティ向け命名を避け、再利用可能な command/state contract を示します。
 
-Examples:
+例:
 
 - `examples/generic_mqtt_retained_state.yaml`
 - `examples/generic_mqtt_duplicate_delivery.yaml`
 
-### Hospitality Smart Home
+### ホスピタリティスマートホーム
 
-Hospitality scenarios focus on guest-facing local-first behavior, room control, comfort, and field failures.
+ホスピタリティシナリオは、ゲスト向け local-first 挙動、客室制御、快適性、現場障害に焦点を当てます。
 
-Examples:
+例:
 
 - `examples/local_first_cloud_outage.yaml`
 - `examples/edge_server_failover.yaml`
 - `examples/comfort_auto_mode.yaml`
 - `examples/dali_scene_partial_failure.yaml`
 
-### Building Automation
+### ビルディングオートメーション
 
-Building-automation scenarios model practical protocol-adapter behavior rather than full protocol conformance.
+ビルディングオートメーションシナリオは、完全なプロトコル適合ではなく、実用的な protocol-adapter 挙動をモデル化します。
 
-Examples:
+例:
 
 - `examples/modbus_floor_heating.yaml`
 - `examples/dali_scene_partial_failure.yaml`
 - `examples/starlink_failover.yaml`
 
-### BMS / Operations
+### BMS / 運用
 
-BMS and operations scenarios treat alerts, notification channels, ticket state, and runbooks as first-class test outputs.
+BMS および運用シナリオは、アラート、通知チャネル、チケット状態、runbook を第一級のテスト出力として扱います。
 
-Examples:
+例:
 
 - `examples/bms_sauna_emergency_alert.yaml`
 - `examples/starlink_failover.yaml`
 
-### Commissioning
+### コミッショニング
 
-Commissioning scenarios convert site, room, and device declarations into executable checks.
+コミッショニングシナリオは、サイト、客室、デバイス宣言を実行可能なチェックに変換します。
 
-Examples:
+例:
 
 - `examples/commissioning_checklist.yaml`
 - `examples/modbus_floor_heating.yaml`
 
-### Access Control
+### アクセス制御
 
-Access-control scenarios check identity/access drift without calling real access systems.
+アクセス制御シナリオは、実際のアクセスシステムを呼び出さずに identity/access drift を検証します。
 
-Examples:
+例:
 
 - `examples/access_permission_drift.yaml`
 
-## Example Map
+## 例マップ
 
-| Example | Domain Pack | Reusable Contract |
+| 例 | ドメインパック | 再利用可能なコントラクト |
 |---|---|---|
-| `generic_mqtt_retained_state.yaml` | Generic MQTT edge devices | Command/state retained MQTT contract |
-| `generic_mqtt_duplicate_delivery.yaml` | Generic MQTT edge devices | Duplicate delivery idempotency |
-| `local_first_cloud_outage.yaml` | Hospitality smart home | Local-first control during cloud outage |
-| `edge_server_failover.yaml` | Hospitality smart home / building automation | Edge failover and local availability |
-| `modbus_floor_heating.yaml` | Building automation / commissioning | Register map behavior |
-| `bms_sauna_emergency_alert.yaml` | BMS / operations | Alert escalation contract |
-| `starlink_failover.yaml` | Building automation / BMS operations | WAN failover and ops notification |
-| `comfort_auto_mode.yaml` | Hospitality smart home | Comfort automation contract |
-| `access_permission_drift.yaml` | Access control | Identity/access drift detection |
-| `commissioning_checklist.yaml` | Commissioning | Field checklist generation |
-| `dali_scene_partial_failure.yaml` | Hospitality smart home / building automation | Lighting scene failure detection |
+| `generic_mqtt_retained_state.yaml` | 汎用 MQTT エッジデバイス | コマンド/状態の保持 MQTT コントラクト |
+| `generic_mqtt_duplicate_delivery.yaml` | 汎用 MQTT エッジデバイス | 重複配信のべき等性 |
+| `local_first_cloud_outage.yaml` | ホスピタリティスマートホーム | クラウド障害時のローカルファースト制御 |
+| `edge_server_failover.yaml` | ホスピタリティスマートホーム / ビルディングオートメーション | エッジフェイルオーバーとローカル可用性 |
+| `modbus_floor_heating.yaml` | ビルディングオートメーション / コミッショニング | レジスタマップの挙動 |
+| `bms_sauna_emergency_alert.yaml` | BMS / 運用 | アラートエスカレーションコントラクト |
+| `starlink_failover.yaml` | ビルディングオートメーション / BMS 運用 | WAN フェイルオーバーと運用通知 |
+| `comfort_auto_mode.yaml` | ホスピタリティスマートホーム | 快適性自動化コントラクト |
+| `access_permission_drift.yaml` | アクセス制御 | ID/アクセスドリフト検知 |
+| `commissioning_checklist.yaml` | コミッショニング | 現場チェックリスト生成 |
+| `dali_scene_partial_failure.yaml` | ホスピタリティスマートホーム / ビルディングオートメーション | 照明シーン障害検知 |

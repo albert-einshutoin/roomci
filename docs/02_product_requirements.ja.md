@@ -1,113 +1,113 @@
 # 02. 製品要件
 
-## Product name
+## 製品名
 
 `roomci`
 
-## Product category
+## 製品カテゴリ
 
-Docker-based smart-home QA and operations emulator for local development and CI.
+ローカル開発および CI 向けの Docker ベースのスマートホーム QA・運用エミュレータ。
 
-## Target users
+## 対象ユーザー
 
-- Smart-home software engineers
-- IoT engineers
-- Field engineers
-- Network engineers
-- Commissioning engineers
-- BMS / LCM / operations tooling engineers
-- QA engineers
-- Product engineers working across app, edge, devices, and operations
+- スマートホームソフトウェアエンジニア
+- IoT エンジニア
+- フィールドエンジニア
+- ネットワークエンジニア
+- コミッショニングエンジニア
+- BMS / LCM / 運用ツールエンジニア
+- QA エンジニア
+- アプリ、エッジ、デバイス、運用を横断して働くプロダクトエンジニア
 
 ## 問題ステートメント
 
-Smart-home systems are difficult to test because real behavior spans:
+スマートホームシステムはテストが難しい。実際の挙動は次の要素にまたがるからだ:
 
-- mobile or tablet controllers
-- local edge servers
-- cloud services
-- local and cloud MQTT brokers
-- industrial or building-automation protocols
-- physical devices
-- electrical contacts
-- network infrastructure
-- BMS alerts and human operations
-- field commissioning and maintenance
+- モバイルまたはタブレットコントローラ
+- ローカルエッジサーバー
+- クラウドサービス
+- ローカルおよびクラウド MQTT ブローカー
+- 産業用またはビルディングオートメーションプロトコル
+- 物理デバイス
+- 電気接点
+- ネットワークインフラ
+- BMS アラートと人的運用
+- 現場コミッショニングとメンテナンス
 
-Many failures appear only on-site. Reproducing them requires devices, wiring, network topology, and operational context.
+多くの障害は現場でのみ発生する。再現にはデバイス、配線、ネットワークトポロジ、運用コンテキストが必要になる。
 
 ## 製品目的
 
-Make smart-home field failures reproducible in Docker and CI.
+スマートホームの現場障害を Docker と CI で再現可能にする。
 
 ## 成功基準
 
 ### 技術的成功
 
-- A developer can run `docker compose up` and get a simulated one-house smart-home stack.
-- Scenarios can be expressed in YAML.
-- Local MQTT and edge server behavior can be tested without real devices.
-- Cloud outage and WAN outage can be simulated.
-- Modbus register maps can be validated.
-- DALI-like scene failures can be tested.
-- Contact I/O alerts can trigger BMS-like notifications.
-- Reports can be consumed by GitHub Actions and CI systems.
+- 開発者が `docker compose up` を実行し、1 軒分のスマートホームスタックをシミュレートできる。
+- シナリオを YAML で表現できる。
+- 実デバイスなしでローカル MQTT とエッジサーバーの挙動をテストできる。
+- クラウド障害と WAN 障害をシミュレートできる。
+- Modbus レジスタマップを検証できる。
+- DALI ライクなシーン障害をテストできる。
+- 接点 I/O アラートが BMS ライクな通知をトリガーできる。
+- レポートを GitHub Actions や CI システムで利用できる。
 
 ### 製品成功
 
-- The tool demonstrates deep understanding of local-first smart-home architecture.
-- It makes commissioning knowledge executable.
-- It models guest-impacting failures, not just protocol calls.
-- It gives useful failure reports with possible field causes and suggested checks.
+- 本ツールが local-first スマートホームアーキテクチャの深い理解を示す。
+- コミッショニング知識を実行可能にする。
+- プロトコル呼び出しだけでなく、ゲスト体験に影響する障害をモデル化する。
+- 想定される現場原因と確認手順を含む有用な障害レポートを提供する。
 
-## MVP要件
+## MVP 要件
 
 ### 機能要件
 
-| ID | Requirement | Priority |
+| ID | 要件 | 優先度 |
 |---|---|---|
-| FR-001 | Run scenario YAML files | Must |
-| FR-002 | Provide Docker image | Must |
-| FR-003 | Provide Docker Compose example | Must |
-| FR-004 | Emulate local MQTT retained state | Must |
-| FR-005 | Emulate edge server command routing | Must |
-| FR-006 | Simulate cloud outage while local operation continues | Must |
-| FR-007 | Emulate Modbus TCP register map | Must |
-| FR-008 | Emulate DALI-like lighting scene | Must |
-| FR-009 | Emulate contact I/O alert | Must |
-| FR-010 | Generate Markdown report | Must |
-| FR-011 | Generate JSON report | Must |
-| FR-012 | Generate JUnit report | Should |
-| FR-013 | Simulate QoS1 duplicate delivery | Should |
-| FR-014 | Simulate edge server failover | Should |
-| FR-015 | BMS Slack/phone/ticket mock | Should |
-| FR-016 | Comfort automation module | Could |
-| FR-017 | Intercom / intercom API / SIP mock | Later |
+| FR-001 | シナリオ YAML ファイルを実行する | Must |
+| FR-002 | Docker イメージを提供する | Must |
+| FR-003 | Docker Compose のサンプルを提供する | Must |
+| FR-004 | ローカル MQTT の retained 状態をエミュレートする | Must |
+| FR-005 | エッジサーバーのコマンドルーティングをエミュレートする | Must |
+| FR-006 | ローカル運用を継続しながらクラウド障害をシミュレートする | Must |
+| FR-007 | Modbus TCP レジスタマップをエミュレートする | Must |
+| FR-008 | DALI ライクな照明シーンをエミュレートする | Must |
+| FR-009 | 接点 I/O アラートをエミュレートする | Must |
+| FR-010 | Markdown レポートを生成する | Must |
+| FR-011 | JSON レポートを生成する | Must |
+| FR-012 | JUnit レポートを生成する | Should |
+| FR-013 | QoS1 の重複配信をシミュレートする | Should |
+| FR-014 | エッジサーバーのフェイルオーバーをシミュレートする | Should |
+| FR-015 | BMS Slack/電話/チケットのモック | Should |
+| FR-016 | 快適性自動化モジュール | Could |
+| FR-017 | インターコム / インターコム API / SIP モック | Later |
 
 ### 非機能要件
 
-| ID | Requirement | Priority |
+| ID | 要件 | 優先度 |
 |---|---|---|
-| NFR-001 | CI-friendly startup time | Must |
-| NFR-002 | Deterministic scenario execution | Must |
-| NFR-003 | Single binary or lightweight container | Should |
-| NFR-004 | Human-readable failure reports | Must |
-| NFR-005 | No real device access required | Must |
-| NFR-006 | Protocol mocks should be explicit approximations | Must |
-| NFR-007 | Extensible module architecture | Should |
+| NFR-001 | CI 向けの起動時間 | Must |
+| NFR-002 | 決定論的なシナリオ実行 | Must |
+| NFR-003 | 単一バイナリまたは軽量コンテナ | Should |
+| NFR-004 | 人間が読める障害レポート | Must |
+| NFR-005 | 実デバイスへのアクセス不要 | Must |
+| NFR-006 | プロトコルモックは明示的な近似であること | Must |
+| NFR-007 | 拡張可能なモジュールアーキテクチャ | Should |
 
 ## 非目的
 
-- Production device control
-- Full KNX / DALI / BACnet protocol certification
-- Real SIP trunking
-- Real phone provider / Slack / PagerDuty calls in default mode
-- Replacing a production BMS
-- Replacing real commissioning
+- 本番デバイス制御
+- KNX / DALI / BACnet プロトコルの完全認証
+- 実 SIP トランキング
+- デフォルトモードでの実電話プロバイダー / Slack / PagerDuty 呼び出し
+- 本番 BMS の置き換え
+- 実コミッショニングの置き換え
 
-## MVPリリース定義
+## MVP リリース定義
 
-A v0.1 release is acceptable when the following commands work:
+次のコマンドが動作すれば v0.1 リリースとして許容する:
 
 ```bash
 roomci validate examples/local_first_cloud_outage.yaml
@@ -116,17 +116,17 @@ roomci run examples/local_first_cloud_outage.yaml --report-md report.md --report
 docker compose -f compose/docker-compose.yml up --abort-on-container-exit
 ```
 
-## UX原則
+## UX 原則
 
-Reports should be written for both software engineers and field engineers.
+レポートはソフトウェアエンジニアとフィールドエンジニアの両方向けに書く。
 
-A bad report says:
+悪いレポートの例:
 
 ```txt
 assertion failed: device.state != expected
 ```
 
-A good report says:
+良いレポートの例:
 
 ```txt
 DALI fixture D411S10 did not reach the expected dimming level.

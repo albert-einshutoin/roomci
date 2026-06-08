@@ -1,28 +1,28 @@
 # 13. 快適性自動化
 
-## なぜ comfort automation belongs in roomci
+## roomci に快適性自動化が含まれる理由
 
-Smart-home quality is not only whether commands execute. It is whether the space becomes comfortable without the guest needing to operate devices.
+スマートホームの品質は、コマンドが実行されるかどうかだけではありません。ゲストがデバイスを操作しなくても空間が快適になるかどうかが重要です。
 
-`roomci-comfort` models:
+`roomci-comfort` は次をモデル化します。
 
-- temperature
-- humidity
-- discomfort index
-- ceiling vs living-area sensors
-- HVAC auto mode
-- user override events
-- room-specific tuning
+- 温度
+- 湿度
+- 不快指数（discomfort index）
+- 天井 vs リビングエリアのセンサー
+- HVAC 自動モード
+- ユーザー上書きイベント
+- 部屋ごとのチューニング
 
-## Discomfort index
+## 不快指数
 
-Default formula:
+デフォルトの計算式:
 
 ```txt
 DI = 0.81 * temperature + 0.01 * humidity * (0.99 * temperature - 14.3) + 46.3
 ```
 
-## Sensor model
+## センサーモデル
 
 ```yaml
 sensors:
@@ -34,12 +34,9 @@ sensors:
     humidity: 49.4
 ```
 
-## Deterministic time-series replay
+## 決定論的時系列リプレイ
 
-Phase 17 adds executable sensor-reading steps for deterministic CI replay.
-This is not a hardware or thermal simulation; it is a contract-level replay of
-sensor-zone observations that downstream comfort automation can use as
-evidence.
+Phase 17 は、決定論的 CI リプレイ用の実行可能なセンサー読み取りステップを追加します。これはハードウェアや熱シミュレーションではありません。下流の快適性自動化がエビデンスとして利用できる、センサーゾーン観測のコントラクトレベルのリプレイです。
 
 ```yaml
 steps:
@@ -63,12 +60,11 @@ assertions:
       comfort_timeseries: observed
 ```
 
-Each reading updates `comfort.<target>` in final state with temperature,
-humidity, occupancy, zone, discomfort index, and a simple oscillation flag.
+各読み取りは、温度、湿度、在室、ゾーン、不快指数、および単純な振動フラグを含む最終状態の `comfort.<target>` を更新します。
 
-## Comfort target
+## 快適性ターゲット
 
-Room-specific target:
+部屋ごとのターゲット:
 
 ```yaml
 comfort:
@@ -78,7 +74,7 @@ comfort:
     max: 76
 ```
 
-## HVAC auto control scenario
+## HVAC 自動制御シナリオ
 
 ```yaml
 scenario:
@@ -113,9 +109,9 @@ steps:
       condition: false
 ```
 
-## User override model
+## ユーザー上書きモデル
 
-A user override is a signal that auto mode may not match comfort expectation.
+ユーザー上書きは、自動モードが快適性の期待と一致しない可能性を示すシグナルです。
 
 ```yaml
 user_events:
@@ -124,14 +120,14 @@ user_events:
     new_temperature: 25
 ```
 
-Assertions:
+アサーション:
 
 ```yaml
 assert:
   user_override_count: 0
 ```
 
-## Humidity spike scenario
+## 湿度スパイクシナリオ
 
 ```yaml
 faults:
@@ -142,9 +138,9 @@ faults:
     duration: 10m
 ```
 
-The system should test whether the control algorithm reacts smoothly instead of oscillating.
+システムは、制御アルゴリズムが振動せずに滑らかに反応するかどうかをテストする必要があります。
 
-## Report example
+## レポート例
 
 ```txt
 FAIL comfort_auto_mode
@@ -166,9 +162,9 @@ Possible causes:
 - humidity spike not handled
 ```
 
-## Future: external data replay
+## 将来: 外部データリプレイ
 
-A future version can ingest real time-series data and replay conditions in CI.
+将来版では実際の時系列データを取り込み、CI 内で条件をリプレイできます。
 
 ```bash
 roomci replay-comfort data/fukuoka_doma_2025-09.csv

@@ -1,35 +1,35 @@
-# 08. Modbus戦略
+# 08. Modbus 戦略
 
-## なぜ Modbus matters
+## なぜ Modbus が重要か
 
-Modbus should be part of the MVP because it maps well to real building equipment and supports:
+Modbus は MVP に含めるべきである。実ビル機器へのマッピングがよく、次をサポートするからだ:
 
-- floor heating control
-- power meters
-- bath systems
-- detailed error-code acquisition
-- multi-drop device communication
-- register-map based integration with vendors and partners
-- field debugging through existing Modbus tools
+- 床暖房制御
+- 電力メーター
+- バスシステム
+- 詳細なエラーコード取得
+- マルチドロップデバイス通信
+- ベンダーやパートナーとのレジスタマップベース統合
+- 既存 Modbus ツールによるフィールドデバッグ
 
 ## スコープ
 
-v0.1 should support **Modbus TCP mock** with an RTU-like mental model.
+v0.1 は RTU ライクなメンタルモデルを持つ **Modbus TCP モック** をサポートすべきである。
 
-v0.1 does not need full serial/RS485 implementation, but the YAML should allow modeling unit IDs and register maps that correspond to RTU-style devices.
+v0.1 は完全なシリアル/RS485 実装は不要だが、YAML で RTU スタイルのデバイスに対応するユニット ID とレジスタマップをモデル化できるようにすべきである。
 
-## Address types
+## アドレスタイプ
 
-Support the four Modbus data categories:
+4 つの Modbus データカテゴリをサポートする:
 
-| Type | Access | Width | Use |
+| タイプ | アクセス | 幅 | 用途 |
 |---|---|---|---|
-| Coils | read/write | 1 bit | ON/OFF commands |
-| Discrete Inputs | read-only | 1 bit | status inputs |
-| Input Registers | read-only | 16 bit | sensor values |
-| Holding Registers | read/write | 16 bit | settings and commands |
+| Coils | 読み書き | 1 bit | ON/OFF コマンド |
+| Discrete Inputs | 読み取り専用 | 1 bit | 状態入力 |
+| Input Registers | 読み取り専用 | 16 bit | センサー値 |
+| Holding Registers | 読み書き | 16 bit | 設定とコマンド |
 
-## Example register map
+## レジスタマップ例
 
 ```yaml
 modbus:
@@ -62,20 +62,20 @@ modbus:
           value: true
 ```
 
-## Register validation
+## レジスタ検証
 
-`roomci` should validate:
+`roomci` は次を検証すべきである:
 
-- duplicated register addresses
-- invalid type ranges
-- write attempts to read-only registers
-- endianness declarations for multi-register values
-- missing scaling definitions
-- missing partner-facing descriptions
+- 重複したレジスタアドレス
+- 無効な型範囲
+- 読み取り専用レジスタへの書き込み試行
+- マルチレジスタ値のエンディアン宣言
+- スケーリング定義の欠落
+- パートナー向け説明の欠落
 
-## Multi-register values
+## マルチレジスタ値
 
-Example:
+例:
 
 ```yaml
 40010:
@@ -86,9 +86,9 @@ Example:
   word_order: little_endian
 ```
 
-## Faults
+## 障害
 
-Modbus-specific faults:
+Modbus 固有の障害:
 
 ```yaml
 faults:
@@ -104,7 +104,7 @@ faults:
     code: illegal_data_address
 ```
 
-## Demo: floor heating
+## デモ: 床暖房
 
 ```yaml
 scenario:
@@ -124,7 +124,7 @@ steps:
         readable_value: 24.5
 ```
 
-## Report example
+## レポート例
 
 ```txt
 PASS modbus_floor_heating_0_1_degree_control
@@ -134,6 +134,6 @@ Verified:
 - Holding register 40001 accepted target temperature 24.5°C
 - Input register 30001 remained readable
 
-Commissioning note:
-- Register map appears consistent with scenario expectations.
+コミッショニングメモ:
+- レジスタマップはシナリオの期待と整合している。
 ```

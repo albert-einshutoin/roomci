@@ -1,21 +1,21 @@
 # 06. デバイスモデル
 
-## 設計 goal
+## 設計目標
 
-The device model should be expressive enough for QA scenarios but not attempt full physical fidelity.
+デバイスモデルは QA シナリオに十分な表現力を持ちつつ、完全な物理的忠実度は目指さない。
 
-A device must have:
+デバイスは次を持つ必要がある:
 
-- stable ID
-- type
-- protocol adapter
-- current state
-- command interface
-- telemetry/state topics
-- failure modes
-- field metadata
+- 安定した ID
+- タイプ
+- プロトコルアダプター
+- 現在の状態
+- コマンドインターフェース
+- テレメトリ/状態トピック
+- 障害モード
+- フィールドメタデータ
 
-## Device schema
+## デバイススキーマ
 
 ```yaml
 devices:
@@ -32,31 +32,31 @@ devices:
       brightness: 0
 ```
 
-## Core device types
+## コアデバイスタイプ
 
-| Type | 目的 | MVP |
+| タイプ | 目的 | MVP |
 |---|---|---|
-| light | lighting and scenes | Yes |
-| hvac | air conditioner / heating | Yes |
-| floor_heating | temperature-controlled heating | Yes |
-| contact_input | alarms, sensors, dry contacts | Yes |
-| contact_output | relays, unlock, speaker trigger | Yes |
-| curtain | curtain / blind control | Should |
-| sauna | sauna temperature / emergency alert | Should |
-| bath | bath / cold bath temp control | Should |
-| power_meter | electricity metering | Should |
-| humidity_sensor | comfort automation | Should |
-| temperature_sensor | comfort automation | Should |
-| intercom | intercom API future | Later |
+| light | 照明とシーン | Yes |
+| hvac | エアコン / 暖房 | Yes |
+| floor_heating | 温度制御暖房 | Yes |
+| contact_input | アラーム、センサー、ドライ接点 | Yes |
+| contact_output | リレー、解錠、スピーカートリガー | Yes |
+| curtain | カーテン / ブラインド制御 | Should |
+| sauna | サウナ温度 / 緊急アラート | Should |
+| bath | バス / 冷水浴温度制御 | Should |
+| power_meter | 電力量計測 | Should |
+| humidity_sensor | 快適性自動化 | Should |
+| temperature_sensor | 快適性自動化 | Should |
+| intercom | インターコム API（将来） | Later |
 
-## Device state principles
+## デバイス状態の原則
 
-- State should be serializable to JSON.
-- State should be publishable as retained MQTT messages.
-- State updates should be timestamped.
-- Device errors should include both guest impact and field-debug hints.
+- 状態は JSON にシリアライズ可能であること。
+- 状態は retained MQTT メッセージとして公開可能であること。
+- 状態更新にはタイムスタンプを付与すること。
+- デバイスエラーにはゲストへの影響とフィールドデバッグのヒントの両方を含めること。
 
-## Example: HVAC
+## 例: HVAC
 
 ```yaml
 - id: hvac_living
@@ -70,7 +70,7 @@ devices:
     error_code: null
 ```
 
-## Example: Contact input
+## 例: 接点入力
 
 ```yaml
 - id: sauna_emergency_button
@@ -82,7 +82,7 @@ devices:
     location: sauna_room
 ```
 
-## Example: Contact output
+## 例: 接点出力
 
 ```yaml
 - id: gate_relay
@@ -93,11 +93,11 @@ devices:
     pulse_duration_ms: 1000
 ```
 
-## Field metadata
+## フィールドメタデータ
 
-Field metadata is important because failure reports should help people debug in the real world.
+フィールドメタデータは重要である。障害レポートが現場でのデバッグに役立つためだ。
 
-Recommended metadata:
+推奨メタデータ:
 
 ```yaml
 metadata:
@@ -110,9 +110,9 @@ metadata:
   owner_team: smart-home
 ```
 
-## Device fault model
+## デバイス障害モデル
 
-Common device faults:
+一般的なデバイス障害:
 
 - offline
 - command_drop
@@ -125,14 +125,14 @@ Common device faults:
 - degraded
 - partial_failure
 
-## Guest impact levels
+## ゲスト影響レベル
 
-Every failed assertion should estimate impact:
+失敗したアサーションはすべて影響度を推定すべきである:
 
-| Level | Meaning |
+| レベル | 意味 |
 |---|---|
-| none | no expected guest impact |
-| low | minor delay or degradation |
-| medium | noticeable but recoverable failure |
-| high | guest experience significantly affected |
-| critical | safety / access / emergency issue |
+| none | ゲストへの影響は想定されない |
+| low | 軽微な遅延または劣化 |
+| medium | 目立つが回復可能な障害 |
+| high | ゲスト体験に大きな影響 |
+| critical | 安全 / アクセス / 緊急事態の問題 |

@@ -2,26 +2,26 @@
 
 ## スコープ
 
-Intercom and access control are important but should not be MVP-heavy.
+インターコムとアクセス制御は重要ですが、MVP では大きく取り込むべきではありません。
 
-v0.1 should include:
+v0.1 に含めるもの:
 
-- PIN check-in event model
-- contact relay output
-- staff-call event mock
+- PIN チェックインイベントモデル
+- 接点リレー出力
+- スタッフ呼び出しイベントのモック
 
-v0.3 may include:
+v0.3 に含める可能性があるもの:
 
-- intercom API
-- SIP call mock
-- DTMF relay trigger
-- phone provider outage simulation
-- Zoom Phone mock
-- local PBX fallback
-- ONVIF-like camera event
-- PoE speaker webhook mock
+- インターコム API
+- SIP 通話モック
+- DTMF リレートリガー
+- 電話プロバイダー障害シミュレーション
+- Zoom Phone モック
+- ローカル PBX フォールバック
+- ONVIF 風カメライベント
+- PoE スピーカー webhook モック
 
-## Check-in model
+## チェックインモデル
 
 ```yaml
 checkin:
@@ -31,11 +31,9 @@ checkin:
   valid_until: 2026-01-02T11:00:00+09:00
 ```
 
-## Safe mock flow
+## 安全なモックフロー
 
-The executable scope is a scenario-only safe mock. It records PIN decisions,
-relay pulse requests, staff-call attempts, and fallbacks as evidence, but it
-never performs real unlock authorization or controls physical locks.
+実行可能なスコープはシナリオ専用の安全なモックです。PIN 判定、リレーパルス要求、スタッフ呼び出し試行、フォールバックをエビデンスとして記録しますが、実際の解錠認可や物理ロックの制御は行いません。
 
 ```yaml
 steps:
@@ -61,7 +59,7 @@ assertions:
       intercom_relay: safe_evidence
 ```
 
-## Contact relay output
+## 接点リレー出力
 
 ```yaml
 contacts:
@@ -71,7 +69,7 @@ contacts:
       duration_ms: 1000
 ```
 
-## Staff call model
+## スタッフ呼び出しモデル
 
 ```yaml
 staff_call:
@@ -80,9 +78,9 @@ staff_call:
   fallback: local_pbx
 ```
 
-## DTMF future
+## DTMF（将来）
 
-DTMF can be modeled as an input event that triggers a relay.
+DTMF はリレーをトリガーする入力イベントとしてモデル化できます。
 
 ```yaml
 steps:
@@ -97,7 +95,7 @@ steps:
         pulsed: true
 ```
 
-## phone provider outage scenario future
+## 電話プロバイダー障害シナリオ（将来）
 
 ```yaml
 faults:
@@ -111,9 +109,9 @@ assertions:
     condition: used_as_fallback
 ```
 
-## Access control drift scenario
+## アクセス制御ドリフトシナリオ
 
-A lightweight module can emulate access-control drift by comparing identity-provider group membership with access-system users.
+軽量モジュールは、ID プロバイダーのグループメンバーシップとアクセスシステムのユーザーを比較することで、アクセス制御ドリフトをエミュレートできます。
 
 ```yaml
 scenario:
@@ -134,7 +132,7 @@ assertions:
       access_control_drift: detected
 ```
 
-Report:
+レポート:
 
 ```txt
 PASS access_permission_drift

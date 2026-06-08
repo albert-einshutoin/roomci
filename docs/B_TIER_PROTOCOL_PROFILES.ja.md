@@ -1,12 +1,8 @@
-# Bティアプロトコルプロファイル
+# B ティアプロトコルプロファイル
 
-B Tier profiles make Matter, BACnet, KNX, and OPC UA evaluable as
-`contract_profile` fixtures.
+B Tier profile は、Matter、BACnet、KNX、OPC UA を `contract_profile` fixture として評価可能にします。
 
-They are not wire-protocol implementations and not certification evidence. The
-useful product claim is narrower: an evaluator can bring protocol-facing
-gateway maps and encode them as adapter contracts before a real gateway,
-controller, or field device is available in CI.
+これらは wire-protocol 実装でも certification エビデンスでもありません。有用なプロダクト claim はより狭いものです。評価者が protocol-facing gateway map を持ち込み、実 gateway、controller、または field device が CI で利用可能になる前に adapter contract としてエンコードできます。
 
 ## Gate
 
@@ -14,8 +10,7 @@ controller, or field device is available in CI.
 make protocol-profile-smoke
 ```
 
-This validates the four adapter contracts and the four dry-run scenario
-fixtures:
+これは 4 つの adapter contract と 4 つの dry-run scenario fixture を検証します。
 
 - `adapter-contracts/examples/matter_gateway_profile.yaml`
 - `adapter-contracts/examples/bacnet_contract_profile.yaml`
@@ -28,7 +23,7 @@ fixtures:
 
 ## Matter Gateway Profile
 
-Supported fields:
+サポートフィールド:
 
 - `gateway`
 - `device_id`
@@ -39,7 +34,7 @@ Supported fields:
 - `expected_state`
 - `acceptance`
 
-Required customer inputs:
+必要な顧客入力:
 
 - gateway mapping
 - device identity mapping
@@ -59,7 +54,7 @@ Required customer inputs:
 
 ## BACnet Contract Profile
 
-Supported fields:
+サポートフィールド:
 
 - `device_id`
 - `object_type`
@@ -69,7 +64,7 @@ Supported fields:
 - `event_class`
 - `acceptance`
 
-Required customer inputs:
+必要な顧客入力:
 
 - BACnet device identity
 - object type and instance
@@ -89,7 +84,7 @@ Required customer inputs:
 
 ## KNX Group-Address Profile
 
-Supported fields:
+サポートフィールド:
 
 - `gateway`
 - `group_address`
@@ -100,7 +95,7 @@ Supported fields:
 - `room`
 - `acceptance`
 
-Required customer inputs:
+必要な顧客入力:
 
 - gateway label
 - group-address map
@@ -120,7 +115,7 @@ Required customer inputs:
 
 ## OPC UA Contract Profile
 
-Supported fields:
+サポートフィールド:
 
 - `endpoint`
 - `namespace`
@@ -131,7 +126,7 @@ Supported fields:
 - `event_type`
 - `acceptance`
 
-Required customer inputs:
+必要な顧客入力:
 
 - endpoint label
 - namespace
@@ -151,9 +146,6 @@ Required customer inputs:
 - NodeSet or address-space compliance
 - certification
 
-## Usefulness Boundary
+## 有用性の境界
 
-These profiles are useful when a team can express a gateway-level contract in
-advance of real hardware or site access. They are not useful when the evaluation
-requires packet-level protocol behavior, official certification, timing,
-transport security, radio behavior, or vendor-specific device stacks.
+これらの profile は、チームが実ハードウェアや現場アクセスの前に gateway-level contract を表現できる場合に有用です。packet-level protocol 挙動、公式 certification、timing、transport security、radio 挙動、vendor-specific device stack が評価に必要な場合は有用ではありません。

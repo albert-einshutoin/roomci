@@ -1,49 +1,49 @@
-# Pre-adoption PoC Checklist
+# 導入前 PoC チェックリスト
 
-Use this checklist when evaluating `roomci` before adopting it for a real smart-home, edge-device, BMS, or building-automation workflow.
+スマートホーム、エッジデバイス、BMS、ビルディングオートメーションワークフローへの導入前に `roomci` を評価する際は、このチェックリストを使用してください。
 
-## 1. Pick the Integration Mode
+## 1. 統合モードを選ぶ
 
-- Scenario mode: run YAML scenarios fully inside `roomci`.
-- Serve mode over HTTP: external tests call localhost endpoints and collect reports.
-- Serve mode over MQTT subset: external clients publish command payloads to `--mqtt-port`, then observe state and reports through HTTP.
+- シナリオモード: YAML シナリオを `roomci` 内で完全実行する。
+- HTTP 経由の serve モード: 外部テストが localhost エンドポイントを呼び、レポートを収集する。
+- MQTT サブセット経由の serve モード: 外部クライアントが `--mqtt-port` にコマンドペイロードを publish し、状態とレポートを HTTP 経由で観測する。
 
-## 2. Provide Protocol Contracts
+## 2. プロトコルコントラクトを提供する
 
-For MQTT:
+MQTT の場合:
 
-- command topic templates
-- state topic templates
-- device-id extraction strategy
-- JSON payload fields and required fields
-- QoS and retained-state expectations
-- reconnect/session expectations
+- コマンドトピックテンプレート
+- 状態トピックテンプレート
+- デバイス ID 抽出戦略
+- JSON ペイロードフィールドと必須フィールド
+- QoS と保持状態の期待値
+- 再接続/セッションの期待値
 
-For Modbus:
+Modbus の場合:
 
-- register map
-- register type and scale
-- writable vs read-only addresses
-- expected commissioning values
+- レジスタマップ
+- レジスタタイプとスケール
+- 書き込み可能アドレスと読み取り専用アドレス
+- 期待されるコミッショニング値
 
-For BMS / operations:
+BMS / 運用の場合:
 
-- alert source mapping
-- webhook/API contract
-- notification targets
-- ticket lifecycle
-- runbook links
+- アラートソースマッピング
+- webhook/API コントラクト
+- 通知ターゲット
+- チケットライフサイクル
+- ランブックリンク
 
-## 3. Define Pass/Fail Criteria
+## 3. 合格/不合格基準を定義する
 
-- expected retained state
-- expected device state
-- expected failover timing
-- expected guest or operator impact
-- expected report artifacts
-- non-zero behavior for intentional failures
+- 期待される保持状態
+- 期待されるデバイス状態
+- 期待されるフェイルオーバータイミング
+- 期待されるゲストまたはオペレーターへの影響
+- 期待されるレポートアーティファクト
+- 意図的失敗に対する非ゼロ終了コード
 
-## 4. Run the PoC Gates
+## 4. PoC ゲートを実行する
 
 ```bash
 cargo run --release -- serve --config examples/generic_mqtt_retained_state.yaml --mqtt-port 1883
@@ -51,10 +51,10 @@ make compose-poc
 make verify
 ```
 
-`GET /health` should report `idle` before the controller finishes the PoC and `passed` after `/finish` for a successful run. A `failed` health response returns HTTP 503 so CI gates fail closed.
+コントローラーが PoC を完了する前、`GET /health` は `idle` を報告すべきです。成功した実行後の `/finish` では `passed` を報告します。`failed` のヘルスレスポンスは HTTP 503 を返し、CI ゲートがフェイルクローズになります。
 
-## 5. Confirm Boundaries
+## 5. 境界を確認する
 
-`roomci` is a QA contract emulator. It does not claim private-system compatibility, full MQTT broker behavior, production BMS behavior, or replacement of real device commissioning.
+`roomci` は QA コントラクトエミュレーターです。プライベートシステム互換性、完全な MQTT ブローカー動作、本番 BMS 動作、実機コミッショニングの代替を主張しません。
 
-For any organization, real integration requires their actual MQTT topics, payload schemas, device/register maps, BMS contracts, auth/TLS assumptions, and acceptance criteria.
+どの組織でも、実際の統合には実際の MQTT トピック、ペイロードスキーマ、デバイス/レジスタマップ、BMS コントラクト、認証/TLS 前提、受入基準が必要です。

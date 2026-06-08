@@ -32,103 +32,103 @@
 
 ## 実行時モード
 
-### 1. Scenario mode
+### 1. シナリオモード
 
-Runs a scenario file and exits with pass/fail.
+シナリオファイルを実行し、合格/不合格で終了する。
 
 ```bash
 roomci run examples/local_first_cloud_outage.yaml
 ```
 
-Use this in CI.
+CI で使用する。
 
-### 2. Service-mode config check
+### 2. サービスモード設定チェック
 
-Validates a scenario as service-mode configuration without starting a long-running process.
+長時間稼働プロセスを起動せずに、シナリオをサービスモード設定として検証する。
 
 ```bash
 roomci serve --config examples/local_first_cloud_outage.yaml --check
 ```
 
-Use this before wiring backend/mobile E2E tests to a long-running adapter process.
+バックエンド/モバイルの E2E テストを長時間稼働アダプタープロセスに接続する前に使用する。
 
-### 3. Compose stack mode
+### 3. Compose スタックモード
 
-Starts multiple service containers to reproduce a full smart-home stack.
+複数のサービスコンテナを起動し、スマートホームスタック全体を再現する。
 
 ```bash
 docker compose -f compose/docker-compose.yml up
 ```
 
-Use this when demonstrating service-emulation style local reproduction.
+サービスエミュレーション方式のローカル再現をデモする際に使用する。
 
 ## コアモジュール
 
 ### roomci-core
 
-- scenario parser
-- virtual time engine
-- event timeline
-- assertions
-- report generation
+- シナリオパーサー
+- 仮想時間エンジン
+- イベントタイムライン
+- アサーション
+- レポート生成
 
 ### roomci-mqtt
 
-- local broker model
-- cloud broker mock
-- retained messages
-- QoS behavior simulation
-- reconnect/recovery simulation
+- ローカルブローカーモデル
+- クラウドブローカーモック
+- retained メッセージ
+- QoS 挙動シミュレーション
+- 再接続/復旧シミュレーション
 
 ### roomci-edge
 
-- home control server emulator
-- local command routing
-- device command adapters
-- local-first fallback behavior
+- ホームコントロールサーバーエミュレータ
+- ローカルコマンドルーティング
+- デバイスコマンドアダプター
+- local-first フォールバック挙動
 
 ### roomci-devices
 
-- Modbus mock
-- DALI-like lighting mock
-- KNX-like legacy bus
-- contact I/O
+- Modbus モック
+- DALI ライクな照明モック
+- KNX ライクなレガシーバス
+- 接点 I/O
 - HVAC
-- curtain/blind
-- sauna/bath
+- カーテン/ブラインド
+- サウナ/バス
 
 ### roomci-control-panel
 
-- 24V power supply fault
-- UPS degradation
-- circuit protector trip
-- redundant edge failover
+- 24V 電源障害
+- UPS 劣化
+- 回路保護器トリップ
+- 冗長エッジフェイルオーバー
 
 ### roomci-network
 
-- local network partition
-- WAN outage
-- ISP degradation
-- backup-WAN failover
-- VLAN segmentation checks
+- ローカルネットワーク分断
+- WAN 障害
+- ISP 劣化
+- バックアップ WAN フェイルオーバー
+- VLAN セグメンテーションチェック
 
 ### roomci-ops
 
-- BMSアラート
-- Slack notification mock
-- phone escalation mock
-- ticket state
-- runbook links
-- recovery notifications
+- BMS アラート
+- Slack 通知モック
+- 電話エスカレーションモック
+- チケット状態
+- ランブックリンク
+- 復旧通知
 
 ### roomci-comfort
 
-- temperature/humidity model
-- discomfort index calculation
-- HVAC auto mode
-- user override events
+- 温度/湿度モデル
+- 不快指数計算
+- HVAC 自動モード
+- ユーザー上書きイベント
 
-## データフロー: local-first operation
+## データフロー: local-first 運用
 
 ```txt
 iPad Controller
@@ -153,7 +153,7 @@ Local MQTT Broker retained state
 iPad Controller receives updated state
 ```
 
-## データフロー: cloud bridge
+## データフロー: クラウドブリッジ
 
 ```txt
 Local MQTT Broker
@@ -174,28 +174,28 @@ SQS-like Queue
 Cloud Run Callback Mock
 ```
 
-## 設計 choices
+## 設計方針
 
-### なぜ not full protocol compatibility?
+### なぜ完全なプロトコル互換性を目指さないのか？
 
-Full KNX, DALI, BACnet, and SIP implementations would be too large for an interview-oriented OSS MVP. `roomci` should provide behavioral simulation sufficient for QA scenarios.
+KNX、DALI、BACnet、SIP の完全実装は、面接向け OSS MVP には大きすぎる。`roomci` は QA シナリオに十分な挙動シミュレーションを提供すべきである。
 
-### なぜ Docker-first?
+### なぜ Docker-first なのか？
 
-The target workflow is local and CI testing. Docker makes it easy to start deterministic service dependencies without requiring devices, gateways, or physical wiring.
+対象ワークフローはローカルおよび CI テストである。Docker により、デバイス、ゲートウェイ、物理配線を必要とせず、決定論的なサービス依存関係を容易に起動できる。
 
-### なぜ YAML scenarios?
+### なぜ YAML シナリオなのか？
 
-Commissioning knowledge is often procedural. YAML can turn checklists into executable scenarios.
+コミッショニング知識はしばしば手順的である。YAML はチェックリストを実行可能なシナリオに変換できる。
 
-### なぜ Rust?
+### なぜ Rust なのか？
 
-Rust fits because `roomci` needs:
+`roomci` には次が必要であり、Rust が適している:
 
-- deterministic state machines
-- concurrent network servers
-- low-overhead Docker images
-- single-binary distribution
-- safe handling of event order, timeouts, retries, and faults
+- 決定論的なステートマシン
+- 並行ネットワークサーバー
+- オーバーヘッドの小さい Docker イメージ
+- 単一バイナリ配布
+- イベント順序、タイムアウト、リトライ、障害の安全な処理
 
-Rust is not positioned as a replacement for Go/Lua/Swift/TypeScript production stacks. It is used as an external QA engine.
+Rust は Go/Lua/Swift/TypeScript の本番スタックの置き換えとして位置づけない。外部 QA エンジンとして使用する。
