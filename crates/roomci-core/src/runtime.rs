@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use chrono::Duration;
-use roomci_device_model::{ContactModel, LightingEvent, LightingModel, ModbusModel};
+use roomci_device_model::{
+    apply_command_state, command_is_supported, ContactModel, LightingEvent, LightingModel, ModbusModel,
+};
 use roomci_edge::EdgeModel;
 use roomci_mqtt::{
     device_id_from_command_topic, state_topic_for_command_topic, BrokerModel, DeviceCommandPublish,
@@ -9,6 +11,7 @@ use roomci_mqtt::{
 use roomci_ops::{OpsEvent, OpsModel};
 use roomci_scenario::{
     validate_mqtt_contract_publish, yaml_map_to_json, CommandTarget, Condition,
+    ValidatedCommandStep,
     MqttConnectionContract, ValidatedAutomationStep, ValidatedEventKind, ValidatedFaultKind,
     ValidatedIntercomStep, ValidatedMqttPublishStep, ValidatedOpsStep, ValidatedScenario,
     ValidatedScheduledEvent, ValidatedSensorReadingStep, ValidatedStepKind,
@@ -20,6 +23,7 @@ use crate::{AssertionResult, CoreError, StateMap, TimelineEvent};
 pub(crate) struct RuntimeState {
     pub(crate) states: BTreeMap<String, StateMap>,
     pub(crate) protocols: BTreeMap<String, Option<String>>,
+    pub(crate) device_types: BTreeMap<String, String>,
     pub(crate) mqtt_contracts: Vec<MqttConnectionContract>,
     pub(crate) broker: BrokerModel,
     pub(crate) edge: EdgeModel,
@@ -81,10 +85,16 @@ impl RuntimeState {
                 )
             })
             .collect::<BTreeMap<_, _>>();
+        let device_types = scenario
+            .devices()
+            .iter()
+            .map(|device| (device.id.to_string(), device.device_type.to_string()))
+            .collect::<BTreeMap<_, _>>();
 
         Self {
             states,
             protocols,
+            device_types,
             mqtt_contracts: scenario.raw().mqtt.contracts.clone(),
             broker: BrokerModel::new(true, runtime_inputs.broker_cloud_enabled),
             edge: runtime_inputs.edge.clone(),
@@ -137,7 +147,7 @@ impl RuntimeState {
                         self.apply_fault(event.at(), fault);
                     }
                     ValidatedStepKind::Command(command) => {
-                        self.apply_command(event.at(), &command.target, command.action.as_str());
+                        self.apply_command(event.at(), command);
                     }
                     ValidatedStepKind::ModbusWrite(modbus_write) => {
                         self.apply_modbus_write(
@@ -436,19 +446,65 @@ impl RuntimeState {
         self.push_ops_event(at, event);
     }
 
-    fn apply_command(&mut self, at: Duration, target: &CommandTarget, action: &str) {
-        let display_target = target.display_target();
+    fn apply_command(&mut self, at: Duration, command: &ValidatedCommandStep) {
+        let display_target = command.target.display_target();
         self.push(
             at,
             "command_received",
-            Some(display_target),
-            format!("{} command received", action),
+            Some(display_target.clone()),
+            format!("{} command received", command.action.as_str()),
         );
-        if action == "activate" {
-            if let CommandTarget::Scene(scene) = target {
-                self.activate_scene(at, scene.as_str());
+        match &command.target {
+            CommandTarget::Scene(scene) => {
+                if command.action.as_str() == "activate" {
+                    self.activate_scene(at, scene.as_str());
+                } else {
+                    self.push(
+                        at,
+                        "command_rejected",
+                        Some(display_target),
+                        format!("unsupported scene command: {}", command.action),
+                    );
+                }
+            }
+            CommandTarget::Other(device_id) => {
+                self.apply_device_command(at, device_id.as_str(), command.action.as_str());
             }
         }
+    }
+
+    fn apply_device_command(&mut self, at: Duration, device_id: &str, action: &str) {
+        let Some(device_type) = self.device_types.get(device_id) else {
+            self.push(
+                at,
+                "command_rejected",
+                Some(device_id.to_string()),
+                "unknown command target".to_string(),
+            );
+            return;
+        };
+
+        if !command_is_supported(device_type.as_str(), action) {
+            self.push(
+                at,
+                "command_rejected",
+                Some(device_id.to_string()),
+                format!("unsupported command {action} for {device_type}"),
+            );
+            return;
+        }
+
+        let state = self
+            .states
+            .entry(device_id.to_string())
+            .or_default();
+        apply_command_state(device_type, action, None, state);
+        self.push(
+            at,
+            "command_state_updated",
+            Some(device_id.to_string()),
+            format!("{action} applied"),
+        );
     }
 
     fn apply_modbus_write(
