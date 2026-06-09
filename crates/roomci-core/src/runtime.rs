@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use chrono::Duration;
 use roomci_device_model::{
-    apply_command_state, command_is_supported, ContactModel, LightingEvent, LightingModel, ModbusModel,
+    apply_command_state, command_is_supported, ContactModel, LightingEvent, LightingModel,
+    ModbusModel,
 };
 use roomci_edge::EdgeModel;
 use roomci_mqtt::{
@@ -11,10 +12,9 @@ use roomci_mqtt::{
 use roomci_ops::{OpsEvent, OpsModel};
 use roomci_scenario::{
     validate_mqtt_contract_publish, yaml_map_to_json, CommandTarget, Condition,
-    ValidatedCommandStep,
-    MqttConnectionContract, ValidatedAutomationStep, ValidatedEventKind, ValidatedFaultKind,
-    ValidatedIntercomStep, ValidatedMqttPublishStep, ValidatedOpsStep, ValidatedScenario,
-    ValidatedScheduledEvent, ValidatedSensorReadingStep, ValidatedStepKind,
+    MqttConnectionContract, ValidatedAutomationStep, ValidatedCommandStep, ValidatedEventKind,
+    ValidatedFaultKind, ValidatedIntercomStep, ValidatedMqttPublishStep, ValidatedOpsStep,
+    ValidatedScenario, ValidatedScheduledEvent, ValidatedSensorReadingStep, ValidatedStepKind,
 };
 
 use crate::{AssertionResult, CoreError, StateMap, TimelineEvent};
@@ -494,10 +494,7 @@ impl RuntimeState {
             return;
         }
 
-        let state = self
-            .states
-            .entry(device_id.to_string())
-            .or_default();
+        let state = self.states.entry(device_id.to_string()).or_default();
         apply_command_state(device_type, action, None, state);
         self.push(
             at,
