@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use roomci_scenario::{load_scenario, ValidatedScenario};
+use serde_json::json;
 
 use super::*;
 
@@ -517,6 +518,45 @@ fn runtime_groups_customer_independent_domain_state() {
     assert!(runtime.comfort.target.is_some());
     assert!(runtime.access.unexpected_users.is_empty());
     assert_eq!(runtime.commissioning.check_count, 0);
+}
+
+#[test]
+fn command_step_updates_known_device_state() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: command_updates_device_state
+devices:
+  - id: living_light
+    type: light
+    protocol: dali
+    state:
+      power: off
+steps:
+  - at: T
+    command:
+      target: living_light
+      action: turn_on
+"#,
+    )
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    assert_eq!(
+        report
+            .final_state
+            .get("living_light")
+            .and_then(|state| state.get("power"))
+            .unwrap(),
+        &json!("on")
+    );
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "command_state_updated"));
 }
 
 #[test]

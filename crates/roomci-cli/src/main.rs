@@ -22,6 +22,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     process::ExitCode,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use clap::{ArgGroup, Parser, Subcommand};
@@ -521,6 +522,8 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
         let mut report = run_scenario(&scenario_file)?;
         if let Some(run_id) = &options.run_id {
             report.run_id = run_id.clone();
+        } else {
+            report.run_id = unique_run_id(&report.scenario_name, index + 1);
         }
         match report.result {
             RunResult::Passed => passed += 1,
@@ -576,6 +579,15 @@ fn reports_requested(options: &RunOptions) -> bool {
         || options.timeline_json.is_some()
         || options.timeline_ndjson.is_some()
         || options.observability_json.is_some()
+}
+
+fn unique_run_id(scenario_name: &str, sequence: usize) -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+
+    format!("{scenario_name}-{nanos}-{sequence}")
 }
 
 fn print_scenario_summary(

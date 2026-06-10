@@ -977,3 +977,10 @@ fn rejects_invalid_duration() {
 
     assert!(matches!(error, ScenarioError::InvalidDuration(_)));
 }
+
+#[test]
+fn rejects_out_of_range_duration() {
+    let error = parse_duration("9999999999999h").unwrap_err();
+
+    assert!(matches!(error, ScenarioError::InvalidDuration(_)));
+}

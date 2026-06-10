@@ -775,9 +775,12 @@ pub fn parse_duration(value: &str) -> Result<Duration, ScenarioError> {
         .map_err(|_| ScenarioError::InvalidDuration(value.to_string()))?;
     let unit = &value[split_at..];
     match unit {
-        "s" => Ok(Duration::seconds(amount)),
-        "m" => Ok(Duration::minutes(amount)),
-        "h" => Ok(Duration::hours(amount)),
+        "s" => Duration::try_seconds(amount)
+            .ok_or_else(|| ScenarioError::InvalidDuration(value.to_string())),
+        "m" => Duration::try_minutes(amount)
+            .ok_or_else(|| ScenarioError::InvalidDuration(value.to_string())),
+        "h" => Duration::try_hours(amount)
+            .ok_or_else(|| ScenarioError::InvalidDuration(value.to_string())),
         _ => Err(ScenarioError::InvalidDuration(value.to_string())),
     }
 }
