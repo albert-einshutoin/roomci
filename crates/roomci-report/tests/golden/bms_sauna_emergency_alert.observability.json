@@ -1,0 +1,23 @@
+{
+  "schema_version": "roomci.observability.v1",
+  "run_id": "bms_sauna_emergency_alert",
+  "scenario_name": "bms_sauna_emergency_alert",
+  "result": "passed",
+  "timeline_event_count": 7,
+  "assertion_count": 2,
+  "failed_assertion_count": 0,
+  "events_by_type": {
+    "contact_changed": 1,
+    "ops_action": 1,
+    "ops_phone_call_triggered": 1,
+    "ops_runbook_url_included": 1,
+    "ops_slack_notification_sent": 1,
+    "ops_ticket_acknowledged": 1,
+    "ops_ticket_opened": 1
+  },
+  "assertions_by_status": {
+    "failed": 0,
+    "passed": 2
+  },
+  "impact_levels": []
+}

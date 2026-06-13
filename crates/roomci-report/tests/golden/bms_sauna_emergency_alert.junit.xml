@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="bms_sauna_emergency_alert" tests="2" failures="0">
+  <testcase classname="roomci" name="ops"></testcase>
+  <testcase classname="roomci" name="ops"></testcase>
+</testsuite>
+

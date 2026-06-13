@@ -1,0 +1,52 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "intercom_relay_safe_mock",
+  "generated_by": "roomci",
+  "scenario_name": "intercom_relay_safe_mock",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T",
+      "event_type": "intercom_pin_accepted",
+      "target": "intercom.front_gate",
+      "message": "intercom safe mock observed pin_check with outcome accepted"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "relay_pulse_requested",
+      "target": "intercom.front_gate",
+      "message": "intercom safe mock observed relay_pulse with outcome requested"
+    },
+    {
+      "at": "T+5s",
+      "event_type": "intercom_failure_observed",
+      "target": "intercom.front_gate",
+      "message": "intercom safe mock observed staff_call with outcome failed"
+    },
+    {
+      "at": "T+5s",
+      "event_type": "intercom_fallback_used",
+      "target": "intercom.front_gate",
+      "message": "safe fallback selected: manual_staff_callback"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "intercom_relay_safe_evidence",
+      "assertion_type": "intercom_relay_safe_evidence",
+      "passed": true,
+      "message": "intercom and relay evidence was captured without controlling a real unlock",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {
+    "intercom.front_gate": {
+      "event": "staff_call",
+      "fallback": "manual_staff_callback",
+      "outcome": "failed",
+      "real_unlock_controlled": false
+    }
+  },
+  "retained_messages": {}
+}

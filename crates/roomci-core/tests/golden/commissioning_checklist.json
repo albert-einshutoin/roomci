@@ -1,0 +1,20 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "commissioning_checklist_generation",
+  "generated_by": "roomci",
+  "scenario_name": "commissioning_checklist_generation",
+  "result": "passed",
+  "timeline": [],
+  "assertions": [
+    {
+      "name": "commissioning_checklist",
+      "assertion_type": "commissioning_checklist",
+      "passed": true,
+      "message": "generated 2 commissioning checks for minakami",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {},
+  "retained_messages": {}
+}

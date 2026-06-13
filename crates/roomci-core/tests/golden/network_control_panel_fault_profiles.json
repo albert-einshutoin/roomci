@@ -1,0 +1,137 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "network_control_panel_fault_profiles",
+  "generated_by": "roomci",
+  "scenario_name": "network_control_panel_fault_profiles",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T",
+      "event_type": "network_segment_isolated",
+      "target": "network.segment.guest_vlan",
+      "message": "network segment guest_vlan isolated"
+    },
+    {
+      "at": "T",
+      "event_type": "ops_slack_notification_sent",
+      "target": "network_segment_isolated",
+      "message": "Slack notification sent"
+    },
+    {
+      "at": "T",
+      "event_type": "fault_activated",
+      "target": "network.segment.guest_vlan",
+      "message": "isolated fault activated"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "firewall_policy_drift_detected",
+      "target": "firewall.policy.edge_to_bms",
+      "message": "firewall policy edge_to_bms drift detected"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "ops_slack_notification_sent",
+      "target": "firewall_policy_drift_detected",
+      "message": "Slack notification sent"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "fault_activated",
+      "target": "firewall.policy.edge_to_bms",
+      "message": "drift fault activated"
+    },
+    {
+      "at": "T+2s",
+      "event_type": "control_panel_ups_degraded",
+      "target": "control_panel.ups",
+      "message": "control-panel UPS battery degraded"
+    },
+    {
+      "at": "T+2s",
+      "event_type": "ops_slack_notification_sent",
+      "target": "control_panel_ups_degraded",
+      "message": "Slack notification sent"
+    },
+    {
+      "at": "T+2s",
+      "event_type": "fault_activated",
+      "target": "control_panel.ups",
+      "message": "battery_degraded fault activated"
+    },
+    {
+      "at": "T+3s",
+      "event_type": "control_panel_circuit_protector_tripped",
+      "target": "control_panel.circuit_protector.sauna",
+      "message": "control_panel.circuit_protector.sauna tripped"
+    },
+    {
+      "at": "T+3s",
+      "event_type": "ops_slack_notification_sent",
+      "target": "control_panel_circuit_protector_tripped",
+      "message": "Slack notification sent"
+    },
+    {
+      "at": "T+3s",
+      "event_type": "fault_activated",
+      "target": "control_panel.circuit_protector.sauna",
+      "message": "tripped fault activated"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "control_panel_redundant_psu_degraded",
+      "target": "control_panel.psu.secondary_24v",
+      "message": "control_panel.psu.secondary_24v degraded"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "ops_slack_notification_sent",
+      "target": "control_panel_redundant_psu_degraded",
+      "message": "Slack notification sent"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "fault_activated",
+      "target": "control_panel.psu.secondary_24v",
+      "message": "degraded fault activated"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "network_control_panel_faults",
+      "assertion_type": "network_control_panel_faults",
+      "passed": true,
+      "message": "network and control-panel fault profiles produced BMS evidence",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {
+    "control_panel.circuit_protector.sauna": {
+      "bms_evidence": "recorded",
+      "fault_profile": "control_panel_circuit_protector_tripped",
+      "status": "faulted"
+    },
+    "control_panel.psu.secondary_24v": {
+      "bms_evidence": "recorded",
+      "fault_profile": "control_panel_redundant_psu_degraded",
+      "status": "faulted"
+    },
+    "control_panel.ups": {
+      "bms_evidence": "recorded",
+      "fault_profile": "control_panel_ups_degraded",
+      "status": "faulted"
+    },
+    "firewall.policy.edge_to_bms": {
+      "bms_evidence": "recorded",
+      "fault_profile": "firewall_policy_drift_detected",
+      "status": "faulted"
+    },
+    "network.segment.guest_vlan": {
+      "bms_evidence": "recorded",
+      "fault_profile": "network_segment_isolated",
+      "status": "faulted"
+    }
+  },
+  "retained_messages": {}
+}

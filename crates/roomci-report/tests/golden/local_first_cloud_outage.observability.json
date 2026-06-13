@@ -1,0 +1,20 @@
+{
+  "schema_version": "roomci.observability.v1",
+  "run_id": "local_first_cloud_outage",
+  "scenario_name": "local_first_cloud_outage",
+  "result": "passed",
+  "timeline_event_count": 4,
+  "assertion_count": 2,
+  "failed_assertion_count": 0,
+  "events_by_type": {
+    "edge_command_routed": 1,
+    "fault_activated": 1,
+    "mqtt_publish": 1,
+    "mqtt_retained_state_updated": 1
+  },
+  "assertions_by_status": {
+    "failed": 0,
+    "passed": 2
+  },
+  "impact_levels": []
+}

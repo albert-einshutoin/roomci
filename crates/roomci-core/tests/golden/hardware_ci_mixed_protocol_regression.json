@@ -1,0 +1,152 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "hardware_ci_mixed_protocol_regression",
+  "generated_by": "roomci",
+  "scenario_name": "hardware_ci_mixed_protocol_regression",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T",
+      "event_type": "network_segment_isolated",
+      "target": "network.segment.field_lab",
+      "message": "network segment field_lab isolated"
+    },
+    {
+      "at": "T",
+      "event_type": "ops_slack_notification_sent",
+      "target": "network_segment_isolated",
+      "message": "Slack notification sent"
+    },
+    {
+      "at": "T",
+      "event_type": "fault_activated",
+      "target": "network.segment.field_lab",
+      "message": "isolated fault activated"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "mqtt_publish",
+      "target": "platform_qa_fixture",
+      "message": "published fleet/hardware-ci/site/lab/zone/zone_a/device/edge_gateway_01/command"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "edge_command_routed",
+      "target": "edge_primary",
+      "message": "mqtt_command_route routed command from platform_qa_fixture to edge_gateway_01"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "mqtt_retained_state_updated",
+      "target": "edge_gateway_01",
+      "message": "retained state updated at fleet/hardware-ci/site/lab/zone/zone_a/device/edge_gateway_01/state after 1 delivery"
+    },
+    {
+      "at": "T+2s",
+      "event_type": "modbus_write",
+      "target": "vav_controller_01",
+      "message": "register 40001 set to 215"
+    },
+    {
+      "at": "T+3s",
+      "event_type": "modbus_write",
+      "target": "vav_controller_01",
+      "message": "register 40002 set to 55"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "contact_changed",
+      "target": "field_lab_smoke_detector_01",
+      "message": "contact state changed to on"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "ops_ticket_opened",
+      "target": "field_lab_smoke_detected",
+      "message": "Ops ticket opened with status open"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "ops_slack_notification_sent",
+      "target": "field_lab_smoke_detected",
+      "message": "Slack notification sent with runbook https://example.com/runbooks/field-lab-smoke"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "ops_phone_call_triggered",
+      "target": "field_lab_smoke_detected",
+      "message": "Phone escalation triggered"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "ops_runbook_url_included",
+      "target": "field_lab_smoke_detected",
+      "message": "Runbook URL included: https://example.com/runbooks/field-lab-smoke"
+    },
+    {
+      "at": "T+30s",
+      "event_type": "ops_ticket_acknowledged",
+      "target": "field_lab_smoke_detected",
+      "message": "Ops ticket acknowledged by qa_oncall_01"
+    },
+    {
+      "at": "T+30s",
+      "event_type": "ops_action",
+      "target": null,
+      "message": "ops action applied"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "mqtt_retained:fleet/hardware-ci/site/lab/zone/zone_a/device/edge_gateway_01/state",
+      "assertion_type": "mqtt_retained",
+      "passed": true,
+      "message": "retained MQTT state matched",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "modbus:vav_controller_01:40001",
+      "assertion_type": "modbus_register",
+      "passed": true,
+      "message": "Modbus register matched expected value",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "ops",
+      "assertion_type": "ops",
+      "passed": true,
+      "message": "ops escalation matched expected state",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "ops",
+      "assertion_type": "ops",
+      "passed": true,
+      "message": "ops escalation matched expected state",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {
+    "edge_gateway_01": {
+      "firmware": "1.4.2",
+      "online": true,
+      "safe_mode": true
+    },
+    "network.segment.field_lab": {
+      "bms_evidence": "recorded",
+      "fault_profile": "network_segment_isolated",
+      "status": "faulted"
+    }
+  },
+  "retained_messages": {
+    "fleet/hardware-ci/site/lab/zone/zone_a/device/edge_gateway_01/state": {
+      "firmware": "1.4.2",
+      "online": true,
+      "safe_mode": true
+    }
+  }
+}

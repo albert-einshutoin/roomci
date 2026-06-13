@@ -1,0 +1,63 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "generic_mqtt_duplicate_delivery",
+  "generated_by": "roomci",
+  "scenario_name": "generic_mqtt_duplicate_delivery",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T",
+      "event_type": "fault_activated",
+      "target": "mqtt.local",
+      "message": "duplicate_delivery fault activated"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "mqtt_publish",
+      "target": "edge_contract_test",
+      "message": "published plant/demo/line/a/device/pump_controller_01/command"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "edge_command_routed",
+      "target": "edge_primary",
+      "message": "mqtt_command_route routed command from edge_contract_test to pump_controller_01"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "mqtt_retained_state_updated",
+      "target": "pump_controller_01",
+      "message": "retained state updated at plant/demo/line/a/device/pump_controller_01/state after 3 deliveries"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "mqtt_retained:plant/demo/line/a/device/pump_controller_01/state",
+      "assertion_type": "mqtt_retained",
+      "passed": true,
+      "message": "retained MQTT state matched",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "mqtt.local",
+      "assertion_type": "broker_state",
+      "passed": true,
+      "message": "local MQTT broker is available",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {
+    "pump_controller_01": {
+      "enabled": true,
+      "target_pressure_kpa": 240
+    }
+  },
+  "retained_messages": {
+    "plant/demo/line/a/device/pump_controller_01/state": {
+      "enabled": true,
+      "target_pressure_kpa": 240
+    }
+  }
+}

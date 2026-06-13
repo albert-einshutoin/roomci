@@ -1,0 +1,63 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "local_first_cloud_outage",
+  "generated_by": "roomci",
+  "scenario_name": "local_first_cloud_outage",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T+10s",
+      "event_type": "fault_activated",
+      "target": "mqtt.cloud",
+      "message": "offline fault activated"
+    },
+    {
+      "at": "T+15s",
+      "event_type": "mqtt_publish",
+      "target": "ipad_controller",
+      "message": "published house/minakami/room/living/device/living_light/command"
+    },
+    {
+      "at": "T+15s",
+      "event_type": "edge_command_routed",
+      "target": "edge_primary",
+      "message": "mqtt_command_route routed command from ipad_controller to living_light"
+    },
+    {
+      "at": "T+15s",
+      "event_type": "mqtt_retained_state_updated",
+      "target": "living_light",
+      "message": "retained state updated at house/minakami/room/living/device/living_light/state after 1 delivery"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "mqtt_retained:house/minakami/room/living/device/living_light/state",
+      "assertion_type": "mqtt_retained",
+      "passed": true,
+      "message": "retained MQTT state matched",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "guest_experience",
+      "assertion_type": "guest_experience",
+      "passed": true,
+      "message": "guest experience remained unaffected by upstream outage",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {
+    "living_light": {
+      "brightness": 60,
+      "power": true
+    }
+  },
+  "retained_messages": {
+    "house/minakami/room/living/device/living_light/state": {
+      "brightness": 60,
+      "power": true
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "starlink_failover",
+  "generated_by": "roomci",
+  "scenario_name": "starlink_failover",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T+10s",
+      "event_type": "wan_failover",
+      "target": "wan.backup",
+      "message": "backup WAN activated after primary failure"
+    },
+    {
+      "at": "T+10s",
+      "event_type": "ops_slack_notification_sent",
+      "target": "wan_failover",
+      "message": "Slack notification sent"
+    },
+    {
+      "at": "T+10s",
+      "event_type": "fault_activated",
+      "target": "wan.primary",
+      "message": "down fault activated"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "wan.backup",
+      "assertion_type": "wan_failover",
+      "passed": true,
+      "message": "backup WAN is active",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "mqtt.local",
+      "assertion_type": "broker_state",
+      "passed": true,
+      "message": "local MQTT broker is available",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "ops",
+      "assertion_type": "ops",
+      "passed": true,
+      "message": "ops escalation matched expected state",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {},
+  "retained_messages": {}
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "knx_group_address_profile",
+  "generated_by": "roomci",
+  "scenario_name": "knx_group_address_profile",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T",
+      "event_type": "event",
+      "target": null,
+      "message": "KNX group-address profile is validated as adapter metadata only."
+    }
+  ],
+  "assertions": [],
+  "final_state": {},
+  "retained_messages": {}
+}

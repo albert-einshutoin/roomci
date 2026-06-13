@@ -1,0 +1,85 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "hardware_ci_mqtt_room_fleet",
+  "generated_by": "roomci",
+  "scenario_name": "hardware_ci_mqtt_room_fleet",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T",
+      "event_type": "mqtt_publish",
+      "target": "lighting_engineer_fixture",
+      "message": "published fleet/hardware-ci/site/lab/room/room101/light/room101_light_panel/command"
+    },
+    {
+      "at": "T",
+      "event_type": "edge_command_routed",
+      "target": "edge_primary",
+      "message": "mqtt_command_route routed command from lighting_engineer_fixture to room101_light_panel"
+    },
+    {
+      "at": "T",
+      "event_type": "mqtt_retained_state_updated",
+      "target": "room101_light_panel",
+      "message": "retained state updated at fleet/hardware-ci/site/lab/room/room101/device/room101_light_panel/state after 1 delivery"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "mqtt_publish",
+      "target": "climate_engineer_fixture",
+      "message": "published fleet/hardware-ci/site/lab/room/room101/climate/room101_thermostat/command"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "edge_command_routed",
+      "target": "edge_primary",
+      "message": "mqtt_command_route routed command from climate_engineer_fixture to room101_thermostat"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "mqtt_retained_state_updated",
+      "target": "room101_thermostat",
+      "message": "retained state updated at fleet/hardware-ci/site/lab/room/room101/device/room101_thermostat/state after 1 delivery"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "mqtt_retained:fleet/hardware-ci/site/lab/room/room101/device/room101_light_panel/state",
+      "assertion_type": "mqtt_retained",
+      "passed": true,
+      "message": "retained MQTT state matched",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "mqtt_retained:fleet/hardware-ci/site/lab/room/room101/device/room101_thermostat/state",
+      "assertion_type": "mqtt_retained",
+      "passed": true,
+      "message": "retained MQTT state matched",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {
+    "room101_light_panel": {
+      "brightness": 72,
+      "power": true
+    },
+    "room101_thermostat": {
+      "fan_mode": "auto",
+      "mode": "heat",
+      "target_temperature_c": 21.5
+    }
+  },
+  "retained_messages": {
+    "fleet/hardware-ci/site/lab/room/room101/device/room101_light_panel/state": {
+      "brightness": 72,
+      "power": true
+    },
+    "fleet/hardware-ci/site/lab/room/room101/device/room101_thermostat/state": {
+      "fan_mode": "auto",
+      "mode": "heat",
+      "target_temperature_c": 21.5
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "comfort_auto_mode",
+  "generated_by": "roomci",
+  "scenario_name": "comfort_auto_mode",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T",
+      "event_type": "comfort_auto_mode_applied",
+      "target": "living_area",
+      "message": "target discomfort index set to 74"
+    },
+    {
+      "at": "T",
+      "event_type": "automation_started",
+      "target": null,
+      "message": "automation started"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "living_area.discomfort_index",
+      "assertion_type": "comfort_metric",
+      "passed": true,
+      "message": "comfort metric stayed within expected range",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "user_override",
+      "assertion_type": "comfort_user_override",
+      "passed": true,
+      "message": "no user override occurred",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {},
+  "retained_messages": {}
+}
