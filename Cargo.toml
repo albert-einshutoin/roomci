@@ -4,7 +4,6 @@ members = [
   "crates/roomci-core",
   "crates/roomci-device-model",
   "crates/roomci-edge",
-  "crates/roomci-fault",
   "crates/roomci-mqtt",
   "crates/roomci-ops",
   "crates/roomci-report",

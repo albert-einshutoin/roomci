@@ -391,7 +391,6 @@ roomci/
     roomci-mqtt/             local + cloud MQTT behavior model
     roomci-edge/             redundant edge-server emulator
     roomci-device-model/     Modbus, DALI lighting, contact I/O
-    roomci-fault/            fault scheduling primitives
     roomci-ops/              BMS / Slack / phone / runbook escalation
     roomci-report/           JSON / Markdown / JUnit renderers
     roomci-scenario/         YAML scenario loader + validator
