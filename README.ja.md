@@ -385,7 +385,6 @@ roomci/
     roomci-mqtt/             ローカル + クラウド MQTT 動作モデル
     roomci-edge/             冗長 edge サーバー エミュレーター
     roomci-device-model/     Modbus、DALI ライティング、コンタクト I/O
-    roomci-fault/            障害スケジューリング プリミティブ
     roomci-ops/              BMS / Slack / 電話 / ランブック エスカレーション
     roomci-report/           JSON / Markdown / JUnit レンダラー
     roomci-scenario/         YAML シナリオ ローダー + バリデーター

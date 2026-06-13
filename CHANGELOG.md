@@ -32,6 +32,10 @@ not as separately published calendar releases.
 - `/health` now reports serve lifecycle status (`idle`, `running`, `passed`, `failed`) and returns HTTP 503 for failed health.
 - MQTT `CONNECT` now validates protocol name `MQTT` and protocol level `4`, rejecting unsupported protocol versions with `CONNACK` `0x01`.
 
+### Removed
+
+- Unused `roomci-fault` crate (a phantom dependency of `roomci-core`, imported nowhere). The runtime semantics of `faults[].duration` remain unimplemented; whether to implement fault recovery is tracked as a separate decision.
+
 ### Fixed
 
 - `command` steps now wire their `value` payload through to device state, so `set_brightness` / `set_temperature` / `set_mode` / `set_position` apply the requested value instead of silently no-op'ing. A value-requiring command with no value is now rejected (`command_rejected`), and `command_state_updated` is emitted only when device state actually changes (#30).

@@ -13,7 +13,6 @@ categories.workspace = true
 chrono.workspace = true
 roomci-device-model = { path = "../roomci-device-model" }
 roomci-edge = { path = "../roomci-edge" }
-roomci-fault = { path = "../roomci-fault" }
 roomci-mqtt = { path = "../roomci-mqtt" }
 roomci-ops = { path = "../roomci-ops" }
 roomci-scenario = { path = "../roomci-scenario" }
