@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use chrono::Duration;
 use roomci_device_model::{
-    apply_command_state, command_is_supported, ContactModel, LightingEvent, LightingModel,
-    ModbusModel,
+    apply_command_state, command_is_supported, command_requires_value, ContactModel, LightingEvent,
+    LightingModel, ModbusModel,
 };
 use roomci_edge::EdgeModel;
 use roomci_mqtt::{
@@ -468,12 +468,23 @@ impl RuntimeState {
                 }
             }
             CommandTarget::Other(device_id) => {
-                self.apply_device_command(at, device_id.as_str(), command.action.as_str());
+                self.apply_device_command(
+                    at,
+                    device_id.as_str(),
+                    command.action.as_str(),
+                    command.value.as_ref(),
+                );
             }
         }
     }
 
-    fn apply_device_command(&mut self, at: Duration, device_id: &str, action: &str) {
+    fn apply_device_command(
+        &mut self,
+        at: Duration,
+        device_id: &str,
+        action: &str,
+        value: Option<&serde_json::Value>,
+    ) {
         let Some(device_type) = self.device_types.get(device_id) else {
             self.push(
                 at,
@@ -494,8 +505,22 @@ impl RuntimeState {
             return;
         }
 
+        if command_requires_value(device_type.as_str(), action) && value.is_none() {
+            self.push(
+                at,
+                "command_rejected",
+                Some(device_id.to_string()),
+                format!("command {action} requires a value"),
+            );
+            return;
+        }
+
         let state = self.states.entry(device_id.to_string()).or_default();
-        apply_command_state(device_type, action, None, state);
+        let before = state.clone();
+        apply_command_state(device_type.as_str(), action, value, state);
+        if *state == before {
+            return;
+        }
         self.push(
             at,
             "command_state_updated",

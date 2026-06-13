@@ -560,6 +560,106 @@ steps:
 }
 
 #[test]
+fn set_brightness_with_value_updates_state() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: set_brightness_applies_value
+devices:
+  - id: living_light
+    type: light
+    protocol: dali
+    state:
+      power: on
+      brightness: 0
+steps:
+  - at: T
+    command:
+      target: living_light
+      action: set_brightness
+      value: 60
+"#,
+    )
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    assert_eq!(
+        report
+            .final_state
+            .get("living_light")
+            .and_then(|state| state.get("brightness"))
+            .unwrap(),
+        &json!(60)
+    );
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "command_state_updated"));
+}
+
+#[test]
+fn set_brightness_without_value_is_rejected() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: set_brightness_requires_value
+devices:
+  - id: living_light
+    type: light
+    protocol: dali
+    state:
+      power: on
+      brightness: 0
+steps:
+  - at: T
+    command:
+      target: living_light
+      action: set_brightness
+"#,
+    )
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert!(report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "command_rejected"));
+    assert!(!report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "command_state_updated"));
+    assert_eq!(
+        report
+            .final_state
+            .get("living_light")
+            .and_then(|state| state.get("brightness"))
+            .unwrap(),
+        &json!(0)
+    );
+}
+
+#[test]
+fn device_command_value_example_applies_brightness() {
+    let scenario = load_scenario(fixture("examples/device_command_value.yaml")).unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+
+    assert_eq!(report.result, RunResult::Passed);
+    let light = report.final_state.get("living_light").unwrap();
+    assert_eq!(light.get("power").unwrap(), &json!("on"));
+    assert_eq!(light.get("brightness").unwrap(), &json!(60));
+    assert!(!report
+        .timeline
+        .iter()
+        .any(|event| event.event_type == "command_rejected"));
+}
+
+#[test]
 fn access_permission_drift_passes_when_stale_user_is_detected() {
     let scenario = load_scenario(fixture("examples/access_permission_drift.yaml")).unwrap();
 

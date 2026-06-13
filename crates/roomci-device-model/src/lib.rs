@@ -68,6 +68,19 @@ pub fn command_is_supported(device_type: &str, action: &str) -> bool {
     }
 }
 
+/// Returns whether `action` on `device_type` is meaningless without a `value`
+/// payload (e.g. `set_brightness`). The runtime rejects such commands when no
+/// value is supplied instead of silently treating them as a no-op.
+pub fn command_requires_value(device_type: &str, action: &str) -> bool {
+    matches!(
+        (device_type, action),
+        ("light", "set_brightness")
+            | ("climate", "set_mode")
+            | ("climate", "set_temperature")
+            | ("cover", "set_position")
+    )
+}
+
 pub fn apply_command_state(
     device_type: &str,
     action: &str,
