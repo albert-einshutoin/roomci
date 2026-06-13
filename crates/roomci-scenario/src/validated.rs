@@ -422,10 +422,15 @@ impl ValidatedStepKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+// `Eq` is intentionally omitted: `serde_json::Value` is not `Eq`.
+#[derive(Debug, Clone, PartialEq)]
 pub struct ValidatedCommandStep {
     pub target: CommandTarget,
     pub action: Identifier,
+    /// Payload for value-bearing commands (`set_brightness`, `set_temperature`,
+    /// ...). Normalized to JSON so the runtime can apply it directly to device
+    /// state.
+    pub value: Option<serde_json::Value>,
 }
 
 impl TryFrom<&CommandStep> for ValidatedCommandStep {
@@ -435,6 +440,10 @@ impl TryFrom<&CommandStep> for ValidatedCommandStep {
         Ok(Self {
             target: CommandTarget::parse(&command.target)?,
             action: Identifier::parse("steps[].command.action", command.action.clone())?,
+            value: command
+                .value
+                .as_ref()
+                .map(|value| serde_json::to_value(value).unwrap_or(serde_json::Value::Null)),
         })
     }
 }

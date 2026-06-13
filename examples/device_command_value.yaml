@@ -1,0 +1,27 @@
+version: "0.1"
+scenario:
+  name: device_command_value
+  description: >-
+    Value-bearing device commands (set_brightness) carry their payload through
+    to device state. turn_on flips power; set_brightness applies the level so
+    final_state reflects the requested brightness instead of a silent no-op.
+  tags: [device, command, lighting]
+
+devices:
+  - id: living_light
+    type: light
+    protocol: dali
+    state:
+      power: off
+      brightness: 0
+
+steps:
+  - at: T
+    command:
+      target: living_light
+      action: turn_on
+  - at: T+1m
+    command:
+      target: living_light
+      action: set_brightness
+      value: 60
