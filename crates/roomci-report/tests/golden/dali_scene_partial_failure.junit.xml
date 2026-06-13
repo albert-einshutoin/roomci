@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="welcome_scene_partial_failure" tests="1" failures="1">
+  <testcase classname="roomci" name="scene_consistency:welcome"><failure message="DALI-like scene consistency violation: D411S10 expected level 60, actual 0">Lighting scene did not match intended guest ambience.</failure></testcase>
+</testsuite>
+

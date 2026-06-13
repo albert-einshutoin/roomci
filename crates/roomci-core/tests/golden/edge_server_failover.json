@@ -1,0 +1,49 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "edge_server_failover",
+  "generated_by": "roomci",
+  "scenario_name": "edge_server_failover",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T+10s",
+      "event_type": "edge_failover",
+      "target": "edge_secondary",
+      "message": "edge failover completed from edge_primary"
+    },
+    {
+      "at": "T+10s",
+      "event_type": "fault_activated",
+      "target": "edge.primary",
+      "message": "power_lost fault activated"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "edge.secondary",
+      "assertion_type": "edge_state",
+      "passed": true,
+      "message": "secondary edge server is active",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "mqtt.local",
+      "assertion_type": "broker_state",
+      "passed": true,
+      "message": "local MQTT broker is available",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "guest_experience",
+      "assertion_type": "guest_experience",
+      "passed": true,
+      "message": "guest experience remained unaffected by local edge availability",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {},
+  "retained_messages": {}
+}

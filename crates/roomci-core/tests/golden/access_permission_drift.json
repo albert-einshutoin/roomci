@@ -1,0 +1,20 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "access_permission_drift",
+  "generated_by": "roomci",
+  "scenario_name": "access_permission_drift",
+  "result": "passed",
+  "timeline": [],
+  "assertions": [
+    {
+      "name": "access_control_drift",
+      "assertion_type": "access_control_drift",
+      "passed": true,
+      "message": "detected unexpected access users: retired@example.com",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {},
+  "retained_messages": {}
+}

@@ -1,0 +1,119 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "hardware_ci_modbus_bms_commissioning",
+  "generated_by": "roomci",
+  "scenario_name": "hardware_ci_modbus_bms_commissioning",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T",
+      "event_type": "modbus_write",
+      "target": "ahu_supply_fan_01",
+      "message": "register 40002 set to true"
+    },
+    {
+      "at": "T+1s",
+      "event_type": "modbus_write",
+      "target": "ahu_supply_fan_01",
+      "message": "register 40003 set to 220"
+    },
+    {
+      "at": "T+2s",
+      "event_type": "modbus_write",
+      "target": "condenser_pump_01",
+      "message": "register 40010 set to true"
+    },
+    {
+      "at": "T+3s",
+      "event_type": "modbus_write",
+      "target": "condenser_pump_01",
+      "message": "register 40011 set to 85"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "contact_changed",
+      "target": "plantroom_leak_sensor_01",
+      "message": "contact state changed to on"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "ops_ticket_opened",
+      "target": "plantroom_leak_detected",
+      "message": "Ops ticket opened with status open"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "ops_slack_notification_sent",
+      "target": "plantroom_leak_detected",
+      "message": "Slack notification sent with runbook https://example.com/runbooks/plantroom-leak"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "ops_phone_call_triggered",
+      "target": "plantroom_leak_detected",
+      "message": "Phone escalation triggered"
+    },
+    {
+      "at": "T+4s",
+      "event_type": "ops_runbook_url_included",
+      "target": "plantroom_leak_detected",
+      "message": "Runbook URL included: https://example.com/runbooks/plantroom-leak"
+    },
+    {
+      "at": "T+20s",
+      "event_type": "ops_ticket_acknowledged",
+      "target": "plantroom_leak_detected",
+      "message": "Ops ticket acknowledged by facilities_oncall_01"
+    },
+    {
+      "at": "T+20s",
+      "event_type": "ops_action",
+      "target": null,
+      "message": "ops action applied"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "modbus:ahu_supply_fan_01:40002",
+      "assertion_type": "modbus_register",
+      "passed": true,
+      "message": "Modbus register matched expected value",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "modbus:ahu_supply_fan_01:40003",
+      "assertion_type": "modbus_register",
+      "passed": true,
+      "message": "Modbus register matched expected value",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "modbus:condenser_pump_01:40011",
+      "assertion_type": "modbus_register",
+      "passed": true,
+      "message": "Modbus register matched expected value",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "ops",
+      "assertion_type": "ops",
+      "passed": true,
+      "message": "ops escalation matched expected state",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "ops",
+      "assertion_type": "ops",
+      "passed": true,
+      "message": "ops escalation matched expected state",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {},
+  "retained_messages": {}
+}

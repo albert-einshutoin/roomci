@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="local_first_cloud_outage" tests="2" failures="0">
+  <testcase classname="roomci" name="mqtt_retained:house/minakami/room/living/device/living_light/state"></testcase>
+  <testcase classname="roomci" name="guest_experience"></testcase>
+</testsuite>
+

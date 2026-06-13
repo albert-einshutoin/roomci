@@ -21,6 +21,7 @@ not as separately published calendar releases.
 - Integration onboarding and category readiness docs for first-run evaluator experience and competitive positioning.
 - BMS/contact external serve endpoint and controller script for non-MQTT external PoC interactions.
 - `examples/device_command_value.yaml` demonstrating value-bearing device commands (`set_brightness`).
+- Golden snapshot tests pinning the `RunReport` JSON contract for every `examples/*.yaml` (`roomci-core`) and the Markdown/JUnit/NDJSON/observability renders for representative scenarios (`roomci-report`), with `UPDATE_GOLDEN=1` regeneration documented in `CONTRIBUTING.md`. This is the Phase 0 safety net for behavior-preserving refactors.
 
 ### Changed
 

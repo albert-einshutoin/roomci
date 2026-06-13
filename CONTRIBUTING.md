@@ -175,6 +175,30 @@ cargo tarpaulin --out Html
 open tarpaulin-report.html
 ```
 
+### Golden report tests (refactoring safety net)
+
+`run_scenario` is deterministic (virtual time + ordered maps), so its output is
+pinned by golden snapshots:
+
+- `crates/roomci-core/tests/golden/` — one `<scenario>.json` per
+  `examples/*.yaml`, pinning the full `RunReport` JSON contract.
+- `crates/roomci-report/tests/golden/` — Markdown / JUnit XML / timeline NDJSON /
+  observability JSON renders for representative scenarios.
+
+These guard the output contract (schema fields, timeline `event_type` / `message`
+strings, assertion names / impact levels) while refactoring. Rules:
+
+1. **Behavior-preserving PRs (most refactors): do not update golden files.** If a
+   refactor changes a golden, the behavior changed — split that into its own PR.
+2. **Intentional behavior changes: regenerate and review the diff.**
+   ```bash
+   UPDATE_GOLDEN=1 cargo test -p roomci-core --test golden_reports
+   UPDATE_GOLDEN=1 cargo test -p roomci-report --test golden_renders
+   ```
+   Commit the regenerated files and paste the golden diff into the PR description
+   so reviewers can see exactly what changed.
+3. A new `examples/*.yaml` requires a new golden — generate it the same way.
+
 ## Documentation
 
 - Update README.md for user-facing changes

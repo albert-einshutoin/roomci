@@ -1,0 +1,64 @@
+{
+  "schema_version": "roomci.report.v1",
+  "run_id": "comfort_timeseries_replay",
+  "generated_by": "roomci",
+  "scenario_name": "comfort_timeseries_replay",
+  "result": "passed",
+  "timeline": [
+    {
+      "at": "T",
+      "event_type": "comfort_sensor_reading_recorded",
+      "target": "living_area",
+      "message": "temperature 25 humidity 55 discomfort 72.2975"
+    },
+    {
+      "at": "T+30s",
+      "event_type": "comfort_sensor_reading_recorded",
+      "target": "living_area",
+      "message": "temperature 24.5 humidity 52 discomfort 71.3216"
+    },
+    {
+      "at": "T+1m",
+      "event_type": "comfort_sensor_reading_recorded",
+      "target": "ceiling_area",
+      "message": "temperature 27 humidity 50 discomfort 74.38499999999999"
+    }
+  ],
+  "assertions": [
+    {
+      "name": "comfort_timeseries",
+      "assertion_type": "comfort_timeseries",
+      "passed": true,
+      "message": "3 comfort sensor readings were replayed",
+      "impact_level": null,
+      "impact_message": null
+    },
+    {
+      "name": "living_area.discomfort_index",
+      "assertion_type": "comfort_metric",
+      "passed": true,
+      "message": "comfort metric stayed within expected range",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
+  "final_state": {
+    "comfort.ceiling_area": {
+      "discomfort_index": 74.38499999999999,
+      "humidity": 50.0,
+      "occupancy": false,
+      "oscillation_detected": false,
+      "temperature": 27.0,
+      "zone": "ceiling"
+    },
+    "comfort.living_area": {
+      "discomfort_index": 71.3216,
+      "humidity": 52.0,
+      "occupancy": true,
+      "oscillation_detected": false,
+      "temperature": 24.5,
+      "zone": "living"
+    }
+  },
+  "retained_messages": {}
+}

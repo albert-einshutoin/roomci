@@ -1,0 +1,23 @@
+{
+  "schema_version": "roomci.observability.v1",
+  "run_id": "welcome_scene_partial_failure",
+  "scenario_name": "welcome_scene_partial_failure",
+  "result": "failed",
+  "timeline_event_count": 5,
+  "assertion_count": 1,
+  "failed_assertion_count": 1,
+  "events_by_type": {
+    "command_received": 1,
+    "dali_command_dropped": 1,
+    "dali_level_changed": 1,
+    "fault_activated": 1,
+    "scene_activation_requested": 1
+  },
+  "assertions_by_status": {
+    "failed": 1,
+    "passed": 0
+  },
+  "impact_levels": [
+    "medium"
+  ]
+}
