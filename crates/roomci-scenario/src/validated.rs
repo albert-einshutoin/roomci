@@ -112,10 +112,6 @@ impl MqttTopicTemplate {
         validate_mqtt_topic_text(&field, &value, true)?;
         Ok(Self(value))
     }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
 }
 
 fn validate_mqtt_topic_text(
@@ -334,10 +330,6 @@ impl ValidatedScheduledEvent {
 
     pub fn at(&self) -> Duration {
         self.at
-    }
-
-    pub fn order(&self) -> u8 {
-        self.order
     }
 
     pub fn kind(&self) -> &ValidatedEventKind {

@@ -126,8 +126,8 @@ pub fn to_observability_json(report: &RunReport) -> Result<String, serde_json::E
 /// Render a run report as a Markdown summary suitable for PR comments or
 /// `report.md` artifacts.
 ///
-/// The output includes failed assertions, the full timeline, and suggested
-/// recovery actions for known guest-impact assertion categories.
+/// The output includes failed assertions, the full timeline, and a suggested
+/// recovery section listing the guest-impact message of each failed assertion.
 pub fn to_markdown(report: &RunReport) -> String {
     let mut output = String::new();
     output.push_str(&format!("# roomci Report — {}\n\n", report.scenario_name));
@@ -177,26 +177,14 @@ pub fn to_markdown(report: &RunReport) -> String {
     output.push('\n');
 
     output.push_str("## Suggested Recovery\n\n");
-    if failed
-        .iter()
-        .any(|assertion| assertion.name.contains("fallback_access_issued"))
-    {
-        output.push_str("- Issue fallback access before the guest is blocked.\n");
-    }
-    if failed
-        .iter()
-        .any(|assertion| assertion.name.contains("staff_notification_sent"))
-    {
-        output.push_str("- Notify staff when fallback access is required.\n");
-    }
-    if failed
-        .iter()
-        .any(|assertion| assertion.assertion_type == "sensor_threshold")
-    {
-        output.push_str("- Verify pre-arrival climate control and alert on comfort drift.\n");
-    }
     if failed.is_empty() {
         output.push_str("None.\n");
+    } else {
+        for assertion in &failed {
+            if let Some(message) = &assertion.impact_message {
+                output.push_str(&format!("- {message}\n"));
+            }
+        }
     }
 
     output
