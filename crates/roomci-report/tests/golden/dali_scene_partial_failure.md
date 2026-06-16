@@ -21,4 +21,5 @@ Result: `failed`
 
 ## Suggested Recovery
 
+- Lighting scene did not match intended guest ambience.
 

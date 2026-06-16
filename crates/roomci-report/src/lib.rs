@@ -126,8 +126,8 @@ pub fn to_observability_json(report: &RunReport) -> Result<String, serde_json::E
 /// Render a run report as a Markdown summary suitable for PR comments or
 /// `report.md` artifacts.
 ///
-/// The output includes failed assertions, the full timeline, and suggested
-/// recovery actions for known guest-impact assertion categories.
+/// The output includes failed assertions, the full timeline, and a suggested
+/// recovery section listing the guest-impact message of each failed assertion.
 pub fn to_markdown(report: &RunReport) -> String {
     let mut output = String::new();
     output.push_str(&format!("# roomci Report — {}\n\n", report.scenario_name));
@@ -177,26 +177,23 @@ pub fn to_markdown(report: &RunReport) -> String {
     output.push('\n');
 
     output.push_str("## Suggested Recovery\n\n");
-    if failed
-        .iter()
-        .any(|assertion| assertion.name.contains("fallback_access_issued"))
-    {
-        output.push_str("- Issue fallback access before the guest is blocked.\n");
-    }
-    if failed
-        .iter()
-        .any(|assertion| assertion.name.contains("staff_notification_sent"))
-    {
-        output.push_str("- Notify staff when fallback access is required.\n");
-    }
-    if failed
-        .iter()
-        .any(|assertion| assertion.assertion_type == "sensor_threshold")
-    {
-        output.push_str("- Verify pre-arrival climate control and alert on comfort drift.\n");
-    }
     if failed.is_empty() {
         output.push_str("None.\n");
+    } else {
+        let mut emitted_recovery = false;
+        for assertion in &failed {
+            let message = assertion
+                .impact_message
+                .as_deref()
+                .or(Some(assertion.message.as_str()));
+            if let Some(message) = message {
+                output.push_str(&format!("- {message}\n"));
+                emitted_recovery = true;
+            }
+        }
+        if !emitted_recovery {
+            output.push_str("None.\n");
+        }
     }
 
     output
@@ -302,6 +299,7 @@ fn escape_xml(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::path::PathBuf;
 
     use roomci_core::run_scenario;
@@ -374,5 +372,31 @@ mod tests {
 
         let json = to_observability_json(&report).unwrap();
         assert!(json.contains("roomci.observability.v1"));
+    }
+
+    #[test]
+    fn renders_suggested_recovery_with_message_fallback() {
+        let report = RunReport {
+            schema_version: "roomci.report.v1".to_string(),
+            run_id: "fallback-message".to_string(),
+            generated_by: "roomci".to_string(),
+            scenario_name: "fallback-message".to_string(),
+            result: RunResult::Failed,
+            timeline: vec![],
+            assertions: vec![AssertionResult {
+                name: "room-temperature".to_string(),
+                assertion_type: "guest_visibility".to_string(),
+                passed: false,
+                message: "Guest comfort issue occurred".to_string(),
+                impact_level: None,
+                impact_message: None,
+            }],
+            final_state: BTreeMap::new(),
+            retained_messages: BTreeMap::new(),
+        };
+
+        let markdown = to_markdown(&report);
+
+        assert!(markdown.contains("## Suggested Recovery\n\n- Guest comfort issue occurred"));
     }
 }

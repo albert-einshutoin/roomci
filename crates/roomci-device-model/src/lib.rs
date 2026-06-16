@@ -16,46 +16,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Per-device state map. Mirrors `roomci_core::StateMap` and is used by
 /// [`apply_command_state`] to mutate state in place.
 pub type StateMap = BTreeMap<String, serde_json::Value>;
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct RoomDefinition {
-    pub id: String,
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default)]
-    pub timezone: Option<String>,
-    #[serde(default)]
-    pub devices: Vec<DeviceDefinition>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct DeviceDefinition {
-    pub id: String,
-    #[serde(rename = "type")]
-    pub device_type: String,
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default)]
-    pub capabilities: Vec<String>,
-    #[serde(default)]
-    pub initial_state: BTreeMap<String, serde_yaml::Value>,
-}
-
-pub fn yaml_state_to_json(state: &BTreeMap<String, serde_yaml::Value>) -> StateMap {
-    state
-        .iter()
-        .map(|(key, value)| {
-            let json_value = serde_json::to_value(value).unwrap_or(serde_json::Value::Null);
-            (key.clone(), json_value)
-        })
-        .collect()
-}
 
 pub fn command_is_supported(device_type: &str, action: &str) -> bool {
     match device_type {
