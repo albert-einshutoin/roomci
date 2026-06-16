@@ -180,10 +180,19 @@ pub fn to_markdown(report: &RunReport) -> String {
     if failed.is_empty() {
         output.push_str("None.\n");
     } else {
+        let mut emitted_recovery = false;
         for assertion in &failed {
-            if let Some(message) = &assertion.impact_message {
+            let message = assertion
+                .impact_message
+                .as_deref()
+                .or(Some(assertion.message.as_str()));
+            if let Some(message) = message {
                 output.push_str(&format!("- {message}\n"));
+                emitted_recovery = true;
             }
+        }
+        if !emitted_recovery {
+            output.push_str("None.\n");
         }
     }
 
@@ -290,6 +299,7 @@ fn escape_xml(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::path::PathBuf;
 
     use roomci_core::run_scenario;
@@ -362,5 +372,31 @@ mod tests {
 
         let json = to_observability_json(&report).unwrap();
         assert!(json.contains("roomci.observability.v1"));
+    }
+
+    #[test]
+    fn renders_suggested_recovery_with_message_fallback() {
+        let report = RunReport {
+            schema_version: "roomci.report.v1".to_string(),
+            run_id: "fallback-message".to_string(),
+            generated_by: "roomci".to_string(),
+            scenario_name: "fallback-message".to_string(),
+            result: RunResult::Failed,
+            timeline: vec![],
+            assertions: vec![AssertionResult {
+                name: "room-temperature".to_string(),
+                assertion_type: "guest_visibility".to_string(),
+                passed: false,
+                message: "Guest comfort issue occurred".to_string(),
+                impact_level: None,
+                impact_message: None,
+            }],
+            final_state: BTreeMap::new(),
+            retained_messages: BTreeMap::new(),
+        };
+
+        let markdown = to_markdown(&report);
+
+        assert!(markdown.contains("## Suggested Recovery\n\n- Guest comfort issue occurred"));
     }
 }
