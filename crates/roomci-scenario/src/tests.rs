@@ -92,6 +92,50 @@ fn resolves_symbolic_time_without_clock() {
 }
 
 #[test]
+fn rejects_invalid_scenario_version_in_validation() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: banana
+scenario:
+  name: invalid_scenario_version
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let error = ValidatedScenario::try_from(&scenario).unwrap_err();
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidScenarioVersion { .. }
+    ));
+}
+
+#[test]
+fn rejects_unsupported_scenario_version_in_validation() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "1.0"
+scenario:
+  name: unsupported_scenario_version
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let error = ValidatedScenario::try_from(&scenario).unwrap_err();
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidScenarioVersion { .. }
+    ));
+}
+
+#[test]
 fn rejects_modbus_write_to_read_only_register() {
     let scenario: ScenarioFile = serde_yaml::from_str(
         r#"
