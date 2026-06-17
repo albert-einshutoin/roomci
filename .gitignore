@@ -70,3 +70,4 @@ docs/me/
 .DS_Store
 Thumbs.db
 *.tmp
+/PUBLISH
