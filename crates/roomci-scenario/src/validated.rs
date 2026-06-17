@@ -5,6 +5,7 @@ use roomci_device_model::{ContactModel, LightingModel, ModbusModel};
 use roomci_edge::EdgeModel;
 use roomci_ops::OpsModel;
 
+use crate::validate_scenario_version;
 use crate::{
     parse_duration, resolve_time_offset, typed_assertion_kind, typed_fault_kind, typed_step_kind,
     yaml_map_to_json, AssertionDefinition, CommandStep, FaultStep, InlineAssertionKind,
@@ -202,6 +203,8 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
     type Error = ScenarioError;
 
     fn try_from(scenario: &ScenarioFile) -> Result<Self, Self::Error> {
+        validate_scenario_version(&scenario.version)?;
+
         let modbus = ModbusModel::try_from_config(&scenario.modbus)?;
         let scene_targets = scenario
             .scenes

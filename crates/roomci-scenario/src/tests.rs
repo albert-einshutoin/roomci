@@ -55,6 +55,29 @@ assertions: []
 }
 
 #[test]
+fn try_from_rejects_unsupported_scenario_version_value() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.2"
+scenario:
+  name: unsupported_scenario_version
+assertions: []
+"#,
+    )
+    .unwrap();
+
+    let error = ValidatedScenario::try_from(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidScenarioVersion {
+            version,
+            ..
+        } if version == "0.2"
+    ));
+}
+
+#[test]
 fn accepts_supported_scenario_version_prefix() {
     let scenario: ScenarioFile = serde_yaml::from_str(
         r#"
