@@ -70,6 +70,4 @@ docs/me/
 .DS_Store
 Thumbs.db
 *.tmp
-
-# Generated/intentional publish marker
 /PUBLISH
