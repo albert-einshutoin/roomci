@@ -470,10 +470,12 @@ fn validate_scenario_version(version: &str) -> Result<(), ScenarioError> {
         }
     }
 
-    let major = parts[0].parse::<u64>().map_err(|_| ScenarioError::InvalidScenarioVersion {
-        version: version.to_string(),
-        reason: "major version must fit u64".to_string(),
-    })?;
+    let major = parts[0]
+        .parse::<u64>()
+        .map_err(|_| ScenarioError::InvalidScenarioVersion {
+            version: version.to_string(),
+            reason: "major version must fit u64".to_string(),
+        })?;
     let minor = if parts.len() >= 2 {
         parts[1]
             .parse::<u64>()
