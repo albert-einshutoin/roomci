@@ -298,7 +298,7 @@ fn escape_xml(value: &str) -> String {
             '>' => output.push_str("&gt;"),
             '"' => output.push_str("&quot;"),
             '\'' => output.push_str("&apos;"),
-            c if cp == 0xFFFE || cp == 0xFFFF => {}
+            _ if cp == 0xFFFE || cp == 0xFFFF => {}
             c if (c as u32) < 0x20 && c != '\t' && c != '\n' && c != '\r' => {}
             c => output.push(c),
         }
