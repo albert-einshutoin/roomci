@@ -291,12 +291,14 @@ fn result_label(result: RunResult) -> &'static str {
 fn escape_xml(value: &str) -> String {
     let mut output = String::with_capacity(value.len());
     for ch in value.chars() {
+        let cp = ch as u32;
         match ch {
             '&' => output.push_str("&amp;"),
             '<' => output.push_str("&lt;"),
             '>' => output.push_str("&gt;"),
             '"' => output.push_str("&quot;"),
             '\'' => output.push_str("&apos;"),
+            c if cp == 0xFFFE || cp == 0xFFFF => {}
             c if (c as u32) < 0x20 && c != '\t' && c != '\n' && c != '\r' => {}
             c => output.push(c),
         }
@@ -419,5 +421,12 @@ mod tests {
         let escaped = escape_xml("line1\nline2\tline3\rline4");
 
         assert_eq!(escaped, "line1\nline2\tline3\rline4");
+    }
+
+    #[test]
+    fn escape_xml_removes_non_characters() {
+        let escaped = escape_xml("safe\u{FFFE}\u{FFFF}\x00 text");
+
+        assert_eq!(escaped, "safe text");
     }
 }
