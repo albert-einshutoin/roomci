@@ -72,4 +72,4 @@ Thumbs.db
 *.tmp
 
 # Generated/intentional publish marker
-PUBLISH
+/PUBLISH
