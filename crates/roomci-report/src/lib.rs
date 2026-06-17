@@ -289,12 +289,19 @@ fn result_label(result: RunResult) -> &'static str {
 }
 
 fn escape_xml(value: &str) -> String {
-    value
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-        .replace('\'', "&apos;")
+    let mut output = String::with_capacity(value.len());
+    for ch in value.chars() {
+        match ch {
+            '&' => output.push_str("&amp;"),
+            '<' => output.push_str("&lt;"),
+            '>' => output.push_str("&gt;"),
+            '"' => output.push_str("&quot;"),
+            '\'' => output.push_str("&apos;"),
+            c if (c as u32) < 0x20 && c != '\t' && c != '\n' && c != '\r' => {}
+            c => output.push(c),
+        }
+    }
+    output
 }
 
 #[cfg(test)]
@@ -398,5 +405,19 @@ mod tests {
         let markdown = to_markdown(&report);
 
         assert!(markdown.contains("## Suggested Recovery\n\n- Guest comfort issue occurred"));
+    }
+
+    #[test]
+    fn escape_xml_replaces_reserved_and_removes_c0_controls() {
+        let escaped = escape_xml("x\x00\x08<&>\"'\ntest\r\ta\x1f");
+
+        assert_eq!(escaped, "x&lt;&amp;&gt;&quot;&apos;\ntest\r\ta");
+    }
+
+    #[test]
+    fn escape_xml_keeps_allowed_controls() {
+        let escaped = escape_xml("line1\nline2\tline3\rline4");
+
+        assert_eq!(escaped, "line1\nline2\tline3\rline4");
     }
 }
