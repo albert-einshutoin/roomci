@@ -9,6 +9,67 @@ fn fixture(path: &str) -> PathBuf {
 }
 
 #[test]
+fn rejects_invalid_scenario_version_string() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "banana"
+scenario:
+  name: invalid_scenario_version
+assertions: []
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidScenarioVersion {
+            version,
+            ..
+        } if version == "banana"
+    ));
+}
+
+#[test]
+fn rejects_unsupported_scenario_version_value() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.2"
+scenario:
+  name: unsupported_scenario_version
+assertions: []
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::InvalidScenarioVersion {
+            version,
+            ..
+        } if version == "0.2"
+    ));
+}
+
+#[test]
+fn accepts_supported_scenario_version_prefix() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "v0.1"
+scenario:
+  name: supported_scenario_version_prefix
+assertions: []
+"#,
+    )
+    .unwrap();
+
+    validate_scenario(&scenario).unwrap();
+}
+
+#[test]
 fn validates_latest_local_first_scenario() {
     let scenario = load_scenario(fixture("examples/local_first_cloud_outage.yaml")).unwrap();
 

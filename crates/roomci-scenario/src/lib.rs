@@ -64,6 +64,8 @@ pub enum ScenarioError {
     UnsupportedMqttDeviceIdStrategy(String, String),
     #[error("invalid adapter contract: {0}")]
     InvalidAdapterContract(String),
+    #[error("invalid scenario version {version}: {reason}")]
+    InvalidScenarioVersion { version: String, reason: String },
     #[error(transparent)]
     DeviceModel(#[from] DeviceModelError),
     #[error(transparent)]
@@ -418,7 +420,82 @@ fn require_non_empty(field: &str, value: &str) -> Result<(), ScenarioError> {
 /// Called by `roomci-core::run_scenario` before execution; callers can also
 /// invoke it directly for a `--dry-run`-style validation pass.
 pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
+    validate_scenario_version(&scenario.version)?;
     ValidatedScenario::try_from(scenario).map(|_| ())
+}
+
+fn validate_scenario_version(version: &str) -> Result<(), ScenarioError> {
+    if version.trim() != version {
+        return Err(ScenarioError::InvalidScenarioVersion {
+            version: version.to_string(),
+            reason: "must not contain leading or trailing whitespace".to_string(),
+        });
+    }
+
+    let normalized = if let Some(rest) = version.strip_prefix('v') {
+        rest
+    } else if let Some(rest) = version.strip_prefix('V') {
+        rest
+    } else {
+        version
+    };
+
+    if normalized.is_empty() {
+        return Err(ScenarioError::InvalidScenarioVersion {
+            version: version.to_string(),
+            reason: "must contain a major version".to_string(),
+        });
+    }
+
+    let parts = normalized.split('.').collect::<Vec<_>>();
+    if !(1..=3).contains(&parts.len()) {
+        return Err(ScenarioError::InvalidScenarioVersion {
+            version: version.to_string(),
+            reason: "must use <major>.<minor>[.<patch>] format".to_string(),
+        });
+    }
+
+    for part in &parts {
+        if part.is_empty() || !part.chars().all(|c| c.is_ascii_digit()) {
+            return Err(ScenarioError::InvalidScenarioVersion {
+                version: version.to_string(),
+                reason: "must contain only numeric semver components".to_string(),
+            });
+        }
+        if part.len() > 1 && part.starts_with('0') {
+            return Err(ScenarioError::InvalidScenarioVersion {
+                version: version.to_string(),
+                reason: "must not use leading zero in numeric components".to_string(),
+            });
+        }
+    }
+
+    let major = parts[0]
+        .parse::<u64>()
+        .map_err(|_| ScenarioError::InvalidScenarioVersion {
+            version: version.to_string(),
+            reason: "major version must fit u64".to_string(),
+        })?;
+    let minor = if parts.len() >= 2 {
+        parts[1]
+            .parse::<u64>()
+            .map_err(|_| ScenarioError::InvalidScenarioVersion {
+                version: version.to_string(),
+                reason: "minor version must fit u64".to_string(),
+            })?
+    } else {
+        0
+    };
+
+    let supported = matches!((major, minor), (0, 1));
+    if !supported {
+        return Err(ScenarioError::InvalidScenarioVersion {
+            version: version.to_string(),
+            reason: "unsupported scenario version. Supported versions: 0.1".to_string(),
+        });
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]

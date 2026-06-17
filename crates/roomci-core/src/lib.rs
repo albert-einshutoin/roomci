@@ -21,7 +21,7 @@ use roomci_device_model::DeviceModelError;
 use roomci_edge::EdgeError;
 use roomci_mqtt::MqttError;
 use roomci_ops::OpsError;
-use roomci_scenario::{ScenarioError, ScenarioFile, ValidatedScenario};
+use roomci_scenario::{validate_scenario, ScenarioError, ScenarioFile, ValidatedScenario};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -108,6 +108,7 @@ pub struct AssertionResult {
 /// Returns [`CoreError`] if the scenario fails validation or if any subsystem
 /// rejects a request.
 pub fn run_scenario(scenario: &ScenarioFile) -> Result<RunReport, CoreError> {
+    validate_scenario(scenario)?;
     let scenario = ValidatedScenario::try_from(scenario)?;
 
     let mut runtime = RuntimeState::new(&scenario);
