@@ -35,6 +35,8 @@ not as separately published calendar releases.
 ### Removed
 
 - Unused `roomci-fault` crate (a phantom dependency of `roomci-core`, imported nowhere). The runtime semantics of `faults[].duration` remain unimplemented; whether to implement fault recovery is tracked as a separate decision.
+- Public `ModbusModel::from_config`, `LightingModel::from_config`, and `ContactModel::from_config` constructors were removed from `roomci-device-model`.
+  Consumers should migrate to the `try_from_config` constructors and explicit conversion helpers at the model layer.
 
 ### Fixed
 
