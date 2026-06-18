@@ -35,6 +35,14 @@ not as separately published calendar releases.
 
 ### Removed
 
+- Removed public constructors from `roomci-device-model`:
+  - `ModbusModel::from_config`
+  - `LightingModel::from_config`
+  - `ContactModel::from_config`
+  - `roomci-device-model` API users should migrate to `try_from_config` and handle constructor-level parse failures explicitly.
+
+  These APIs are intentionally replaced by `try_from_config` for clearer failure signaling.
+
 - Unused `roomci-fault` crate (a phantom dependency of `roomci-core`, imported nowhere). The runtime semantics of `faults[].duration` remain unimplemented; whether to implement fault recovery is tracked as a separate decision.
 - Dead code: `yaml_state_to_json` and the unused `RoomDefinition` / `DeviceDefinition` types in `roomci-device-model` (and its now-unused `serde` dependency), plus `ValidatedScheduledEvent::order()` and `MqttTopicTemplate::as_str()` in `roomci-scenario` (#28).
 
