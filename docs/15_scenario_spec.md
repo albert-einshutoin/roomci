@@ -20,6 +20,8 @@ A scenario should define:
 
 ## Top-level structure
 
+Supported `scenario.version` values are validated as semver and currently limited to `0.1`.
+
 ```yaml
 version: "0.1"
 scenario:
