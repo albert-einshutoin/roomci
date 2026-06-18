@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::BTreeSet, fs, path::PathBuf};
 
 use super::*;
 
@@ -8,6 +8,93 @@ fn fixture(path: &str) -> PathBuf {
         .join(path)
 }
 
+fn read_scenario_schema(path: &str) -> serde_json::Value {
+    let schema_path = fixture(path);
+    let schema_text = fs::read_to_string(schema_path).unwrap();
+    serde_json::from_str(&schema_text).unwrap()
+}
+
+fn schema_required_fields(schema: &serde_json::Value) -> BTreeSet<String> {
+    schema["required"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| item.as_str().unwrap().to_string())
+        .collect()
+}
+
+fn schema_properties(schema: &serde_json::Value) -> BTreeSet<String> {
+    schema["properties"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect()
+}
+
+#[test]
+fn tracks_scenario_schema_drift_with_runtime_contract() {
+    let roomci_schema = read_scenario_schema("schemas/scenario.schema.json");
+    let vscode_schema = read_scenario_schema("tools/vscode-roomci/schemas/scenario.schema.json");
+
+    assert_eq!(roomci_schema, vscode_schema);
+
+    let expected_required_fields = BTreeSet::from([
+        "version".to_string(),
+        "scenario".to_string(),
+        "assertions".to_string(),
+    ]);
+    assert_eq!(
+        schema_required_fields(&roomci_schema),
+        expected_required_fields
+    );
+
+    let expected_properties = BTreeSet::from([
+        "version".to_string(),
+        "scenario".to_string(),
+        "environment".to_string(),
+        "network".to_string(),
+        "wan".to_string(),
+        "sensors".to_string(),
+        "comfort".to_string(),
+        "inputs".to_string(),
+        "commissioning".to_string(),
+        "future_milestone".to_string(),
+        "edge".to_string(),
+        "mqtt".to_string(),
+        "devices".to_string(),
+        "modbus".to_string(),
+        "lighting".to_string(),
+        "scenes".to_string(),
+        "contacts".to_string(),
+        "alerts".to_string(),
+        "faults".to_string(),
+        "steps".to_string(),
+        "assertions".to_string(),
+        "report".to_string(),
+    ])
+    .into_iter()
+    .collect();
+    assert_eq!(schema_properties(&roomci_schema), expected_properties);
+
+    assert_eq!(
+        roomci_schema["properties"]["assertions"]["minItems"],
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        roomci_schema["properties"]["version"]["pattern"],
+        "^v?0\\.1(?:\\.(?:0|[1-9]\\d*))?$"
+    );
+    assert_eq!(
+        roomci_schema["properties"]["scenario"]["required"][0],
+        "name"
+    );
+    assert_eq!(
+        roomci_schema["properties"]["scenario"]["properties"]["name"]["pattern"],
+        "^[a-z0-9][a-z0-9_]*$"
+    );
+}
+
 #[test]
 fn rejects_invalid_scenario_version_string() {
     let scenario: ScenarioFile = serde_yaml::from_str(
@@ -15,7 +102,10 @@ fn rejects_invalid_scenario_version_string() {
 version: "banana"
 scenario:
   name: invalid_scenario_version
-assertions: []
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
 "#,
     )
     .unwrap();
@@ -38,7 +128,10 @@ fn rejects_unsupported_scenario_version_value() {
 version: "0.2"
 scenario:
   name: unsupported_scenario_version
-assertions: []
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
 "#,
     )
     .unwrap();
@@ -61,12 +154,64 @@ fn accepts_supported_scenario_version_prefix() {
 version: "v0.1"
 scenario:
   name: supported_scenario_version_prefix
-assertions: []
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
 "#,
     )
     .unwrap();
 
     validate_scenario(&scenario).unwrap();
+}
+
+#[test]
+fn rejects_empty_assertions_array() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: no_assertions
+assertions: []
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::ScenarioContract {
+            field,
+            ..
+        } if field == "assertions"
+    ));
+}
+
+#[test]
+fn rejects_invalid_scenario_name_pattern() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: UpperCamel
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        ScenarioError::ScenarioContract {
+            field,
+            ..
+        } if field == "scenario.name"
+    ));
 }
 
 #[test]

@@ -66,6 +66,8 @@ pub enum ScenarioError {
     InvalidAdapterContract(String),
     #[error("invalid scenario version {version}: {reason}")]
     InvalidScenarioVersion { version: String, reason: String },
+    #[error("scenario contract violation: {field} {reason}")]
+    ScenarioContract { field: String, reason: String },
     #[error(transparent)]
     DeviceModel(#[from] DeviceModelError),
     #[error(transparent)]
@@ -420,8 +422,51 @@ fn require_non_empty(field: &str, value: &str) -> Result<(), ScenarioError> {
 /// Called by `roomci-core::run_scenario` before execution; callers can also
 /// invoke it directly for a `--dry-run`-style validation pass.
 pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
+    validate_scenario_name(&scenario.scenario.name)?;
+    if scenario.assertions.is_empty() {
+        return Err(ScenarioError::ScenarioContract {
+            field: "assertions".to_string(),
+            reason: "must contain at least one assertion item".to_string(),
+        });
+    }
+
     validate_scenario_version(&scenario.version)?;
     ValidatedScenario::try_from(scenario).map(|_| ())
+}
+
+fn validate_scenario_name(name: &str) -> Result<(), ScenarioError> {
+    if name.is_empty() {
+        return Err(ScenarioError::ScenarioContract {
+            field: "scenario.name".to_string(),
+            reason: "must not be empty".to_string(),
+        });
+    }
+
+    let mut chars = name.chars();
+    let first = chars
+        .next()
+        .ok_or_else(|| ScenarioError::ScenarioContract {
+            field: "scenario.name".to_string(),
+            reason: "must match ^[a-z0-9][a-z0-9_]*$".to_string(),
+        })?;
+
+    if !first.is_ascii_lowercase() && !first.is_ascii_digit() {
+        return Err(ScenarioError::ScenarioContract {
+            field: "scenario.name".to_string(),
+            reason: "must match ^[a-z0-9][a-z0-9_]*$".to_string(),
+        });
+    }
+
+    for c in chars {
+        if !(c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_') {
+            return Err(ScenarioError::ScenarioContract {
+                field: "scenario.name".to_string(),
+                reason: "must match ^[a-z0-9][a-z0-9_]*$".to_string(),
+            });
+        }
+    }
+
+    Ok(())
 }
 
 fn validate_scenario_version(version: &str) -> Result<(), ScenarioError> {
