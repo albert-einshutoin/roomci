@@ -140,11 +140,6 @@ pub struct ModbusModel {
 }
 
 impl ModbusModel {
-    #[deprecated(note = "use try_from_config to surface malformed scenario config")]
-    pub fn from_config(modbus: &BTreeMap<String, serde_yaml::Value>) -> Self {
-        Self::try_from_config(modbus).unwrap_or_default()
-    }
-
     pub fn try_from_config(
         modbus: &BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Self, DeviceModelError> {
@@ -308,18 +303,6 @@ pub struct LightingModel {
 }
 
 impl LightingModel {
-    #[deprecated(note = "use try_from_config to surface malformed scenario config")]
-    pub fn from_config(
-        lighting: &BTreeMap<String, serde_yaml::Value>,
-        scenes: &BTreeMap<String, BTreeMap<String, i64>>,
-    ) -> Self {
-        Self::try_from_config(lighting, scenes).unwrap_or_else(|_| Self {
-            levels: BTreeMap::new(),
-            scene_targets: scenes.clone(),
-            command_drops: BTreeSet::new(),
-        })
-    }
-
     pub fn try_from_config(
         lighting: &BTreeMap<String, serde_yaml::Value>,
         scenes: &BTreeMap<String, BTreeMap<String, i64>>,
@@ -430,11 +413,6 @@ pub struct ContactModel {
 }
 
 impl ContactModel {
-    #[deprecated(note = "use try_from_config to surface malformed scenario config")]
-    pub fn from_config(contacts: &BTreeMap<String, serde_yaml::Value>) -> Self {
-        Self::try_from_config(contacts).unwrap_or_default()
-    }
-
     pub fn try_from_config(
         contacts: &BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Self, DeviceModelError> {
