@@ -289,21 +289,23 @@ fn result_label(result: RunResult) -> &'static str {
 }
 
 fn escape_xml(value: &str) -> String {
-    let mut output = String::with_capacity(value.len());
-    for ch in value.chars() {
-        let cp = ch as u32;
-        match ch {
-            '&' => output.push_str("&amp;"),
-            '<' => output.push_str("&lt;"),
-            '>' => output.push_str("&gt;"),
-            '"' => output.push_str("&quot;"),
-            '\'' => output.push_str("&apos;"),
-            _ if cp == 0xFFFE || cp == 0xFFFF => {}
-            c if (c as u32) < 0x20 && c != '\t' && c != '\n' && c != '\r' => {}
-            c => output.push(c),
-        }
-    }
-    output
+    let sanitized: String = value
+        .chars()
+        .filter(|ch| match *ch {
+            '\u{9}' | '\u{A}' | '\u{D}' => true,
+            '\u{FEFF}' => false,
+            '\u{20}'..='\u{D7FF}' => true,
+            '\u{E000}'..='\u{FFFD}' => *ch != '\u{FFFE}' && *ch != '\u{FFFF}',
+            '\u{10000}'..='\u{10FFFF}' => true,
+            _ => false,
+        })
+        .collect();
+    sanitized
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
 }
 
 #[cfg(test)]
@@ -407,6 +409,42 @@ mod tests {
         let markdown = to_markdown(&report);
 
         assert!(markdown.contains("## Suggested Recovery\n\n- Guest comfort issue occurred"));
+    }
+
+    #[test]
+    fn escapes_xml_reserved_entities_and_removes_control_characters() {
+        let report = RunReport {
+            schema_version: "roomci.report.v1".to_string(),
+            run_id: "xml-control".to_string(),
+            generated_by: "roomci".to_string(),
+            scenario_name: "xml-control".to_string(),
+            result: RunResult::Failed,
+            timeline: vec![],
+            assertions: vec![AssertionResult {
+                name: "bad&name\nx\0y\tz\rq<'\">".to_string(),
+                assertion_type: "guest_visibility".to_string(),
+                passed: true,
+                message: "ok\u{FFFE}\u{FFFF}".to_string(),
+                impact_level: None,
+                impact_message: Some("hello\u{001f}world".to_string()),
+            }],
+            final_state: BTreeMap::new(),
+            retained_messages: BTreeMap::new(),
+        };
+
+        let junit = to_junit(&report);
+
+        assert!(junit.contains("&lt;"));
+        assert!(junit.contains("&gt;"));
+        assert!(junit.contains("&quot;"));
+        assert!(junit.contains("&apos;"));
+        assert!(junit.contains("&amp;"));
+        assert!(junit.contains("bad&amp;name\nx"));
+        assert!(!junit.contains('\u{0000}'));
+        assert!(!junit.contains('\u{FFFE}'));
+        assert!(!junit.contains('\u{FFFF}'));
+        assert!(!junit.contains('\u{001f}'));
+        assert!(!junit.contains('\u{001b}'));
     }
 
     #[test]
