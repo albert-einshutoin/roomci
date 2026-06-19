@@ -308,7 +308,7 @@ That command starts `roomci serve` in Docker Compose, runs `examples/controllers
 - `cargo doc --workspace --no-deps` (`RUSTDOCFLAGS=-D warnings`)
 - `cargo tarpaulin --workspace --fail-under 80`
 
-Current measurements: **167 tests** pass, **88.07%** line coverage.
+Current measurements: **169 tests** pass, **88.07%** line coverage.
 
 Use [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) before presenting a release or company evaluation build. Use [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) as the source of truth for behavior-model support versus wire-protocol support.
 

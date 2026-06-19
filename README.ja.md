@@ -302,7 +302,7 @@ make compose-poc
 - `cargo doc --workspace --no-deps`（`RUSTDOCFLAGS=-D warnings`）
 - `cargo tarpaulin --workspace --fail-under 80`
 
-現在の測定値：**167 テスト** 合格、**88.07%** ライン カバレッジ。
+現在の測定値：**169 テスト** 合格、**88.07%** ライン カバレッジ。
 
 リリースまたは会社評価ビルドを提示する前に [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) を使用してください。動作モデル サポートとワイヤプロトコル サポートの真実の源として [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) を使用してください。
 
