@@ -21,6 +21,11 @@ future_milestone:
     - routing
     - certification
 
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
+
 steps:
   - at: T
     event: BACnet profile contract is validated as object/property metadata only.
