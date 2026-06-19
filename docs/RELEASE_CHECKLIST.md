@@ -12,6 +12,7 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 | Rust tests | `cargo test --workspace --all-targets` | All workspace tests pass |
 | Docs build | `RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps` | API docs build without warnings |
 | Coverage floor | `cargo tarpaulin --workspace --engine llvm --fail-under 80` | Coverage remains at or above 80% |
+| README quality drift check | `bash ./scripts/check-readme-quality.sh` | README.md and README.ja.md `Current measurements` and coverage badge match latest successful test and coverage command output |
 | Scenario validation | `cargo run -p roomci-cli -- validate examples/*.yaml` | Public examples validate |
 | Adapter contract validation | `cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml` | Adapter template and example contracts validate |
 | Scenario run reports | `cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml --report-json reports/local_first.json --report-md reports/local_first.md --junit reports/local_first.xml` | JSON, Markdown, and JUnit reports are generated |
