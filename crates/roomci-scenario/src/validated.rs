@@ -7,10 +7,10 @@ use roomci_ops::OpsModel;
 
 use crate::{
     parse_duration, resolve_time_offset, typed_assertion_kind, typed_fault_kind, typed_step_kind,
-    validate_scenario_version, yaml_map_to_json, AssertionDefinition, CommandStep, FaultStep,
-    InlineAssertionKind, IntercomStep, ModbusAssertion, ModbusWriteStep, MqttAssertion,
-    MqttPublishStep, ScenarioError, ScenarioFile, SensorReadingStep, TargetConditionAssertion,
-    TypedAssertionKind, TypedFaultKind, TypedStepKind,
+    validate_scenario_name, validate_scenario_version, yaml_map_to_json, AssertionDefinition,
+    CommandStep, FaultStep, InlineAssertionKind, IntercomStep, ModbusAssertion, ModbusWriteStep,
+    MqttAssertion, MqttPublishStep, ScenarioError, ScenarioFile, SensorReadingStep,
+    TargetConditionAssertion, TypedAssertionKind, TypedFaultKind, TypedStepKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -199,6 +199,13 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
 
     fn try_from(scenario: &ScenarioFile) -> Result<Self, Self::Error> {
         validate_scenario_version(&scenario.version)?;
+        validate_scenario_name(&scenario.scenario.name)?;
+        if scenario.assertions.is_empty() {
+            return Err(ScenarioError::ScenarioContract {
+                field: "assertions".to_string(),
+                reason: "must contain at least one assertion item".to_string(),
+            });
+        }
 
         let modbus = ModbusModel::try_from_config(&scenario.modbus)?;
         let scene_targets = scenario

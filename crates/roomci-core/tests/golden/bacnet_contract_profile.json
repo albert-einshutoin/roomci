@@ -12,7 +12,16 @@
       "message": "BACnet profile contract is validated as object/property metadata only."
     }
   ],
-  "assertions": [],
+  "assertions": [
+    {
+      "name": "user_override",
+      "assertion_type": "comfort_user_override",
+      "passed": true,
+      "message": "no user override occurred",
+      "impact_level": null,
+      "impact_message": null
+    }
+  ],
   "final_state": {},
   "retained_messages": {}
 }

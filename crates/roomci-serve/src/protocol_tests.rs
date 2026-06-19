@@ -183,6 +183,11 @@ steps:
       topic: fleet/demo/device/env_sensor_01/command
       payload:
         online: true
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
 "#,
     )
     .unwrap();
