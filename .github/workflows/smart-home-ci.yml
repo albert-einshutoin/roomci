@@ -41,6 +41,9 @@ jobs:
       - name: cargo tarpaulin --fail-under 80
         run: cargo tarpaulin --workspace --engine llvm --fail-under 80 --skip-clean
 
+      - name: check README quality drift
+        run: bash ./scripts/check-readme-quality.sh
+
   roomci:
     name: Docker scenario suite
     runs-on: ubuntu-latest
