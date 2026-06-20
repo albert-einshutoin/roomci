@@ -604,19 +604,7 @@ mod tests {
     }
 
     fn minimal_runtime() -> RuntimeState {
-        runtime_from_yaml(
-            r#"
-version: "0.1"
-scenario:
-  name: edge-wan-target-assertion-test
-edge:
-  secondary:
-    id: edge_secondary
-    status: standby
-  failover:
-    enabled: true
-"#,
-        )
+        runtime_from_yaml(include_str!("../../../examples/edge_server_failover.yaml"))
     }
 
     #[test]
@@ -666,5 +654,26 @@ edge:
 
         assert!(!result.passed);
         assert_eq!(result.message, "backup WAN is not active");
+    }
+
+    #[test]
+    fn wan_backup_failure_message_reflects_timing() {
+        let mut runtime = minimal_runtime();
+        runtime.wan_backup_status = Some("active".to_string());
+        runtime.wan_primary_failed_at = Some(Duration::seconds(10));
+        runtime.wan_failover_at = Some(Duration::seconds(12));
+        runtime.wan_expected_within = Some(Duration::seconds(1));
+
+        let assertion =
+            ValidatedAssertionKind::TargetCondition(ValidatedTargetConditionAssertion::WanBackup {
+                condition: Condition::Active,
+            });
+        let result = evaluate_assertion(&runtime, &assertion);
+
+        assert!(!result.passed);
+        assert_eq!(
+            result.message,
+            "backup WAN did not activate within expected failover window"
+        );
     }
 }
