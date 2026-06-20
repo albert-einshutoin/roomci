@@ -301,6 +301,7 @@ make compose-poc
 - `cargo test --workspace --all-targets`
 - `cargo doc --workspace --no-deps`（`RUSTDOCFLAGS=-D warnings`）
 - `cargo tarpaulin --workspace --fail-under 80`
+- `bash ./scripts/check-readme-quality.sh`
 
 現在の測定値：**169 テスト** 合格、**88.07%** ライン カバレッジ。
 

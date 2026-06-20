@@ -12,6 +12,7 @@
 | Rust tests | `cargo test --workspace --all-targets` | すべての workspace test が pass |
 | Docs build | `RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps` | API docs が warning なしで build される |
 | Coverage floor | `cargo tarpaulin --workspace --engine llvm --fail-under 80` | coverage が 80% 以上を維持する |
+| README メトリクスのドリフトチェック | `bash ./scripts/check-readme-quality.sh` | README.md と README.ja.md の測定値とバッジが最新の実行結果と一致する |
 | Scenario validation | `cargo run -p roomci-cli -- validate examples/*.yaml` | 公開 example が validate される |
 | Adapter contract validation | `cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml` | adapter template と example contract が validate される |
 | Scenario run reports | `cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml --report-json reports/local_first.json --report-md reports/local_first.md --junit reports/local_first.xml` | JSON、Markdown、JUnit report が生成される |

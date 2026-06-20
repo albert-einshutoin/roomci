@@ -307,6 +307,7 @@ That command starts `roomci serve` in Docker Compose, runs `examples/controllers
 - `cargo test --workspace --all-targets`
 - `cargo doc --workspace --no-deps` (`RUSTDOCFLAGS=-D warnings`)
 - `cargo tarpaulin --workspace --fail-under 80`
+- `bash ./scripts/check-readme-quality.sh`
 
 Current measurements: **169 tests** pass, **88.07%** line coverage.
 
