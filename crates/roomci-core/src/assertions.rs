@@ -184,15 +184,13 @@ fn evaluate_target_condition(
                 name: "edge.secondary".to_string(),
                 assertion_type: "edge_state".to_string(),
                 passed,
-                message: if passed {
-                    if timing_passed {
-                        "secondary edge server is active".to_string()
-                    } else {
+                message: match (status_passed, timing_passed) {
+                    (true, true) => "secondary edge server is active".to_string(),
+                    (true, false) => {
                         "secondary edge server did not activate within expected failover window"
                             .to_string()
                     }
-                } else {
-                    "secondary edge server is not active".to_string()
+                    (false, _) => "secondary edge server is not active".to_string(),
                 },
                 impact_level: if passed {
                     None
@@ -249,10 +247,12 @@ fn evaluate_target_condition(
                 name: "wan.backup".to_string(),
                 assertion_type: "wan_failover".to_string(),
                 passed,
-                message: if passed {
-                    "backup WAN is active".to_string()
-                } else {
-                    "backup WAN is not active within expected failover window".to_string()
+                message: match (status_passed, timing_passed) {
+                    (true, true) => "backup WAN is active".to_string(),
+                    (true, false) => {
+                        "backup WAN did not activate within expected failover window".to_string()
+                    }
+                    (false, _) => "backup WAN is not active".to_string(),
                 },
                 impact_level: if passed {
                     None
@@ -588,5 +588,83 @@ fn evaluate_commissioning_checklist(runtime: &RuntimeState) -> AssertionResult {
         } else {
             Some("Commissioning checklist generation did not produce field checks.".to_string())
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Duration;
+    use roomci_scenario::{ScenarioFile, ValidatedScenario};
+
+    fn runtime_from_yaml(yaml: &str) -> RuntimeState {
+        let scenario: ScenarioFile = serde_yaml::from_str(yaml).unwrap();
+        let scenario = ValidatedScenario::try_from(&scenario).unwrap();
+        RuntimeState::new(&scenario)
+    }
+
+    fn minimal_runtime() -> RuntimeState {
+        runtime_from_yaml(
+            r#"
+version: "0.1"
+scenario:
+  name: edge-wan-target-assertion-test
+edge:
+  secondary:
+    id: edge_secondary
+    status: standby
+  failover:
+    enabled: true
+"#,
+        )
+    }
+
+    #[test]
+    fn edge_secondary_failure_message_reflects_status() {
+        let runtime = minimal_runtime();
+        let assertion = ValidatedAssertionKind::TargetCondition(
+            ValidatedTargetConditionAssertion::EdgeSecondary {
+                condition: Condition::Active,
+            },
+        );
+        let result = evaluate_assertion(&runtime, &assertion);
+
+        assert!(!result.passed);
+        assert_eq!(result.message, "secondary edge server is not active");
+    }
+
+    #[test]
+    fn edge_secondary_failure_message_reflects_timing() {
+        let mut runtime = minimal_runtime();
+        runtime.edge.apply_power_lost_to_primary();
+        runtime.edge_primary_failed_at = Some(Duration::seconds(10));
+        runtime.edge_failover_at = Some(Duration::seconds(12));
+        runtime.edge_expected_within = Some(Duration::seconds(1));
+
+        let assertion = ValidatedAssertionKind::TargetCondition(
+            ValidatedTargetConditionAssertion::EdgeSecondary {
+                condition: Condition::Active,
+            },
+        );
+        let result = evaluate_assertion(&runtime, &assertion);
+
+        assert!(!result.passed);
+        assert_eq!(
+            result.message,
+            "secondary edge server did not activate within expected failover window"
+        );
+    }
+
+    #[test]
+    fn wan_backup_failure_message_reflects_status() {
+        let runtime = minimal_runtime();
+        let assertion =
+            ValidatedAssertionKind::TargetCondition(ValidatedTargetConditionAssertion::WanBackup {
+                condition: Condition::Active,
+            });
+        let result = evaluate_assertion(&runtime, &assertion);
+
+        assert!(!result.passed);
+        assert_eq!(result.message, "backup WAN is not active");
     }
 }

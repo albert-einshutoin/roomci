@@ -29,9 +29,15 @@ pub(crate) struct RuntimeState {
     pub(crate) edge: EdgeModel,
     pub(crate) edge_primary_failed_at: Option<Duration>,
     pub(crate) edge_failover_at: Option<Duration>,
+    /// Current simulator path records edge failover at the same virtual instant
+    /// as the fault event when a failover happens, so timing checks are currently
+    /// primarily driven by config value changes and manual runtime state edits.
     pub(crate) edge_expected_within: Option<Duration>,
     pub(crate) wan_primary_failed_at: Option<Duration>,
     pub(crate) wan_failover_at: Option<Duration>,
+    /// Current simulator path records WAN failover at the same virtual instant
+    /// as the fault event when a failover happens, so timing checks are currently
+    /// primarily driven by config value changes and manual runtime state edits.
     pub(crate) wan_expected_within: Option<Duration>,
     pub(crate) wan_backup_status: Option<String>,
     pub(crate) duplicate_delivery_by_topic: BTreeMap<String, u32>,
