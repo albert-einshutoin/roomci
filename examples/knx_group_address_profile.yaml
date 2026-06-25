@@ -18,8 +18,12 @@ future_milestone:
     - ETS import
     - KNX/IP tunneling
     - routing
-    - bus timing
     - certification
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
 
 steps:
   - at: T

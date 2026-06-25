@@ -20,6 +20,11 @@ future_milestone:
     - Thread/Wi-Fi transport
     - certification
 
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
+
 steps:
   - at: T
     event: Matter gateway profile contract is validated as adapter metadata only.

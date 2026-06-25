@@ -25,3 +25,8 @@ future_milestone:
 steps:
   - at: T
     event: OPC UA node profile is validated as adapter metadata only.
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false

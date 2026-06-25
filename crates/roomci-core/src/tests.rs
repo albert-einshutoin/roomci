@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use roomci_scenario::{load_scenario, ValidatedScenario};
+use roomci_scenario::{load_scenario, ScenarioError, ScenarioFile, ValidatedScenario};
 use serde_json::json;
 
 use super::*;
@@ -9,6 +9,33 @@ fn fixture(path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(path)
+}
+
+#[test]
+fn run_scenario_rejects_invalid_version() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "banana"
+scenario:
+  name: invalid_scenario_version
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
+"#,
+    )
+    .unwrap();
+
+    let error = run_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        error,
+        CoreError::Scenario(ScenarioError::InvalidScenarioVersion {
+            version,
+            ..
+        }) if version == "banana"
+    ));
 }
 
 #[test]
@@ -366,6 +393,11 @@ steps:
       topic: fleet/demo/device/env_sensor_01/command
       payload:
         online: true
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
 "#,
     )
     .unwrap();
@@ -416,6 +448,11 @@ steps:
       topic: fleet/demo/device/env_sensor_01/set
       payload:
         online: true
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
 "#,
     )
     .unwrap();
@@ -460,6 +497,11 @@ steps:
       topic: fleet/demo/device/unknown_sensor/command
       payload:
         online: true
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
 "#,
     )
     .unwrap();
@@ -538,6 +580,11 @@ steps:
     command:
       target: living_light
       action: turn_on
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
 "#,
     )
     .unwrap();
@@ -579,6 +626,11 @@ steps:
       target: living_light
       action: set_brightness
       value: 60
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
 "#,
     )
     .unwrap();
@@ -619,6 +671,11 @@ steps:
     command:
       target: living_light
       action: set_brightness
+
+assertions:
+  - at: T+1s
+    target: user_override
+    condition: false
 "#,
     )
     .unwrap();

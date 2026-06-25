@@ -31,10 +31,20 @@ not as separately published calendar releases.
 - `POST /run` no longer holds the serve-state lock while executing a scenario, and poisoned serve state now returns HTTP 500 instead of panicking route handlers.
 - `/health` now reports serve lifecycle status (`idle`, `running`, `passed`, `failed`) and returns HTTP 503 for failed health.
 - MQTT `CONNECT` now validates protocol name `MQTT` and protocol level `4`, rejecting unsupported protocol versions with `CONNACK` `0x01`.
+- `roomci-report` Markdown "Suggested Recovery" now lists each failed assertion's guest-impact message, replacing three hard-coded recovery hints whose triggering assertion types were never produced by the runtime (#28).
 
 ### Removed
 
+- Removed public constructors from `roomci-device-model`:
+  - `ModbusModel::from_config`
+  - `LightingModel::from_config`
+  - `ContactModel::from_config`
+  - `roomci-device-model` API users should migrate to `try_from_config` and handle constructor-level parse failures explicitly.
+
+  These APIs are intentionally replaced by `try_from_config` for clearer failure signaling.
+
 - Unused `roomci-fault` crate (a phantom dependency of `roomci-core`, imported nowhere). The runtime semantics of `faults[].duration` remain unimplemented; whether to implement fault recovery is tracked as a separate decision.
+- Dead code: `yaml_state_to_json` and the unused `RoomDefinition` / `DeviceDefinition` types in `roomci-device-model` (and its now-unused `serde` dependency), plus `ValidatedScheduledEvent::order()` and `MqttTopicTemplate::as_str()` in `roomci-scenario` (#28).
 
 ### Fixed
 

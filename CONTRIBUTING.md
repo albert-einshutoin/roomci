@@ -33,6 +33,15 @@ Enhancement suggestions are tracked as GitHub Issues. When creating an enhanceme
 - **Explain why this enhancement would be useful**
 - **List some examples of where the enhancement would be used**
 
+### Branching Model
+
+roomci uses GitHub Flow:
+
+- `main` is the only long-lived integration and release branch
+- Create short-lived feature or fix branches from the latest `main`
+- Open pull requests back into `main`
+- Do not create or target a long-lived `develop` branch
+
 ### Pull Requests
 
 1. **Fork the repository** and create your feature branch

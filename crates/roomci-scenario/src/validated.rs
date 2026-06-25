@@ -7,10 +7,10 @@ use roomci_ops::OpsModel;
 
 use crate::{
     parse_duration, resolve_time_offset, typed_assertion_kind, typed_fault_kind, typed_step_kind,
-    yaml_map_to_json, AssertionDefinition, CommandStep, FaultStep, InlineAssertionKind,
-    IntercomStep, ModbusAssertion, ModbusWriteStep, MqttAssertion, MqttPublishStep, ScenarioError,
-    ScenarioFile, SensorReadingStep, TargetConditionAssertion, TypedAssertionKind, TypedFaultKind,
-    TypedStepKind,
+    validate_scenario_name, validate_scenario_version, yaml_map_to_json, AssertionDefinition,
+    CommandStep, FaultStep, InlineAssertionKind, IntercomStep, ModbusAssertion, ModbusWriteStep,
+    MqttAssertion, MqttPublishStep, ScenarioError, ScenarioFile, SensorReadingStep,
+    TargetConditionAssertion, TypedAssertionKind, TypedFaultKind, TypedStepKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -112,10 +112,6 @@ impl MqttTopicTemplate {
         validate_mqtt_topic_text(&field, &value, true)?;
         Ok(Self(value))
     }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
 }
 
 fn validate_mqtt_topic_text(
@@ -202,6 +198,15 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
     type Error = ScenarioError;
 
     fn try_from(scenario: &ScenarioFile) -> Result<Self, Self::Error> {
+        validate_scenario_version(&scenario.version)?;
+        validate_scenario_name(&scenario.scenario.name)?;
+        if scenario.assertions.is_empty() {
+            return Err(ScenarioError::ScenarioContract {
+                field: "assertions".to_string(),
+                reason: "must contain at least one assertion item".to_string(),
+            });
+        }
+
         let modbus = ModbusModel::try_from_config(&scenario.modbus)?;
         let scene_targets = scenario
             .scenes
@@ -334,10 +339,6 @@ impl ValidatedScheduledEvent {
 
     pub fn at(&self) -> Duration {
         self.at
-    }
-
-    pub fn order(&self) -> u8 {
-        self.order
     }
 
     pub fn kind(&self) -> &ValidatedEventKind {

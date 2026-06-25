@@ -25,3 +25,8 @@ steps:
       target: living_light
       action: set_brightness
       value: 60
+
+assertions:
+  - at: T+2m
+    target: user_override
+    condition: false

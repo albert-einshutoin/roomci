@@ -20,6 +20,8 @@
 
 ## トップレベル構造
 
+`scenario.version` の値は SemVer として検証され、現在は `0.1` のみ受け付けます。
+
 ```yaml
 version: "0.1"
 scenario:
