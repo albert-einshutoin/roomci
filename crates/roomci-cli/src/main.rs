@@ -9,6 +9,8 @@
 //!   `--quiet` suppresses per-scenario detail.
 //! - `roomci validate <scenarios...>` — load and validate one or more scenarios
 //!   without executing them.
+//! - `roomci init [PATH]` — create a runnable starter scenario and optional CI
+//!   workflow in an evaluator's own repository.
 //! - `roomci adapter validate <contracts...>` — load and validate one or more
 //!   company adapter contract files without executing scenarios.
 //! - `roomci debug <scenario>` — execute one scenario and emit deterministic
@@ -42,6 +44,8 @@ use roomci_serve::{run_serve, ServeOptions};
 use serde::Serialize;
 use thiserror::Error;
 
+mod init;
+
 #[derive(Debug, Parser)]
 #[command(
     name = "roomci",
@@ -55,6 +59,17 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Create a runnable starter scenario and optional GitHub Actions workflow.
+    Init {
+        /// Directory where roomci files are created. Defaults to the current directory.
+        path: Option<PathBuf>,
+        /// Generate the GitHub Actions workflow template.
+        #[arg(long, value_parser = ["github"])]
+        ci: Option<String>,
+        /// Replace every generated file after the full preflight succeeds.
+        #[arg(long)]
+        force: bool,
+    },
     /// Run one or more scenarios and emit reports for the last one.
     #[command(group(ArgGroup::new("verbosity").args(["verbose", "quiet"])))]
     Run {
@@ -157,6 +172,8 @@ enum AdapterCommand {
 #[derive(Debug, Error)]
 enum CliError {
     #[error(transparent)]
+    Init(#[from] init::InitError),
+    #[error(transparent)]
     Scenario(#[from] roomci_scenario::ScenarioError),
     #[error(transparent)]
     Core(#[from] roomci_core::CoreError),
@@ -183,6 +200,15 @@ fn main() -> ExitCode {
 
 fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
     match cli.command {
+        Command::Init { path, ci, force } => {
+            let root = path.unwrap_or_else(|| PathBuf::from("."));
+            let created = init::scaffold(&root, ci.as_deref() == Some("github"), force)?;
+            for path in created {
+                println!("created: {}", path.display());
+            }
+            println!("\n{}", init::next_steps(&root));
+            Ok(ExitCode::SUCCESS)
+        }
         Command::Run {
             scenarios,
             junit,

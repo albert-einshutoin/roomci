@@ -1,0 +1,5 @@
+{
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/albert-einshutoin/roomci/v0.1.1/schemas/scenario.schema.json": ["roomci/*.yaml"]
+  }
+}

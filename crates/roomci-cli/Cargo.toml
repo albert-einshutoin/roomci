@@ -20,6 +20,7 @@ roomci-core = { path = "../roomci-core" }
 roomci-report = { path = "../roomci-report" }
 roomci-scenario = { path = "../roomci-scenario" }
 roomci-serve = { path = "../roomci-serve" }
+same-file.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

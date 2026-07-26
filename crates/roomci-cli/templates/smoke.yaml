@@ -1,0 +1,25 @@
+version: "0.1"
+scenario:
+  name: my_first_smoke
+  description: "Publish a command and assert the retained state contract."
+mqtt:
+  local:
+    retained: true
+devices:
+  - id: demo_light
+    type: light
+    state:
+      power: "off"
+steps:
+  - at: T
+    mqtt_publish:
+      client: demo_controller
+      topic: home/device/demo_light/command
+      payload:
+        power: "on"
+assertions:
+  - at: T+1s
+    mqtt:
+      topic: home/device/demo_light/state
+      retained:
+        power: "on"

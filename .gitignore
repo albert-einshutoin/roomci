@@ -25,6 +25,7 @@ reports/
 coverage/
 .nyc_output/
 test-results/
+tarpaulin-report.json
 
 # Logs
 *.log

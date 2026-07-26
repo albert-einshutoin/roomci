@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: albert-einshutoin/roomci@v0.1.0
+      - uses: albert-einshutoin/roomci@v0.1.1
         with:
           scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
           report-dir: roomci-reports

@@ -13,7 +13,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "CI-first contract emulator for edge-device and building-automation QA"
 license = "Apache-2.0"
@@ -29,5 +29,6 @@ clap = { version = "4.5.53", features = ["derive"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 serde_yaml = "0.9.34"
+same-file = "1.0.6"
 thiserror = "2.0.17"
 tempfile = "3.23.0"

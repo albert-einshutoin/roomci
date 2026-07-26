@@ -2,7 +2,7 @@
 
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
-[![Coverage](https://img.shields.io/badge/coverage-88.07%25-green.svg)](#quality-gates)
+[![Coverage](https://img.shields.io/badge/coverage-87.83%25-green.svg)](#quality-gates)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 📖 **[日本語はこちら](README.ja.md)** | **[English](README.md)**
@@ -64,7 +64,27 @@ For real hardware capture replay in Docker CI, see [`docs/HARDWARE_TO_DOCKER_CI_
 For dependency updates, RustSec exceptions, and the `serde_yaml` compatibility
 hold, see [`docs/DEPENDENCY_POLICY.md`](docs/DEPENDENCY_POLICY.md).
 
-## Quick start
+## Quick start (no clone required)
+
+Install a released `roomci` binary, then create and run a first retained-state
+scenario in your own repository:
+
+```bash
+roomci init
+roomci validate roomci/smoke.yaml
+roomci run roomci/smoke.yaml --verbose
+```
+
+Add `--ci github` to generate `.github/workflows/roomci.yml`, which uses the
+versioned GitHub Action release. `init` refuses to overwrite any generated file
+unless you explicitly pass `--force`; this keeps an existing scenario and VS Code
+settings intact as one decision. See
+[`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md) for the next
+integration steps and [`docs/RELEASING.md`](docs/RELEASING.md) to install a binary.
+
+## Repository development
+
+The following commands are for contributors working from this repository:
 
 ```bash
 # Full curated demo
@@ -197,7 +217,7 @@ Add this action after checkout to run scenarios, upload complete evidence, and
 append a concise pass/fail table to the job summary:
 
 ```yaml
-- uses: albert-einshutoin/roomci@v0.1.0
+- uses: albert-einshutoin/roomci@v0.1.1
   with:
     scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
     report-dir: roomci-reports
@@ -354,7 +374,7 @@ That command starts `roomci serve` in Docker Compose, runs `examples/controllers
 - `cargo tarpaulin --workspace --fail-under 80`
 - `bash ./scripts/check-readme-quality.sh`
 
-Current measurements: **169 tests** pass, **88.07%** line coverage.
+Current measurements: **215 tests** pass, **87.83%** line coverage.
 
 Use [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) before presenting a release or company evaluation build. Use [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) as the source of truth for behavior-model support versus wire-protocol support.
 

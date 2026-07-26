@@ -1,6 +1,26 @@
 # 統合オンボーディング
 
-このパスは、クリーンな checkout から `roomci` を評価する platform、IoT、smart-home、building-automation エンジニア向けです。
+このパスは、自分のリポジトリで `roomci` を評価する platform、IoT、smart-home、building-automation エンジニア向けです。
+
+## 30 秒パス（clone 不要）
+
+リリース済みの `roomci` バイナリをインストールした後、現在のリポジトリに実行可能な
+retained-state smoke scenario を生成します。
+
+```bash
+roomci init --ci github
+roomci validate roomci/smoke.yaml
+roomci run roomci/smoke.yaml --verbose
+```
+
+任意の workflow は `albert-einshutoin/roomci@v0.1.1` を使い、report を
+`roomci-reports` に出力します。`init` は全生成対象を事前確認し、どれか一つでも
+既存なら何も書かずに案内付きで終了します。すべての生成物を置き換える意思がある場合
+だけ `--force` を使ってください。生成する VS Code YAML 設定は既存設定とマージせず、
+リポジトリ設定を暗黙に変更しないようにしています。
+
+バイナリのインストールとアップグレード確認は [`RELEASING.ja.md`](RELEASING.ja.md) を
+参照してください。
 
 ## 15 分パス
 

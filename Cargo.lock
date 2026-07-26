@@ -418,13 +418,14 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "roomci-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "roomci-core",
  "roomci-report",
  "roomci-scenario",
  "roomci-serve",
+ "same-file",
  "serde",
  "serde_json",
  "tempfile",
@@ -433,7 +434,7 @@ dependencies = [
 
 [[package]]
 name = "roomci-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "roomci-device-model",
@@ -449,7 +450,7 @@ dependencies = [
 
 [[package]]
 name = "roomci-device-model"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde_json",
  "serde_yaml",
@@ -458,7 +459,7 @@ dependencies = [
 
 [[package]]
 name = "roomci-edge"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -468,7 +469,7 @@ dependencies = [
 
 [[package]]
 name = "roomci-mqtt"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -477,7 +478,7 @@ dependencies = [
 
 [[package]]
 name = "roomci-ops"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde_yaml",
  "thiserror",
@@ -485,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "roomci-report"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "roomci-core",
  "roomci-scenario",
@@ -495,7 +496,7 @@ dependencies = [
 
 [[package]]
 name = "roomci-scenario"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "roomci-device-model",
@@ -510,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "roomci-serve"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "roomci-core",
  "roomci-device-model",
@@ -546,6 +547,15 @@ name = "ryu"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
+
+[[package]]
+name = "same-file"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+dependencies = [
+ "winapi-util",
+]
 
 [[package]]
 name = "semver"
@@ -790,6 +800,15 @@ dependencies = [
  "hashbrown 0.15.5",
  "indexmap",
  "semver",
+]
+
+[[package]]
+name = "winapi-util"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
+dependencies = [
+ "windows-sys",
 ]
 
 [[package]]
