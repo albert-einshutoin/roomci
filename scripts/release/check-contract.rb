@@ -112,4 +112,16 @@ dry_run = jobs.fetch("dry-run-images").fetch("steps").select { |step| step["uses
 assert_contract(dry_run.length == 2 && dry_run.all? { |step| step.fetch("with")["push"] == false },
                 "non-public dry run must build both images with push:false")
 
+%w[README.md README.ja.md docs/17_docker_ci_design.md docs/17_docker_ci_design.ja.md].each do |path|
+  assert_contract(File.read(File.join(ROOT, path)).include?("ghcr.io/albert-einshutoin/roomci"),
+                  "#{path} must use the real GHCR coordinate")
+end
+%w[docs/RELEASING.md docs/RELEASING.ja.md].each do |path|
+  text = File.read(File.join(ROOT, path))
+  assert_contract(text.include?("gh attestation verify") && text.include?("SHA256SUMS"),
+                  "#{path} must document checksum and attestation verification")
+  assert_contract(text.include?("Windows") && text.include?("crates.io"),
+                  "#{path} must list deferred channels")
+end
+
 puts "Release distribution contract is valid."

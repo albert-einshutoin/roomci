@@ -30,6 +30,12 @@
 | VSCode authoring assets | `make vscode-assets-check` | ローカル editor package JSON、snippet、task、schema copy、command reference が validate される |
 | S Tier evidence smoke | `make s-tier-evidence-smoke` | JSON report、timeline JSON、timeline NDJSON、observability JSON、run id、trace metadata が生成・検証される |
 | Protocol evidence map | `make protocol-evidence` | 検証済み protocol claim が command と non-goal doc にマップされる |
+| Release distribution contract | `make release-verify` | tag/version 契約、4 target matrix、非公開 dry run、fail-closed security gate が pass |
+| GitHub Release asset | 4 target tarball と `SHA256SUMS` を匿名 download | 4 asset すべての basename checksum が一致し、archive に `roomci`、`README.md`、`LICENSE` が入る |
+| Artifact attestation | `gh attestation verify <archive> --repo albert-einshutoin/roomci` | 公開 tarball ごとに GitHub attestation が verify される |
+| GHCR runtime image | `docker buildx imagetools inspect ghcr.io/albert-einshutoin/roomci:<version>` | manifest に `linux/amd64` と `linux/arm64` があり、version 固定 pull が成功する |
+| Runtime privilege boundary | `docker run --rm --entrypoint id ghcr.io/albert-einshutoin/roomci:<version> -u` | runtime image は non-root（UID `10001`）のまま |
+| Action evidence | Release workflow、action self-test、`ghcr.io/albert-einshutoin/roomci-action:<version>` digest | action image の provenance/SBOM と local action evidence があり、`action.yml` 切替は別 review の follow-up でのみ行う |
 | Full local CI approximation | `make verify` | Docker と Compose チェックを含む CI と同じ practical gate set を実行する |
 
 ## 生成 Artifact

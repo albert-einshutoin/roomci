@@ -358,6 +358,14 @@ Current measurements: **169 tests** pass, **88.07%** line coverage.
 
 Use [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) before presenting a release or company evaluation build. Use [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) as the source of truth for behavior-model support versus wire-protocol support.
 
+## Distribution
+
+Release tarballs and checksums are published for Linux x86_64/ARM64 and macOS
+Intel/Apple Silicon. The runtime image is
+`ghcr.io/albert-einshutoin/roomci:<version>` (or `:latest` after a verified
+release). See [`docs/RELEASING.md`](docs/RELEASING.md) for tag, attestation,
+install/upgrade commands, and deferred-platform policy.
+
 Company-specific adapter contracts can be validated before runtime work:
 
 ```bash

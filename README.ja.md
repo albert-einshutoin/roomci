@@ -350,6 +350,14 @@ make compose-poc
 
 リリースまたは会社評価ビルドを提示する前に [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) を使用してください。動作モデル サポートとワイヤプロトコル サポートの真実の源として [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) を使用してください。
 
+## 配布
+
+Linux x86_64/ARM64 と macOS Intel/Apple Silicon 向けの release tarball と
+checksum を公開します。runtime image は
+`ghcr.io/albert-einshutoin/roomci:<version>`（検証済み release 後は `:latest`）です。
+タグ、attestation、延期した配布面は [`docs/RELEASING.ja.md`](docs/RELEASING.ja.md)
+を参照してください。download、checksum、attestation、upgrade の実コマンドも同書にあります。
+
 会社固有のアダプター コントラクトは実行時作業の前に検証できます：
 
 ```bash
