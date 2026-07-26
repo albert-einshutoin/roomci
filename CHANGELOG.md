@@ -12,6 +12,10 @@ not as separately published calendar releases.
 
 ### Added
 
+- `roomci run --report-dir <dir>` for complete per-scenario JSON, Markdown,
+  JUnit, timeline, and observability artifacts in one invocation, plus the
+  stable `roomci.summary.v1` aggregate contract. Dry runs write only a summary
+  with explicit `dry_run` entries (#45).
 - Phase 11 integration-readiness tasks for adapter contracts, protocol matrix, customer PoC packs, and evaluator evidence.
 - Phase 12 runtime-hardening tasks for `roomci serve`, release metadata, and public-surface truthfulness.
 - `roomci-serve` crate for the long-running HTTP/MQTT PoC runtime.

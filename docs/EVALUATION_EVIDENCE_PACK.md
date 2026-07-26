@@ -55,6 +55,12 @@ Current release-candidate evidence:
 
 Generated `reports/` files are intentionally ignored by git.
 
+For an evaluator who needs one artifact upload for a custom multi-scenario
+suite, invoke `roomci run <scenario...> --report-dir reports/evaluation`.
+This writes a `roomci.summary.v1` `summary.json` plus complete, collision-safe
+per-scenario evidence directories; it avoids losing all but the last scenario
+when using individual report flags.
+
 ## Scorecards
 
 | Evaluation Lens | Current Fit | Required Customer Inputs | Integration Effort | Missing Depth | Go / No-go Criteria |

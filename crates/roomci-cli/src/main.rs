@@ -28,7 +28,8 @@ use std::{
 use clap::{ArgGroup, Parser, Subcommand};
 use roomci_core::{run_scenario, RunReport, RunResult, StateMap};
 use roomci_report::{
-    to_json, to_junit, to_markdown, to_observability_json, to_timeline_json, to_timeline_ndjson,
+    to_json, to_junit, to_markdown, to_observability_json, to_summary_json, to_timeline_json,
+    to_timeline_ndjson, RunSummary, ScenarioSummaryEntry,
 };
 use roomci_scenario::{
     load_adapter_contract, load_scenario, validate_adapter_contract, validate_scenario,
@@ -75,6 +76,9 @@ enum Command {
         /// Write an observability summary JSON artifact for the last scenario.
         #[arg(long)]
         observability_json: Option<PathBuf>,
+        /// Write per-scenario evidence artifacts and an aggregate summary to this directory.
+        #[arg(long)]
+        report_dir: Option<PathBuf>,
         /// Override the run identifier used in JSON, timeline, and observability artifacts.
         #[arg(long)]
         run_id: Option<String>,
@@ -181,6 +185,7 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             timeline_json,
             timeline_ndjson,
             observability_json,
+            report_dir,
             run_id,
             verbose,
             quiet,
@@ -193,6 +198,7 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             timeline_json,
             timeline_ndjson,
             observability_json,
+            report_dir,
             run_id,
             verbose,
             quiet,
@@ -484,6 +490,7 @@ struct RunOptions {
     timeline_json: Option<PathBuf>,
     timeline_ndjson: Option<PathBuf>,
     observability_json: Option<PathBuf>,
+    report_dir: Option<PathBuf>,
     run_id: Option<String>,
     verbose: bool,
     quiet: bool,
@@ -495,8 +502,13 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
     let mut passed = 0_usize;
     let mut failed = 0_usize;
     let mut last_report: Option<RunReport> = None;
+    let mut summary_entries = Vec::with_capacity(total);
+    let summary_run_id = options
+        .report_dir
+        .as_ref()
+        .map(|_| options.run_id.clone().unwrap_or_else(unique_batch_run_id));
 
-    if total > 1 && reports_requested(&options) {
+    if total > 1 && reports_requested(&options) && options.report_dir.is_none() {
         eprintln!(
             "warning: single report output flags write only the last scenario; run scenarios separately for per-scenario reports"
         );
@@ -505,17 +517,29 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
     for (index, path) in options.scenarios.iter().enumerate() {
         let scenario_file = load_scenario(path)?;
         validate_scenario(&scenario_file)?;
+        let sequence = index + 1;
+        let scenario_report_dir = scenario_artifact_dir_name(sequence, path);
 
         if options.dry_run {
             if !options.quiet {
                 println!(
                     "[{n}/{total}] dry-run valid: {path}",
-                    n = index + 1,
+                    n = sequence,
                     total = total,
                     path = path.display()
                 );
             }
             passed += 1;
+            summary_entries.push(ScenarioSummaryEntry {
+                sequence,
+                path: path.display().to_string(),
+                scenario_name: scenario_file.scenario.name,
+                result: RunResult::Passed,
+                assertions_total: 0,
+                assertions_failed: 0,
+                report_dir: scenario_report_dir,
+                dry_run: true,
+            });
             continue;
         }
 
@@ -523,7 +547,7 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
         if let Some(run_id) = &options.run_id {
             report.run_id = run_id.clone();
         } else {
-            report.run_id = unique_run_id(&report.scenario_name, index + 1);
+            report.run_id = unique_run_id(&report.scenario_name, sequence);
         }
         match report.result {
             RunResult::Passed => passed += 1,
@@ -531,8 +555,27 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
         }
 
         if !options.quiet {
-            print_scenario_summary(index + 1, total, path, &report, options.verbose);
+            print_scenario_summary(sequence, total, path, &report, options.verbose);
         }
+
+        if let Some(report_dir) = &options.report_dir {
+            write_per_scenario_artifacts(report_dir, &scenario_report_dir, &report)?;
+        }
+
+        summary_entries.push(ScenarioSummaryEntry {
+            sequence,
+            path: path.display().to_string(),
+            scenario_name: report.scenario_name.clone(),
+            result: report.result,
+            assertions_total: report.assertions.len(),
+            assertions_failed: report
+                .assertions
+                .iter()
+                .filter(|assertion| !assertion.passed)
+                .count(),
+            report_dir: scenario_report_dir,
+            dry_run: false,
+        });
 
         last_report = Some(report);
     }
@@ -558,6 +601,21 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
         }
     }
 
+    if let (Some(report_dir), Some(run_id)) = (&options.report_dir, summary_run_id) {
+        let summary = RunSummary {
+            schema_version: "roomci.summary.v1",
+            run_id,
+            total,
+            passed,
+            failed,
+            scenarios: summary_entries,
+        };
+        write_file(
+            &report_dir.join("summary.json"),
+            &to_summary_json(&summary)?,
+        )?;
+    }
+
     println!(
         "summary: {passed} passed, {failed} failed (of {total})",
         passed = passed,
@@ -570,6 +628,57 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
     } else {
         ExitCode::from(1)
     })
+}
+
+fn write_per_scenario_artifacts(
+    report_dir: &Path,
+    scenario_dir: &str,
+    report: &RunReport,
+) -> Result<(), CliError> {
+    let output_dir = report_dir.join(scenario_dir);
+    write_file(&output_dir.join("report.json"), &to_json(report)?)?;
+    write_file(&output_dir.join("report.md"), &to_markdown(report))?;
+    write_file(&output_dir.join("report.junit.xml"), &to_junit(report))?;
+    write_file(
+        &output_dir.join("timeline.json"),
+        &to_timeline_json(report)?,
+    )?;
+    write_file(
+        &output_dir.join("timeline.ndjson"),
+        &to_timeline_ndjson(report)?,
+    )?;
+    write_file(
+        &output_dir.join("observability.json"),
+        &to_observability_json(report)?,
+    )
+}
+
+fn scenario_artifact_dir_name(sequence: usize, path: &Path) -> String {
+    let stem = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("unknown");
+    format!("{sequence:02}_{}", sanitize_artifact_key(stem))
+}
+
+/// Keep artifact paths predictable even when a scenario file is supplied from
+/// an unusual external filesystem. The source path itself stays in the summary.
+fn sanitize_artifact_key(raw: &str) -> String {
+    let cleaned: String = raw
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-' | ':') {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if cleaned.is_empty() || cleaned == "." || cleaned == ".." {
+        "unknown".to_string()
+    } else {
+        cleaned
+    }
 }
 
 fn reports_requested(options: &RunOptions) -> bool {
@@ -588,6 +697,14 @@ fn unique_run_id(scenario_name: &str, sequence: usize) -> String {
         .unwrap_or(0);
 
     format!("{scenario_name}-{nanos}-{sequence}")
+}
+
+fn unique_batch_run_id() -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    format!("batch-{nanos}")
 }
 
 fn print_scenario_summary(

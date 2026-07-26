@@ -195,6 +195,25 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 - `--timeline-ndjson <path>` — 改行区切りタイムライン イベント エクスポート。
 - `--observability-json <path>` — 外部監視可能性取り込み用の決定論的カウンターおよび実行サマリー。
 - `--run-id <id>` — JSON、タイムライン、監視可能性アーティファクトで使用される安定実行相関 ID。
+- `--report-dir <dir>` — 全シナリオの JSON、Markdown、JUnit、タイムライン、監視可能性エビデンスと `summary.json` を1コマンドで出力。
+
+複数シナリオを1つのCIアーティファクト集合として出力する例：
+
+```bash
+roomci run \
+  examples/local_first_cloud_outage.yaml \
+  examples/edge_server_failover.yaml \
+  --report-dir reports/poc
+```
+
+`reports/poc/summary.json` と、入力順の番号を付けたシナリオ別ディレクトリ
+（例：`01_local_first_cloud_outage/`）を生成します。各ディレクトリには
+`report.json`、`report.md`、`report.junit.xml`、`timeline.json`、
+`timeline.ndjson`、`observability.json` が入ります。安定契約
+`roomci.summary.v1` は集計結果と全入力シナリオのエントリを保持します。
+`--dry-run --report-dir <dir>` は `dry_run: true` のsummaryだけを書き出します。
+以前の実行で生成した余分なシナリオ成果物を今回の出力と誤認しないよう、
+空のディレクトリまたは実行ごとの専用ディレクトリを指定してください。
 
 `.github/workflows/smart-home-ci.yml` からの CI アーティファクトは、すべての合格デモシナリオおよび意図的な障害レポート デモのレポート、タイムライン、監視可能性形式をアップロードします。
 [`docs/S_TIER_EVIDENCE_GUIDE.md`](docs/S_TIER_EVIDENCE_GUIDE.md) で コピー&ペースト評価者パスを参照してください。
@@ -207,6 +226,7 @@ Matter、BACnet、KNX、OPC UA コントラクト プロフィール境界につ
 
 ```text
 roomci run <scenarios...>
+  --report-dir <dir>     シナリオ別エビデンスと summary.json を書き込む
   --report-json <path>   最後のシナリオの JSON レポートを書き込む
   --report-md   <path>   最後のシナリオの Markdown レポートを書き込む
   --junit       <path>   最後のシナリオの JUnit XML レポートを書き込む
@@ -325,8 +345,8 @@ make poc-bms-ops
 
 各 PoC ターゲットは `reports/` 配下にシナリオ単位の
 JSON/Markdown/JUnit レポート セットを書き出します。`roomci run` を直接
-複数シナリオで呼び出した場合、レポート フラグは最後のシナリオだけを書き出すため、
-提示用エビデンスではシナリオ単位のコマンドを使います。
+複数シナリオで呼び出す場合は、提示用エビデンスに `--report-dir` を使います。
+従来の単発レポート フラグは互換性のため最後のシナリオだけを書き出します。
 
 ## コア概念
 
