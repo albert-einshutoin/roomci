@@ -40,7 +40,7 @@ Choose the archive target for the current machine, then verify the checksum and
 GitHub attestation before placing the binary on `PATH`:
 
 ```bash
-VERSION=0.1.0
+VERSION=0.1.1
 TARGET=x86_64-unknown-linux-gnu
 ARCHIVE="roomci-v${VERSION}-${TARGET}.tar.gz"
 BASE="https://github.com/albert-einshutoin/roomci/releases/download/v${VERSION}"
@@ -61,7 +61,7 @@ For the container distribution, pin a version, inspect the published manifest
 for `linux/amd64` and `linux/arm64`, and pull the resulting digest:
 
 ```bash
-VERSION=0.1.0
+VERSION=0.1.1
 IMAGE="ghcr.io/albert-einshutoin/roomci:${VERSION}"
 docker buildx imagetools inspect "$IMAGE"
 docker pull "$IMAGE"

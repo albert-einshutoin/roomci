@@ -2,7 +2,7 @@
 
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
-[![Coverage](https://img.shields.io/badge/coverage-88.07%25-green.svg)](#quality-gates)
+[![Coverage](https://img.shields.io/badge/coverage-87.90%25-green.svg)](#quality-gates)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 📖 **[日本語](README.ja.md)** | **[English](README.md)**
@@ -64,7 +64,27 @@ Guest impact: Lighting scene did not match intended guest ambience.
 依存関係の更新、RustSec 例外、`serde_yaml` の互換性維持方針は
 [`docs/DEPENDENCY_POLICY.md`](docs/DEPENDENCY_POLICY.md) を参照してください。
 
-## クイックスタート
+## クイックスタート（clone 不要）
+
+リリース済みの `roomci` バイナリをインストールしたら、自分のリポジトリで最初の
+retained-state シナリオを作成して実行できます。
+
+```bash
+roomci init
+roomci validate roomci/smoke.yaml
+roomci run roomci/smoke.yaml --verbose
+```
+
+`--ci github` を追加すると、version を固定した GitHub Action を使う
+`.github/workflows/roomci.yml` も生成します。`init` は `--force` を明示しない限り、
+生成対象のどれか一つでも既存なら上書きしません。これにより既存 scenario と VS Code
+設定を一つの判断として保護します。次の統合手順は
+[`docs/INTEGRATION_ONBOARDING.ja.md`](docs/INTEGRATION_ONBOARDING.ja.md)、バイナリの
+インストールは [`docs/RELEASING.ja.md`](docs/RELEASING.ja.md) を参照してください。
+
+## リポジトリ開発
+
+以下はこのリポジトリを checkout して開発するコントリビューター向けのコマンドです。
 
 ```bash
 # フルキュレーションデモ
@@ -196,7 +216,7 @@ checkout の後に次を追加すると、シナリオを実行し、完全な�
 出力し、ジョブサマリーに合否表を追記します。
 
 ```yaml
-- uses: albert-einshutoin/roomci@v0.1.0
+- uses: albert-einshutoin/roomci@v0.1.1
   with:
     scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
     report-dir: roomci-reports
@@ -346,7 +366,7 @@ make compose-poc
 - `cargo tarpaulin --workspace --fail-under 80`
 - `bash ./scripts/check-readme-quality.sh`
 
-現在の測定値：**169 テスト** 合格、**88.07%** ライン カバレッジ。
+現在の測定値：**216 テスト** 合格、**87.90%** ライン カバレッジ。
 
 リリースまたは会社評価ビルドを提示する前に [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) を使用してください。動作モデル サポートとワイヤプロトコル サポートの真実の源として [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) を使用してください。
 

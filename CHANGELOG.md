@@ -12,6 +12,10 @@ not as separately published calendar releases.
 
 ### Added
 
+- `roomci init [PATH] [--ci github] [--force]` for clone-free evaluator
+  onboarding. It generates a runnable MQTT retained-state smoke scenario,
+  VS Code YAML schema settings, and an optional versioned GitHub Actions
+  workflow with atomic overwrite preflight and symlink protection (#47).
 - Dependency security policy with weekly grouped Dependabot updates, a
   fail-closed RustSec audit gate, and `serde_yaml` migration parity
   requirements (#8).

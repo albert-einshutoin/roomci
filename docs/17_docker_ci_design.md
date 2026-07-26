@@ -18,7 +18,7 @@ Docker enables:
 ### MVP: single image
 
 ```txt
-ghcr.io/albert-einshutoin/roomci:0.1.0
+ghcr.io/albert-einshutoin/roomci:0.1.1
 ```
 
 The GHCR namespace is the public roomci repository owner. Images are published
@@ -56,7 +56,7 @@ Scenario mode:
 docker run --rm \
   -v "$PWD/examples:/scenarios" \
   -v "$PWD/reports:/reports" \
-  ghcr.io/albert-einshutoin/roomci:0.1.0 \
+  ghcr.io/albert-einshutoin/roomci:0.1.1 \
   run /scenarios/local_first_cloud_outage.yaml \
   --report-md /reports/roomci.md \
   --report-json /reports/roomci.json \
@@ -71,7 +71,7 @@ Service-mode config check:
 ```bash
 docker run --rm \
   -v "$PWD/examples:/scenarios" \
-  ghcr.io/albert-einshutoin/roomci:0.1.0 \
+  ghcr.io/albert-einshutoin/roomci:0.1.1 \
   serve --config /scenarios/local_first_cloud_outage.yaml --check
 ```
 
@@ -88,13 +88,13 @@ This starts `roomci serve` as one Compose service and runs `examples/controllers
 ```yaml
 services:
   roomci-serve:
-    image: ghcr.io/albert-einshutoin/roomci:0.1.0
+    image: ghcr.io/albert-einshutoin/roomci:0.1.1
     command: serve --config /scenarios/generic_mqtt_retained_state.yaml --host 0.0.0.0 --port 8080 --mqtt-port 1883 --allow-non-loopback
     volumes:
       - ../examples:/scenarios:ro
 
   external-controller:
-    image: ghcr.io/albert-einshutoin/roomci:0.1.0
+    image: ghcr.io/albert-einshutoin/roomci:0.1.1
     entrypoint: ["/bin/sh"]
     command: /controllers/http_poc_controller.sh
     environment:
@@ -107,7 +107,7 @@ services:
       - ../reports:/reports
 
   scenario-smoke:
-    image: ghcr.io/albert-einshutoin/roomci:0.1.0
+    image: ghcr.io/albert-einshutoin/roomci:0.1.1
     command: run /scenarios/local_first_cloud_outage.yaml --junit /reports/roomci.xml
     volumes:
       - ../examples:/scenarios
@@ -148,7 +148,7 @@ jobs:
           docker run --rm \
             -v $PWD/examples:/scenarios \
             -v $PWD/reports:/reports \
-            ghcr.io/albert-einshutoin/roomci:0.1.0 \
+            ghcr.io/albert-einshutoin/roomci:0.1.1 \
             run /scenarios/local_first_cloud_outage.yaml \
             --junit /reports/roomci.xml \
             --report-md /reports/roomci.md \

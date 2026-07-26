@@ -37,6 +37,10 @@ metadata_output, metadata_error, metadata_status = Open3.capture3(
 )
 assert_contract(metadata_status.success?, "cargo metadata failed: #{metadata_error}")
 packages = JSON.parse(metadata_output).fetch("packages")
+workspace_versions = packages.map { |package| package.fetch("version") }.uniq
+assert_contract(workspace_versions.length == 1,
+                "all workspace packages must share one release version, found: #{workspace_versions.join(', ')}")
+workspace_version = workspace_versions.fetch(0)
 assert_contract(packages.all? { |package| package["publish"] == [] },
                 "all workspace crates must remain publish=false while crates.io is deferred")
 %w[verify build-binaries dry-run-images publish-images publish-release].each do |name|
@@ -75,6 +79,11 @@ release_step = jobs.fetch("publish-release").fetch("steps").find do |step|
 end
 assert_contract(release_step&.dig("env", "GH_REPO") == "${{ github.repository }}",
                 "GitHub Release publication must identify the repository without relying on a checkout")
+download_step = jobs.fetch("publish-release").fetch("steps").find do |step|
+  step["uses"]&.start_with?("actions/download-artifact@")
+end
+assert_contract(download_step&.dig("with", "pattern") == "roomci-*",
+                "GitHub Release must download only native binary artifacts, excluding BuildKit records")
 
 {
   "publish-images" => %w[packages attestations artifact-metadata id-token],
@@ -148,6 +157,8 @@ assert_contract(image_attestations.all? { |step| step.dig("with", "push-to-regis
   end
   assert_contract(dockerfile.include?("cargo build --locked --release -p roomci-cli"),
                   "#{path} must enforce Cargo.lock during the release build")
+  assert_contract(dockerfile.include?("ARG ROOMCI_VERSION=#{workspace_version}"),
+                  "#{path} must default OCI labels to the workspace release version")
 end
 
 dry_run = jobs.fetch("dry-run-images").fetch("steps").select { |step| step["uses"]&.start_with?("docker/build-push-action@") }
@@ -163,16 +174,26 @@ assert_contract(dry_run.length == 2 && dry_run.all? { |step| step.fetch("with")[
 end
 %w[README.md README.ja.md examples/github-actions/roomci-poc.yml].each do |path|
   text = File.read(File.join(ROOT, path))
-  assert_contract(text.include?("albert-einshutoin/roomci@v0.1.0") &&
+  assert_contract(text.include?("albert-einshutoin/roomci@v#{workspace_version}") &&
                   !text.include?("albert-einshutoin/roomci@main"),
                   "#{path} must pin the supported immutable Action release")
 end
+init_workflow = File.read(File.join(ROOT, "crates/roomci-cli/templates/github-actions-roomci.yml"))
+assert_contract(init_workflow.include?("albert-einshutoin/roomci@v#{workspace_version}"),
+                "init workflow must pin the workspace Action release")
+assert_contract(init_workflow.include?("persist-credentials: false"),
+                "init workflow checkout must not persist repository credentials")
+init_settings = File.read(File.join(ROOT, "crates/roomci-cli/templates/settings.json"))
+assert_contract(init_settings.include?("/roomci/v#{workspace_version}/schemas/scenario.schema.json"),
+                "init schema URL must pin the workspace release")
 %w[docs/RELEASING.md docs/RELEASING.ja.md].each do |path|
   text = File.read(File.join(ROOT, path))
   assert_contract(text.include?("gh attestation verify") && text.include?("SHA256SUMS"),
                   "#{path} must document checksum and attestation verification")
   assert_contract(text.include?("Windows") && text.include?("crates.io"),
                   "#{path} must list deferred channels")
+  assert_contract(text.include?("VERSION=#{workspace_version}"),
+                  "#{path} must document the current workspace release")
 end
 
 puts "Release distribution contract is valid."

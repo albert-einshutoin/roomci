@@ -27,7 +27,7 @@ Runtime image は `ghcr.io/albert-einshutoin/roomci:<version>`、action image �
 attestation を確認します。
 
 ```bash
-VERSION=0.1.0
+VERSION=0.1.1
 TARGET=x86_64-unknown-linux-gnu
 ARCHIVE="roomci-v${VERSION}-${TARGET}.tar.gz"
 BASE="https://github.com/albert-einshutoin/roomci/releases/download/v${VERSION}"
@@ -48,7 +48,7 @@ container は version を固定して manifest（`linux/amd64` と `linux/arm64`
 確認してから pull します。
 
 ```bash
-VERSION=0.1.0
+VERSION=0.1.1
 IMAGE="ghcr.io/albert-einshutoin/roomci:${VERSION}"
 docker buildx imagetools inspect "$IMAGE"
 docker pull "$IMAGE"

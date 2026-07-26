@@ -208,6 +208,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
+          # BuildKit emits hidden .dockerbuild records in the same run. Restrict
+          # publication input to the four reviewed native binary artifacts.
+          pattern: roomci-*
           path: release-artifacts
           merge-multiple: true
       - name: Generate complete checksums

@@ -27,6 +27,235 @@ fn version_matches_the_workspace_release_version() {
 }
 
 #[test]
+fn init_scaffolds_a_runnable_scenario() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("init")
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("roomci validate roomci/smoke.yaml"));
+    for path in [
+        "roomci/smoke.yaml",
+        "roomci/README.md",
+        ".vscode/settings.json",
+    ] {
+        assert!(tempdir.path().join(path).is_file(), "missing {path}");
+    }
+    assert!(
+        !std::fs::read_to_string(tempdir.path().join("roomci/smoke.yaml"))
+            .unwrap()
+            .contains("enabled:"),
+        "the #29 compatibility field must not be scaffolded"
+    );
+
+    let run = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["run", "roomci/smoke.yaml"])
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+    assert!(
+        run.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&run.stdout),
+        String::from_utf8_lossy(&run.stderr)
+    );
+}
+
+#[test]
+fn init_path_prints_copy_pasteable_next_steps_for_that_path() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["init", "project"])
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("roomci validate project/roomci/smoke.yaml"));
+    assert!(stdout.contains("roomci run project/roomci/smoke.yaml --verbose"));
+}
+
+#[test]
+fn init_allows_a_parent_directory_path() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let current = tempdir.path().join("current");
+    std::fs::create_dir(&current).unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["init", "../project"])
+        .current_dir(&current)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(tempdir.path().join("project/roomci/smoke.yaml").is_file());
+    assert!(String::from_utf8_lossy(&output.stdout)
+        .contains("roomci validate ../project/roomci/smoke.yaml"));
+}
+
+#[test]
+fn init_quotes_next_steps_for_paths_with_spaces_and_single_quotes() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let path = "project with space/owner's room";
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["init", path])
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout
+        .contains("roomci validate 'project with space/owner'\"'\"'s room/roomci/smoke.yaml'"));
+    assert!(stdout.contains(
+        "roomci run 'project with space/owner'\"'\"'s room/roomci/smoke.yaml' --verbose"
+    ));
+}
+
+#[test]
+fn init_refuses_existing_target_without_writing_any_other_files() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let roomci_dir = tempdir.path().join("roomci");
+    std::fs::create_dir(&roomci_dir).unwrap();
+    let smoke = roomci_dir.join("smoke.yaml");
+    std::fs::write(&smoke, "keep this scenario unchanged\n").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("init")
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("roomci/smoke.yaml"));
+    assert_eq!(
+        std::fs::read_to_string(&smoke).unwrap(),
+        "keep this scenario unchanged\n"
+    );
+    assert!(!tempdir.path().join("roomci/README.md").exists());
+    assert!(!tempdir.path().join(".vscode/settings.json").exists());
+}
+
+#[test]
+fn init_force_replaces_all_scaffold_files() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let first = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("init")
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+    assert!(first.status.success());
+    std::fs::write(tempdir.path().join("roomci/smoke.yaml"), "outdated\n").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["init", "--force"])
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(
+        std::fs::read_to_string(tempdir.path().join("roomci/smoke.yaml"))
+            .unwrap()
+            .contains("my_first_smoke")
+    );
+}
+
+#[test]
+fn init_force_refuses_a_directory_where_a_generated_file_belongs() {
+    let tempdir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(tempdir.path().join("roomci/smoke.yaml")).unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["init", "--force"])
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(tempdir.path().join("roomci/smoke.yaml").is_dir());
+    assert!(!tempdir.path().join(".vscode/settings.json").exists());
+}
+
+#[test]
+fn init_with_github_ci_emits_pinned_release_action_workflow() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["init", "--ci", "github"])
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let workflow =
+        std::fs::read_to_string(tempdir.path().join(".github/workflows/roomci.yml")).unwrap();
+    assert!(workflow.contains("actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09"));
+    assert!(workflow.contains("persist-credentials: false"));
+    assert!(workflow.contains("uses: albert-einshutoin/roomci@v0.1.1"));
+}
+
+#[cfg(unix)]
+#[test]
+fn init_never_follows_a_symlinked_target_even_with_force() {
+    use std::os::unix::fs::symlink;
+
+    let tempdir = tempfile::tempdir().unwrap();
+    let outside = tempdir.path().join("outside-settings.json");
+    std::fs::write(&outside, "do not overwrite\n").unwrap();
+    let vscode = tempdir.path().join(".vscode");
+    std::fs::create_dir(&vscode).unwrap();
+    symlink(&outside, vscode.join("settings.json")).unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["init", "--force"])
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("symbolic link"));
+    assert_eq!(
+        std::fs::read_to_string(outside).unwrap(),
+        "do not overwrite\n"
+    );
+    assert!(!tempdir.path().join("roomci/smoke.yaml").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn init_rejects_a_path_whose_existing_ancestor_is_a_symlink() {
+    use std::os::unix::fs::symlink;
+
+    let tempdir = tempfile::tempdir().unwrap();
+    let outside = tempdir.path().join("outside");
+    std::fs::create_dir(&outside).unwrap();
+    symlink(&outside, tempdir.path().join("linked-parent")).unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["init", "linked-parent/project"])
+        .current_dir(tempdir.path())
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("symbolic link"));
+    assert!(!outside.join("project/roomci/smoke.yaml").exists());
+}
+
+#[test]
 fn validate_accepts_example_scenarios() {
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
         .arg("validate")

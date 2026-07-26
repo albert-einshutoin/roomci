@@ -1,6 +1,25 @@
 # Integration Onboarding
 
-This path is for a platform, IoT, smart-home, or building-automation engineer evaluating `roomci` from a clean checkout.
+This path is for a platform, IoT, smart-home, or building-automation engineer evaluating `roomci` in their own repository.
+
+## 30-second Path (no clone required)
+
+After installing a released `roomci` binary, scaffold a runnable retained-state
+smoke scenario in the current repository:
+
+```bash
+roomci init --ci github
+roomci validate roomci/smoke.yaml
+roomci run roomci/smoke.yaml --verbose
+```
+
+The optional workflow uses `albert-einshutoin/roomci@v0.1.1` and writes reports
+to `roomci-reports`. `init` performs a full preflight: if any generated target
+already exists, it writes nothing and exits with guidance. Use `--force` only
+when replacing all generated files is intentional. The generated VS Code YAML
+settings file is never merged, avoiding a silent edit to repository settings.
+
+Use [`RELEASING.md`](RELEASING.md) for binary installation and upgrade checks.
 
 ## 15-minute Path
 
