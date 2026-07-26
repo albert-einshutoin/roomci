@@ -124,6 +124,192 @@ fn run_warns_when_multiple_scenarios_share_single_report_output() {
 }
 
 #[test]
+fn report_dir_emits_per_scenario_artifacts() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let report_dir = tempdir.path().join("reports");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg(fixture("examples/edge_server_failover.yaml"))
+        .arg("--report-dir")
+        .arg(&report_dir)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!String::from_utf8_lossy(&output.stderr)
+        .contains("single report output flags write only the last scenario"));
+
+    for scenario_dir in ["01_local_first_cloud_outage", "02_edge_server_failover"] {
+        for artifact in [
+            "report.json",
+            "report.md",
+            "report.junit.xml",
+            "timeline.json",
+            "timeline.ndjson",
+            "observability.json",
+        ] {
+            assert!(
+                report_dir.join(scenario_dir).join(artifact).exists(),
+                "missing {scenario_dir}/{artifact}"
+            );
+        }
+    }
+
+    let summary: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("summary.json")).unwrap())
+            .unwrap();
+    assert_eq!(summary["schema_version"], "roomci.summary.v1");
+    assert_eq!(summary["total"], 2);
+    assert_eq!(summary["passed"], 2);
+    assert_eq!(summary["failed"], 0);
+    assert!(summary["run_id"]
+        .as_str()
+        .is_some_and(|run_id| run_id.starts_with("batch-")));
+    assert_eq!(
+        summary["scenarios"][0]["report_dir"],
+        "01_local_first_cloud_outage"
+    );
+    assert_eq!(
+        summary["scenarios"][1]["report_dir"],
+        "02_edge_server_failover"
+    );
+}
+
+#[test]
+fn report_dir_with_failing_scenario_exits_one_and_records_failure() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let report_dir = tempdir.path().join("reports");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg(fixture("examples/dali_scene_partial_failure.yaml"))
+        .arg("--report-dir")
+        .arg(&report_dir)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(1));
+    let summary: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("summary.json")).unwrap())
+            .unwrap();
+    assert_eq!(summary["total"], 2);
+    assert_eq!(summary["passed"], 1);
+    assert_eq!(summary["failed"], 1);
+    assert_eq!(summary["scenarios"][1]["result"], "failed");
+    assert_eq!(summary["scenarios"][1]["assertions_failed"], 1);
+}
+
+#[test]
+fn report_dir_handles_duplicate_scenario_names() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let first = tempdir.path().join("first.yaml");
+    let second = tempdir.path().join("second.yaml");
+    let source =
+        std::fs::read_to_string(fixture("examples/local_first_cloud_outage.yaml")).unwrap();
+    std::fs::write(&first, &source).unwrap();
+    std::fs::write(&second, source).unwrap();
+    let report_dir = tempdir.path().join("reports");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(&first)
+        .arg(&second)
+        .arg("--report-dir")
+        .arg(&report_dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(report_dir.join("01_first/report.json").exists());
+    assert!(report_dir.join("02_second/report.json").exists());
+}
+
+#[test]
+fn report_dir_sanitizes_unusual_file_stems() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let scenario = tempdir.path().join("unsafe scenario!.yaml");
+    std::fs::write(
+        &scenario,
+        std::fs::read_to_string(fixture("examples/local_first_cloud_outage.yaml")).unwrap(),
+    )
+    .unwrap();
+    let report_dir = tempdir.path().join("reports");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(&scenario)
+        .arg("--report-dir")
+        .arg(&report_dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(report_dir.join("01_unsafe_scenario_/report.json").exists());
+}
+
+#[test]
+fn report_dir_keeps_single_report_flags_for_the_last_scenario() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let report_dir = tempdir.path().join("reports");
+    let last_report = tempdir.path().join("last.json");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg(fixture("examples/edge_server_failover.yaml"))
+        .arg("--report-dir")
+        .arg(&report_dir)
+        .arg("--report-json")
+        .arg(&last_report)
+        .arg("--run-id")
+        .arg("ci-batch-42")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let summary: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("summary.json")).unwrap())
+            .unwrap();
+    assert_eq!(summary["run_id"], "ci-batch-42");
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(last_report).unwrap()).unwrap();
+    assert_eq!(report["scenario_name"], "edge_server_failover");
+    assert_eq!(report["run_id"], "ci-batch-42");
+    assert!(!String::from_utf8_lossy(&output.stderr)
+        .contains("single report output flags write only the last scenario"));
+}
+
+#[test]
+fn report_dir_dry_run_writes_only_a_dry_run_summary() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let report_dir = tempdir.path().join("reports");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg("--report-dir")
+        .arg(&report_dir)
+        .arg("--dry-run")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let summary: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("summary.json")).unwrap())
+            .unwrap();
+    assert_eq!(summary["scenarios"][0]["dry_run"], true);
+    assert!(!report_dir.join("01_local_first_cloud_outage").exists());
+}
+
+#[test]
 fn run_generates_timeline_and_observability_exports_with_run_id() {
     let tempdir = tempfile::tempdir().unwrap();
     let json = tempdir.path().join("roomci.json");
