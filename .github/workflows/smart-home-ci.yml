@@ -6,7 +6,29 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  action-self-test:
+    name: GitHub Action self-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Run local roomci action
+        uses: ./
+        with:
+          scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
+          report-dir: roomci-reports
+
+      - name: Verify aggregate evidence
+        run: |
+          test -f roomci-reports/summary.json
+          jq -e '.schema_version == "roomci.summary.v1" and .total == 2 and .failed == 0' roomci-reports/summary.json
+
   quality-gates:
     name: Rust quality gates
     runs-on: ubuntu-latest
@@ -23,6 +45,9 @@ jobs:
 
       - name: cargo fmt --check
         run: cargo fmt --all --check
+
+      - name: GitHub Action entrypoint contract
+        run: sh scripts/check-action-entrypoint.sh
 
       - name: cargo clippy -- -D warnings
         run: cargo clippy --workspace --all-targets -- -D warnings

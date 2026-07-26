@@ -1,0 +1,24 @@
+name: roomci scenario run
+description: Run roomci scenarios and collect CI evidence artifacts
+branding:
+  icon: check-circle
+  color: blue
+inputs:
+  scenarios:
+    description: Space-separated scenario YAML paths (paths containing spaces are unsupported).
+    required: true
+  report-dir:
+    description: Directory for per-scenario evidence artifacts.
+    required: false
+    default: roomci-reports
+  extra-args:
+    description: "Optional safe flags: --verbose, --quiet, --dry-run, and --run-id VALUE."
+    required: false
+    default: ""
+runs:
+  using: docker
+  image: ./.github/actions/roomci/Dockerfile
+  args:
+    - ${{ inputs.scenarios }}
+    - ${{ inputs.report-dir }}
+    - ${{ inputs.extra-args }}
