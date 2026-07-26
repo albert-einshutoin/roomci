@@ -14,6 +14,35 @@ pub fn to_json(report: &RunReport) -> Result<String, serde_json::Error> {
     serde_json::to_string_pretty(report)
 }
 
+/// Stable aggregate artifact for one `roomci run --report-dir` invocation.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct RunSummary {
+    pub schema_version: &'static str,
+    pub run_id: String,
+    pub total: usize,
+    pub passed: usize,
+    pub failed: usize,
+    pub scenarios: Vec<ScenarioSummaryEntry>,
+}
+
+/// One scenario's entry in a [`RunSummary`].
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct ScenarioSummaryEntry {
+    pub sequence: usize,
+    pub path: String,
+    pub scenario_name: String,
+    pub result: RunResult,
+    pub assertions_total: usize,
+    pub assertions_failed: usize,
+    pub report_dir: String,
+    pub dry_run: bool,
+}
+
+/// Render a run summary as pretty-printed JSON.
+pub fn to_summary_json(summary: &RunSummary) -> Result<String, serde_json::Error> {
+    serde_json::to_string_pretty(summary)
+}
+
 /// One event in the stable timeline export contract.
 ///
 /// This is intentionally smaller than a full [`RunReport`] so CI, log search,
@@ -317,6 +346,51 @@ mod tests {
     use roomci_scenario::load_scenario;
 
     use super::*;
+
+    #[test]
+    fn summary_json_uses_stable_schema_and_scenario_fields() {
+        let summary = RunSummary {
+            schema_version: "roomci.summary.v1",
+            run_id: "batch-42".to_string(),
+            total: 1,
+            passed: 1,
+            failed: 0,
+            scenarios: vec![ScenarioSummaryEntry {
+                sequence: 1,
+                path: "examples/local_first_cloud_outage.yaml".to_string(),
+                scenario_name: "local_first_cloud_outage".to_string(),
+                result: RunResult::Passed,
+                assertions_total: 4,
+                assertions_failed: 0,
+                report_dir: "01_local_first_cloud_outage".to_string(),
+                dry_run: false,
+            }],
+        };
+
+        let json: serde_json::Value =
+            serde_json::from_str(&to_summary_json(&summary).unwrap()).unwrap();
+
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "schema_version": "roomci.summary.v1",
+                "run_id": "batch-42",
+                "total": 1,
+                "passed": 1,
+                "failed": 0,
+                "scenarios": [{
+                    "sequence": 1,
+                    "path": "examples/local_first_cloud_outage.yaml",
+                    "scenario_name": "local_first_cloud_outage",
+                    "result": "passed",
+                    "assertions_total": 4,
+                    "assertions_failed": 0,
+                    "report_dir": "01_local_first_cloud_outage",
+                    "dry_run": false
+                }]
+            })
+        );
+    }
 
     fn fixture(path: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
