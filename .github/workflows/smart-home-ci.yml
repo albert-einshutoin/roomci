@@ -49,6 +49,15 @@ jobs:
       - name: GitHub Action entrypoint contract
         run: sh scripts/check-action-entrypoint.sh
 
+      - name: Dependency policy contract
+        run: sh scripts/check-dependency-policy.sh
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked --version 0.22.2
+
+      - name: cargo audit (deny warnings)
+        run: cargo-audit audit --deny warnings
+
       - name: cargo clippy -- -D warnings
         run: cargo clippy --workspace --all-targets -- -D warnings
 
