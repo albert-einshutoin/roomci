@@ -12,6 +12,10 @@ not as separately published calendar releases.
 
 ### Added
 
+- Repository-root Docker GitHub Action (`uses: albert-einshutoin/roomci@main`),
+  copy-paste workflow example, action self-test, and GitHub Step Summary output
+  for scenario batches. `--github-summary` explicitly selects a summary file;
+  otherwise `GITHUB_STEP_SUMMARY` is detected and appended when available (#46).
 - `roomci run --report-dir <dir>` for complete per-scenario JSON, Markdown,
   JUnit, timeline, and observability artifacts in one invocation, plus the
   stable `roomci.summary.v1` aggregate contract. Dry runs write only a summary
