@@ -189,6 +189,27 @@ a Marketplace extension. Validate it with `make vscode-assets-check`.
 
 `roomci run` emits CI-friendly report and evidence formats from the same execution:
 
+## Use in GitHub Actions
+
+Add this action after checkout to run scenarios, upload complete evidence, and
+append a concise pass/fail table to the job summary:
+
+```yaml
+- uses: albert-einshutoin/roomci@main
+  with:
+    scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
+    report-dir: roomci-reports
+```
+
+Copy the complete workflow from
+[`examples/github-actions/roomci-poc.yml`](examples/github-actions/roomci-poc.yml).
+This Docker action builds from source on each run. A faster published-image
+variant is tracked in [#10](https://github.com/albert-einshutoin/roomci/issues/10).
+Scenario paths containing spaces are unsupported. `extra-args` is restricted
+to `--verbose`, `--quiet`, `--dry-run`, and `--run-id VALUE`; output-path flags
+are rejected so the root action container cannot write outside its report
+bundle contract.
+
 - `--report-json <path>` — full machine-readable run report (timeline, assertions, final state, retained MQTT messages).
 - `--report-md <path>` — human-readable Markdown summary with guest-impact framing.
 - `--junit <path>` — JUnit XML for CI dashboards (GitHub Actions, GitLab CI, Jenkins).
@@ -197,6 +218,7 @@ a Marketplace extension. Validate it with `make vscode-assets-check`.
 - `--observability-json <path>` — deterministic counters and run summary for external observability ingestion.
 - `--run-id <id>` — stable run correlation id used by JSON, timeline, and observability artifacts.
 - `--report-dir <dir>` — one command writes JSON, Markdown, JUnit, timeline, and observability evidence for every scenario plus `summary.json`.
+- `--github-summary <path>` — append the aggregate Markdown result to a GitHub Step Summary-compatible file. When this flag is absent, `GITHUB_STEP_SUMMARY` is detected automatically; automatic write failures only warn.
 
 For a CI artifact set covering multiple scenarios:
 

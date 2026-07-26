@@ -188,6 +188,26 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 
 `roomci run` は同一実行から CI フレンドリーなレポートおよびエビデンス形式を生成します：
 
+## GitHub Actions で使う
+
+checkout の後に次を追加すると、シナリオを実行し、完全なエビデンスを
+出力し、ジョブサマリーに合否表を追記します。
+
+```yaml
+- uses: albert-einshutoin/roomci@main
+  with:
+    scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
+    report-dir: roomci-reports
+```
+
+完全なワークフローは
+[`examples/github-actions/roomci-poc.yml`](examples/github-actions/roomci-poc.yml)
+からコピーできます。この Docker Action は実行ごとにソースからビルドします。
+より高速な公開イメージ版は [#10](https://github.com/albert-einshutoin/roomci/issues/10)
+で追跡しています。空白を含むシナリオパスはサポートしません。
+`extra-args` は `--verbose`、`--quiet`、`--dry-run`、`--run-id VALUE`
+だけを許可し、Actionのrootコンテナが証跡契約外へ書き込めないよう出力先フラグを拒否します。
+
 - `--report-json <path>` — フル マシン可読実行レポート（タイムライン、アサーション、最終状態、保持 MQTT メッセージ）。
 - `--report-md <path>` — ゲスト影響フレーミングを備えた人間が読み可能な Markdown サマリー。
 - `--junit <path>` — CI ダッシュボード用 JUnit XML（GitHub Actions、GitLab CI、Jenkins）。
@@ -196,6 +216,7 @@ docker run --rm -v "$PWD/examples:/scenarios:ro" roomci:latest \
 - `--observability-json <path>` — 外部監視可能性取り込み用の決定論的カウンターおよび実行サマリー。
 - `--run-id <id>` — JSON、タイムライン、監視可能性アーティファクトで使用される安定実行相関 ID。
 - `--report-dir <dir>` — 全シナリオの JSON、Markdown、JUnit、タイムライン、監視可能性エビデンスと `summary.json` を1コマンドで出力。
+- `--github-summary <path>` — 集計 Markdown を GitHub Step Summary 互換ファイルに追記。指定しない場合は `GITHUB_STEP_SUMMARY` を自動検出し、自動出力の失敗は警告だけで続行。
 
 複数シナリオを1つのCIアーティファクト集合として出力する例：
 

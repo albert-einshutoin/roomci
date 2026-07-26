@@ -43,6 +43,178 @@ pub fn to_summary_json(summary: &RunSummary) -> Result<String, serde_json::Error
     serde_json::to_string_pretty(summary)
 }
 
+pub const GITHUB_SUMMARY_MAX_FAILED_ASSERTIONS: usize = 20;
+const GITHUB_SUMMARY_MAX_BYTES: usize = 900 * 1024;
+const GITHUB_SUMMARY_TRUNCATION_SUFFIX: &str =
+    "\n\n_… summary truncated; full evidence is available in the report artifacts._\n";
+
+/// Bounded failure detail used by the GitHub summary renderer.
+///
+/// Keeping only these fields avoids retaining or cloning every complete report
+/// in a large batch solely for the step summary.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GithubFailureDetail {
+    pub scenario_name: String,
+    pub assertion_name: String,
+    pub message: String,
+    pub impact_message: Option<String>,
+}
+
+/// Render the compact, append-safe Markdown shown in a GitHub Actions step summary.
+///
+/// GitHub limits step-summary files to 1 MiB. Limiting failure details keeps a
+/// large batch useful while the complete evidence remains available in artifacts.
+pub fn to_github_step_summary(
+    summary: &RunSummary,
+    failed_assertions: &[GithubFailureDetail],
+    total_failed_assertions: usize,
+) -> String {
+    let mut output = GithubSummaryWriter::new();
+    let is_dry_run =
+        !summary.scenarios.is_empty() && summary.scenarios.iter().all(|scenario| scenario.dry_run);
+    if is_dry_run {
+        output.push(&format!(
+            "## roomci: {} validated (dry run; not executed)\n\n",
+            summary.total
+        ));
+    } else {
+        output.push(&format!(
+            "## roomci: {} passed, {} failed (of {})\n\n",
+            summary.passed, summary.failed, summary.total
+        ));
+    }
+    output.push("| # | Scenario | Result | Assertions |\n");
+    output.push("|---|----------|--------|------------|\n");
+    for scenario in &summary.scenarios {
+        let passed = scenario
+            .assertions_total
+            .saturating_sub(scenario.assertions_failed);
+        output.push("| ");
+        output.push(&scenario.sequence.to_string());
+        output.push(" | ");
+        output.push_escaped(&scenario.scenario_name, true);
+        output.push(" | ");
+        if scenario.dry_run {
+            output.push("🟦 validated");
+        } else {
+            output.push(if scenario.result == RunResult::Passed {
+                "✅ passed"
+            } else {
+                "❌ failed"
+            });
+        }
+        output.push(" | ");
+        if scenario.dry_run {
+            output.push("not executed");
+        } else {
+            output.push(&format!("{passed}/{}", scenario.assertions_total));
+        }
+        output.push(" |\n");
+    }
+
+    if failed_assertions.is_empty() {
+        return output.finish();
+    }
+
+    output.push("\n### Failed assertions\n\n");
+    for failure in failed_assertions
+        .iter()
+        .take(GITHUB_SUMMARY_MAX_FAILED_ASSERTIONS)
+    {
+        output.push("- `");
+        output.push_escaped(&failure.scenario_name, false);
+        output.push("` / `");
+        output.push_escaped(&failure.assertion_name, false);
+        output.push("`: ");
+        output.push_escaped(&failure.message, false);
+        output.push("\n");
+        if let Some(impact) = &failure.impact_message {
+            output.push("  - Guest impact: ");
+            output.push_escaped(impact, false);
+            output.push("\n");
+        }
+    }
+    let remaining = total_failed_assertions.saturating_sub(GITHUB_SUMMARY_MAX_FAILED_ASSERTIONS);
+    if remaining > 0 {
+        output.push(&format!("\n…and {remaining} more\n"));
+    }
+    output.finish()
+}
+
+/// Writes summary Markdown while reserving room for the truncation disclosure.
+/// This avoids allocating a multi-megabyte intermediate String from untrusted
+/// scenario text before truncating it for GitHub's step-summary limit.
+struct GithubSummaryWriter {
+    output: String,
+    truncated: bool,
+}
+
+impl GithubSummaryWriter {
+    fn new() -> Self {
+        Self {
+            output: String::new(),
+            truncated: false,
+        }
+    }
+
+    fn push(&mut self, value: &str) {
+        if self.truncated {
+            return;
+        }
+        let content_limit = GITHUB_SUMMARY_MAX_BYTES - GITHUB_SUMMARY_TRUNCATION_SUFFIX.len();
+        let remaining = content_limit.saturating_sub(self.output.len());
+        if value.len() <= remaining {
+            self.output.push_str(value);
+            return;
+        }
+
+        let mut boundary = remaining;
+        while boundary > 0 && !value.is_char_boundary(boundary) {
+            boundary -= 1;
+        }
+        self.output.push_str(&value[..boundary]);
+        self.truncated = true;
+    }
+
+    fn push_escaped(&mut self, value: &str, escape_pipe: bool) {
+        for character in value.chars() {
+            match character {
+                '|' if escape_pipe => self.push("\\|"),
+                '\n' | '\r' => self.push(" "),
+                '&' => self.push("&amp;"),
+                '<' => self.push("&lt;"),
+                '>' => self.push("&gt;"),
+                '`' => self.push("&#96;"),
+                '[' => self.push("&#91;"),
+                ']' => self.push("&#93;"),
+                '(' => self.push("&#40;"),
+                ')' => self.push("&#41;"),
+                '!' => self.push("&#33;"),
+                '*' => self.push("&#42;"),
+                '#' => self.push("&#35;"),
+                '\\' => self.push("&#92;"),
+                ':' => self.push("&#58;"),
+                '.' => self.push("&#46;"),
+                '@' => self.push("&#64;"),
+                _ => {
+                    let mut encoded = [0; 4];
+                    self.push(character.encode_utf8(&mut encoded));
+                }
+            }
+            if self.truncated {
+                return;
+            }
+        }
+    }
+
+    fn finish(mut self) -> String {
+        if self.truncated {
+            self.output.push_str(GITHUB_SUMMARY_TRUNCATION_SUFFIX);
+        }
+        self.output
+    }
+}
+
 /// One event in the stable timeline export contract.
 ///
 /// This is intentionally smaller than a full [`RunReport`] so CI, log search,
@@ -390,6 +562,181 @@ mod tests {
                 }]
             })
         );
+    }
+
+    #[test]
+    fn renders_github_step_summary_and_limits_failed_assertions() {
+        let mut failed_assertions = Vec::new();
+        for index in 0..21 {
+            failed_assertions.push(AssertionResult {
+                name: format!("failure-{index}"),
+                assertion_type: "state_equals".to_string(),
+                passed: false,
+                message: format!("message-{index}"),
+                impact_level: None,
+                impact_message: Some(format!("impact-{index}")),
+            });
+        }
+        let report = RunReport {
+            schema_version: "roomci.report.v1".to_string(),
+            run_id: "summary-test".to_string(),
+            generated_by: "roomci".to_string(),
+            scenario_name: "failing scenario".to_string(),
+            result: RunResult::Failed,
+            timeline: vec![],
+            assertions: failed_assertions,
+            final_state: BTreeMap::new(),
+            retained_messages: BTreeMap::new(),
+        };
+        let summary = RunSummary {
+            schema_version: "roomci.summary.v1",
+            run_id: "batch-42".to_string(),
+            total: 1,
+            passed: 0,
+            failed: 1,
+            scenarios: vec![ScenarioSummaryEntry {
+                sequence: 1,
+                path: "examples/failing.yaml".to_string(),
+                scenario_name: "failing scenario".to_string(),
+                result: RunResult::Failed,
+                assertions_total: 21,
+                assertions_failed: 21,
+                report_dir: "01_failing".to_string(),
+                dry_run: false,
+            }],
+        };
+
+        let failures = report
+            .assertions
+            .iter()
+            .map(|assertion| GithubFailureDetail {
+                scenario_name: report.scenario_name.clone(),
+                assertion_name: assertion.name.clone(),
+                message: assertion.message.clone(),
+                impact_message: assertion.impact_message.clone(),
+            })
+            .collect::<Vec<_>>();
+        let markdown = to_github_step_summary(&summary, &failures, failures.len());
+
+        assert!(markdown.contains("## roomci: 0 passed, 1 failed (of 1)"));
+        assert!(markdown.contains("| 1 | failing scenario | ❌ failed | 0/21 |"));
+        assert!(markdown.contains("### Failed assertions"));
+        assert!(markdown.contains("`failing scenario` / `failure-19`: message-19"));
+        assert!(!markdown.contains("failure-20"));
+        assert!(markdown.contains("…and 1 more"));
+    }
+
+    #[test]
+    fn github_step_summary_escapes_table_and_code_injection_characters() {
+        let report = RunReport {
+            schema_version: "roomci.report.v1".to_string(),
+            run_id: "summary-escape".to_string(),
+            generated_by: "roomci".to_string(),
+            scenario_name: "scenario|name\nnext".to_string(),
+            result: RunResult::Failed,
+            timeline: vec![],
+            assertions: vec![AssertionResult {
+                name: "failure`name\nnext".to_string(),
+                assertion_type: "state_equals".to_string(),
+                passed: false,
+                message: "message|with\nnewline".to_string(),
+                impact_level: None,
+                impact_message: None,
+            }],
+            final_state: BTreeMap::new(),
+            retained_messages: BTreeMap::new(),
+        };
+        let summary = RunSummary {
+            schema_version: "roomci.summary.v1",
+            run_id: "batch-escape".to_string(),
+            total: 1,
+            passed: 0,
+            failed: 1,
+            scenarios: vec![ScenarioSummaryEntry {
+                sequence: 1,
+                path: "examples/failing.yaml".to_string(),
+                scenario_name: report.scenario_name.clone(),
+                result: RunResult::Failed,
+                assertions_total: 1,
+                assertions_failed: 1,
+                report_dir: "01_failing".to_string(),
+                dry_run: false,
+            }],
+        };
+
+        let failures = [GithubFailureDetail {
+            scenario_name: report.scenario_name.clone(),
+            assertion_name: report.assertions[0].name.clone(),
+            message: report.assertions[0].message.clone(),
+            impact_message: None,
+        }];
+        let markdown = to_github_step_summary(&summary, &failures, failures.len());
+
+        assert!(markdown.contains("| 1 | scenario\\|name next | ❌ failed | 0/1 |"));
+        assert!(markdown
+            .contains("`scenario|name next` / `failure&#96;name next`: message|with newline"));
+        assert!(!markdown.contains("scenario|name\nnext"));
+        assert!(!markdown.contains("failure`name\nnext"));
+    }
+
+    #[test]
+    fn github_step_summary_neutralizes_links_html_and_oversized_content() {
+        let unsafe_text = format!(
+            "[click](https://example.invalid) ![pixel](https://example.invalid/x) www.example.invalid @octocat <details>{}</details>",
+            "x".repeat(1_100_000)
+        );
+        let report = RunReport {
+            schema_version: "roomci.report.v1".to_string(),
+            run_id: "summary-budget".to_string(),
+            generated_by: "roomci".to_string(),
+            scenario_name: unsafe_text.clone(),
+            result: RunResult::Failed,
+            timeline: vec![],
+            assertions: vec![AssertionResult {
+                name: unsafe_text.clone(),
+                assertion_type: "state_equals".to_string(),
+                passed: false,
+                message: unsafe_text,
+                impact_level: None,
+                impact_message: None,
+            }],
+            final_state: BTreeMap::new(),
+            retained_messages: BTreeMap::new(),
+        };
+        let summary = RunSummary {
+            schema_version: "roomci.summary.v1",
+            run_id: "batch-budget".to_string(),
+            total: 1,
+            passed: 0,
+            failed: 1,
+            scenarios: vec![ScenarioSummaryEntry {
+                sequence: 1,
+                path: "examples/failing.yaml".to_string(),
+                scenario_name: report.scenario_name.clone(),
+                result: RunResult::Failed,
+                assertions_total: 1,
+                assertions_failed: 1,
+                report_dir: "01_failing".to_string(),
+                dry_run: false,
+            }],
+        };
+
+        let failures = [GithubFailureDetail {
+            scenario_name: report.scenario_name.clone(),
+            assertion_name: report.assertions[0].name.clone(),
+            message: report.assertions[0].message.clone(),
+            impact_message: None,
+        }];
+        let markdown = to_github_step_summary(&summary, &failures, failures.len());
+
+        assert!(!markdown.contains("[click]("));
+        assert!(!markdown.contains("![pixel]("));
+        assert!(!markdown.contains("<details>"));
+        assert!(!markdown.contains("https://"));
+        assert!(!markdown.contains("www.example.invalid"));
+        assert!(!markdown.contains("@octocat"));
+        assert!(markdown.len() <= 900 * 1024);
+        assert!(markdown.contains("summary truncated"));
     }
 
     fn fixture(path: &str) -> PathBuf {

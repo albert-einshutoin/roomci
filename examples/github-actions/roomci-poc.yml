@@ -1,0 +1,23 @@
+name: roomci-poc
+
+on: [pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  roomci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: albert-einshutoin/roomci@main
+        with:
+          scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
+          report-dir: roomci-reports
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: roomci-evidence
+          path: roomci-reports/
