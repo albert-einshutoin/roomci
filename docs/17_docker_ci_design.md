@@ -115,6 +115,22 @@ services:
 
 ## GitHub Actions pattern
 
+When a job executes more than one scenario, use `--report-dir` so every
+scenario keeps a complete evidence set. The numbered directory is based on the
+input file stem rather than `scenario.name`, which prevents collisions between
+independently authored files with the same scenario name.
+
+```bash
+roomci run /scenarios/local_first_cloud_outage.yaml /scenarios/edge_server_failover.yaml \
+  --report-dir /reports/ci
+```
+
+The resulting `/reports/ci/summary.json` is the stable `roomci.summary.v1`
+aggregate contract. Each `01_<stem>/` directory holds the JSON, Markdown,
+JUnit, timeline JSON/NDJSON, and observability artifacts for that scenario.
+Keep the existing single-report flags when deliberately exporting only the
+last scenario.
+
 ```yaml
 name: smart-home-ci
 

@@ -196,6 +196,26 @@ a Marketplace extension. Validate it with `make vscode-assets-check`.
 - `--timeline-ndjson <path>` — newline-delimited timeline event export.
 - `--observability-json <path>` — deterministic counters and run summary for external observability ingestion.
 - `--run-id <id>` — stable run correlation id used by JSON, timeline, and observability artifacts.
+- `--report-dir <dir>` — one command writes JSON, Markdown, JUnit, timeline, and observability evidence for every scenario plus `summary.json`.
+
+For a CI artifact set covering multiple scenarios:
+
+```bash
+roomci run \
+  examples/local_first_cloud_outage.yaml \
+  examples/edge_server_failover.yaml \
+  --report-dir reports/poc
+```
+
+This creates `reports/poc/summary.json` and one numbered directory per input
+file (for example, `01_local_first_cloud_outage/`). Each scenario directory
+contains `report.json`, `report.md`, `report.junit.xml`, `timeline.json`,
+`timeline.ndjson`, and `observability.json`. The stable
+`roomci.summary.v1` summary contains aggregate pass/fail counts and an entry
+for every input scenario. `--dry-run --report-dir <dir>` writes only that
+summary, marking each entry as `dry_run: true`.
+Use a fresh or run-specific report directory so artifacts from an earlier,
+larger scenario set are not mistaken for output from the current run.
 
 CI artifacts from `.github/workflows/smart-home-ci.yml` upload report,
 timeline, and observability formats for every passing demo scenario and the
@@ -213,6 +233,7 @@ For Matter, BACnet, KNX, and OPC UA contract-profile boundaries, see
 
 ```text
 roomci run <scenarios...>
+  --report-dir <dir>     write per-scenario evidence and summary.json
   --report-json <path>   write JSON report for the last scenario
   --report-md   <path>   write Markdown report for the last scenario
   --junit       <path>   write JUnit XML report for the last scenario
