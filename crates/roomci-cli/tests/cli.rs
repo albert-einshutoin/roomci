@@ -13,6 +13,20 @@ fn fixture(path: &str) -> PathBuf {
 }
 
 #[test]
+fn version_matches_the_workspace_release_version() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("--version")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout).trim(),
+        format!("roomci {}", env!("CARGO_PKG_VERSION"))
+    );
+}
+
+#[test]
 fn validate_accepts_example_scenarios() {
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
         .arg("validate")
