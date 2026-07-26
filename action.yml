@@ -17,7 +17,7 @@ inputs:
     default: ""
 runs:
   using: docker
-  image: ./.github/actions/roomci/Dockerfile
+  image: ./Dockerfile.action
   args:
     - ${{ inputs.scenarios }}
     - ${{ inputs.report-dir }}

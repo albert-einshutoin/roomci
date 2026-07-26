@@ -11,7 +11,7 @@ RUN cargo build --release -p roomci-cli
 FROM debian:bookworm-slim
 
 COPY --from=builder /app/target/release/roomci /usr/local/bin/roomci
-COPY .github/actions/roomci/entrypoint.sh /usr/local/bin/roomci-action
+COPY scripts/github-action-entrypoint.sh /usr/local/bin/roomci-action
 RUN chmod 0755 /usr/local/bin/roomci-action
 
 WORKDIR /github/workspace

@@ -11,7 +11,7 @@ printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$@"' > "$temp_dir/bin/roomci"
 chmod 0755 "$temp_dir/bin/roomci"
 
 GITHUB_WORKSPACE="$temp_dir/workspace" PATH="$temp_dir/bin:$PATH" \
-  sh "$root_dir/.github/actions/roomci/entrypoint.sh" \
+  sh "$root_dir/scripts/github-action-entrypoint.sh" \
   "examples/one.yaml examples/two.yaml" \
   "roomci-reports" \
   "--quiet --run-id ci-42" > "$temp_dir/actual"
@@ -29,7 +29,7 @@ printf '%s\n' \
 diff -u "$temp_dir/expected" "$temp_dir/actual"
 
 if GITHUB_WORKSPACE="$temp_dir/workspace" PATH="$temp_dir/bin:$PATH" \
-  sh "$root_dir/.github/actions/roomci/entrypoint.sh" \
+  sh "$root_dir/scripts/github-action-entrypoint.sh" \
   "examples/one.yaml" \
   "../outside" \
   "" >/dev/null 2>&1; then
@@ -38,7 +38,7 @@ if GITHUB_WORKSPACE="$temp_dir/workspace" PATH="$temp_dir/bin:$PATH" \
 fi
 
 if GITHUB_WORKSPACE="$temp_dir/workspace" PATH="$temp_dir/bin:$PATH" \
-  sh "$root_dir/.github/actions/roomci/entrypoint.sh" \
+  sh "$root_dir/scripts/github-action-entrypoint.sh" \
   "examples/one.yaml" \
   "roomci-reports" \
   "--report-json arbitrary.json" >/dev/null 2>&1; then
@@ -47,7 +47,7 @@ if GITHUB_WORKSPACE="$temp_dir/workspace" PATH="$temp_dir/bin:$PATH" \
 fi
 
 if GITHUB_WORKSPACE="$temp_dir/workspace" PATH="$temp_dir/bin:$PATH" \
-  sh "$root_dir/.github/actions/roomci/entrypoint.sh" \
+  sh "$root_dir/scripts/github-action-entrypoint.sh" \
   "--report-json stolen.json examples/one.yaml" \
   "roomci-reports" \
   "" >/dev/null 2>&1; then
@@ -57,7 +57,7 @@ fi
 
 ln -s "$temp_dir/outside" "$temp_dir/workspace/symlink-reports"
 if GITHUB_WORKSPACE="$temp_dir/workspace" PATH="$temp_dir/bin:$PATH" \
-  sh "$root_dir/.github/actions/roomci/entrypoint.sh" \
+  sh "$root_dir/scripts/github-action-entrypoint.sh" \
   "examples/one.yaml" \
   "symlink-reports" \
   "" >/dev/null 2>&1; then
@@ -67,7 +67,7 @@ fi
 
 ln -s "$temp_dir/outside.yaml" "$temp_dir/workspace/examples/symlink.yaml"
 if GITHUB_WORKSPACE="$temp_dir/workspace" PATH="$temp_dir/bin:$PATH" \
-  sh "$root_dir/.github/actions/roomci/entrypoint.sh" \
+  sh "$root_dir/scripts/github-action-entrypoint.sh" \
   "examples/symlink.yaml" \
   "roomci-reports" \
   "" >/dev/null 2>&1; then
