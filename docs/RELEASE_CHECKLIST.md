@@ -30,6 +30,13 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 | VSCode authoring assets | `make vscode-assets-check` | Local editor package JSON, snippets, tasks, schema copy, and command references validate |
 | S Tier evidence smoke | `make s-tier-evidence-smoke` | JSON report, timeline JSON, timeline NDJSON, observability JSON, run id, and trace metadata are generated and validated |
 | Protocol evidence map | `make protocol-evidence` | Verified protocol claims map to commands and non-goal docs |
+| Release distribution contract | `make release-verify` | Tag/version contract, four target matrix, non-public dry run, and fail-closed security gates pass |
+| Immutable release boundary | Active `Immutable release tags` ruleset and `release` environment tag policy | `refs/tags/v*` cannot be updated or deleted; only pushed `v*` tags may deploy |
+| GitHub Release assets | Anonymous download of the four target tarballs and `SHA256SUMS` | Exactly four assets have matching basename checksums; each archive contains `roomci`, `README.md`, and `LICENSE` |
+| Artifact attestation | `gh attestation verify <archive> --repo albert-einshutoin/roomci` | GitHub attestation verifies for every published tarball |
+| GHCR runtime image | `docker buildx imagetools inspect ghcr.io/albert-einshutoin/roomci:<version>` | Manifest contains `linux/amd64` and `linux/arm64`; version-pinned pull succeeds |
+| Runtime privilege boundary | `docker run --rm --entrypoint id ghcr.io/albert-einshutoin/roomci:<version> -u` | Runtime image remains non-root (UID `10001`) |
+| Action evidence | Release workflow, action self-test, and `ghcr.io/albert-einshutoin/roomci-action:<version>` digest | Action image provenance/SBOM and local-action evidence are attached; `action.yml` is switched only in a separately reviewed follow-up |
 | Full local CI approximation | `make verify` | Runs the same practical gate set as CI, including Docker and Compose checks |
 
 ## Generated Artifacts

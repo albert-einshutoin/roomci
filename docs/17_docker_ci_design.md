@@ -18,11 +18,12 @@ Docker enables:
 ### MVP: single image
 
 ```txt
-ghcr.io/OWNER/roomci:latest
+ghcr.io/albert-einshutoin/roomci:0.1.0
 ```
 
-`OWNER` is a publishing placeholder. Replace it with the actual GitHub
-Container Registry namespace only after a public image exists.
+The GHCR namespace is the public roomci repository owner. Images are published
+only by a verified version tag; before the first release, build the local
+`Dockerfile` instead of assuming this image already exists.
 
 The single image includes:
 
@@ -55,7 +56,7 @@ Scenario mode:
 docker run --rm \
   -v "$PWD/examples:/scenarios" \
   -v "$PWD/reports:/reports" \
-  ghcr.io/OWNER/roomci:latest \
+  ghcr.io/albert-einshutoin/roomci:0.1.0 \
   run /scenarios/local_first_cloud_outage.yaml \
   --report-md /reports/roomci.md \
   --report-json /reports/roomci.json \
@@ -70,7 +71,7 @@ Service-mode config check:
 ```bash
 docker run --rm \
   -v "$PWD/examples:/scenarios" \
-  ghcr.io/OWNER/roomci:latest \
+  ghcr.io/albert-einshutoin/roomci:0.1.0 \
   serve --config /scenarios/local_first_cloud_outage.yaml --check
 ```
 
@@ -87,13 +88,13 @@ This starts `roomci serve` as one Compose service and runs `examples/controllers
 ```yaml
 services:
   roomci-serve:
-    image: ghcr.io/OWNER/roomci:latest
+    image: ghcr.io/albert-einshutoin/roomci:0.1.0
     command: serve --config /scenarios/generic_mqtt_retained_state.yaml --host 0.0.0.0 --port 8080 --mqtt-port 1883 --allow-non-loopback
     volumes:
       - ../examples:/scenarios:ro
 
   external-controller:
-    image: ghcr.io/OWNER/roomci:latest
+    image: ghcr.io/albert-einshutoin/roomci:0.1.0
     entrypoint: ["/bin/sh"]
     command: /controllers/http_poc_controller.sh
     environment:
@@ -106,7 +107,7 @@ services:
       - ../reports:/reports
 
   scenario-smoke:
-    image: ghcr.io/OWNER/roomci:latest
+    image: ghcr.io/albert-einshutoin/roomci:0.1.0
     command: run /scenarios/local_first_cloud_outage.yaml --junit /reports/roomci.xml
     volumes:
       - ../examples:/scenarios
@@ -147,7 +148,7 @@ jobs:
           docker run --rm \
             -v $PWD/examples:/scenarios \
             -v $PWD/reports:/reports \
-            ghcr.io/OWNER/roomci:latest \
+            ghcr.io/albert-einshutoin/roomci:0.1.0 \
             run /scenarios/local_first_cloud_outage.yaml \
             --junit /reports/roomci.xml \
             --report-md /reports/roomci.md \

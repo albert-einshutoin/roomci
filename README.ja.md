@@ -196,7 +196,7 @@ checkout の後に次を追加すると、シナリオを実行し、完全な�
 出力し、ジョブサマリーに合否表を追記します。
 
 ```yaml
-- uses: albert-einshutoin/roomci@main
+- uses: albert-einshutoin/roomci@v0.1.0
   with:
     scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
     report-dir: roomci-reports
@@ -349,6 +349,14 @@ make compose-poc
 現在の測定値：**169 テスト** 合格、**88.07%** ライン カバレッジ。
 
 リリースまたは会社評価ビルドを提示する前に [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) を使用してください。動作モデル サポートとワイヤプロトコル サポートの真実の源として [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) を使用してください。
+
+## 配布
+
+Linux x86_64/ARM64 と macOS Intel/Apple Silicon 向けの release tarball と
+checksum を公開します。runtime image は
+`ghcr.io/albert-einshutoin/roomci:<version>` で、可変な `latest` tag は公開しません。
+タグ、attestation、延期した配布面は [`docs/RELEASING.ja.md`](docs/RELEASING.ja.md)
+を参照してください。download、checksum、attestation、upgrade の実コマンドも同書にあります。
 
 会社固有のアダプター コントラクトは実行時作業の前に検証できます：
 

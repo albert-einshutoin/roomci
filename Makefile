@@ -1,4 +1,4 @@
-.PHONY: demo demo-hospitality demo-generic-mqtt verify check-readme-quality docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke protocol-profile-smoke hardware-ci-usecases-smoke poc-report-artifact-check vscode-assets-check s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
+.PHONY: demo demo-hospitality demo-generic-mqtt verify release-verify check-readme-quality docker-demo compose-poc protocol-smoke protocol-smoke-mqtt protocol-smoke-modbus protocol-evidence adapter-samples-smoke python-sdk-smoke developer-experience-smoke protocol-profile-smoke hardware-ci-usecases-smoke poc-report-artifact-check vscode-assets-check s-tier-evidence-smoke poc-generic-mqtt poc-core-qa poc-hospitality poc-building-automation poc-bms-ops clean-reports
 
 HOSPITALITY_SCENARIOS := \
 	examples/local_first_cloud_outage.yaml \
@@ -101,6 +101,17 @@ verify:
 	$(MAKE) protocol-profile-smoke
 	$(MAKE) poc-report-artifact-check
 	$(MAKE) vscode-assets-check
+
+release-verify:
+	# Tarpaulin remains in the slower main CI lane; release verification keeps the
+	# release-critical formatter, lint, test, docs, and security gates together.
+	cargo fmt --all --check
+	cargo clippy --workspace --all-targets -- -D warnings
+	cargo test --workspace --all-targets
+	RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps
+	cargo-audit audit --deny warnings
+	sh scripts/release/verify-release-contract.sh
+	sh scripts/release/check-contract.sh
 
 check-readme-quality:
 	./scripts/check-readme-quality.sh

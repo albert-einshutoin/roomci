@@ -1,0 +1,227 @@
+name: release-distribution
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Release contract and quality gates
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: { persist-credentials: false }
+      # Stable branch resolved to this SHA when this workflow was authored.
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - name: Verify tag matches Cargo workspace version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            sh scripts/release/verify-release-contract.sh "$GITHUB_REF_NAME"
+          else
+            sh scripts/release/verify-release-contract.sh
+          fi
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --version 0.22.2 --locked
+      - name: Refuse an already-published version
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set +e
+          release_check=$(gh api --include "repos/$GH_REPO/releases/tags/$GITHUB_REF_NAME" 2>&1)
+          release_check_code=$?
+          set -e
+          if [ "$release_check_code" -eq 0 ]; then
+            echo "error: release $GITHUB_REF_NAME already exists; version tags are immutable" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "$release_check" | grep -Eq '^HTTP/[0-9.]+ 404 '; then
+            printf '%s\n' "$release_check" >&2
+            echo "error: could not prove that release $GITHUB_REF_NAME is unpublished" >&2
+            exit 1
+          fi
+      - name: Run release verification
+        run: make release-verify
+
+  build-binaries:
+    name: Build ${{ matrix.target }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, target: x86_64-unknown-linux-gnu }
+          - { runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
+          - { runner: macos-15-intel, target: x86_64-apple-darwin }
+          - { runner: macos-15, target: aarch64-apple-darwin }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: { persist-credentials: false }
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo build --locked --release --target ${{ matrix.target }} -p roomci-cli
+      - run: scripts/release/package.sh ${{ matrix.target }} target/${{ matrix.target }}/release/roomci dist
+      - run: scripts/release/verify-artifact.sh dist ${{ matrix.target }}
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: roomci-${{ matrix.target }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  dry-run-images:
+    name: Non-public multiarch image dry run
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: { persist-credentials: false }
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      # push:false keeps PR and manual dispatch builds non-public.
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile.action
+          platforms: linux/amd64,linux/arm64
+          push: false
+
+  publish-images:
+    name: Publish GHCR images
+    needs: [verify, build-binaries, dry-run-images]
+    if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      artifact-metadata: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: { persist-credentials: false }
+      - id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Refuse existing immutable image tags
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          for image in \
+            ghcr.io/albert-einshutoin/roomci \
+            ghcr.io/albert-einshutoin/roomci-action
+          do
+            set +e
+            image_check=$(docker buildx imagetools inspect "$image:$VERSION" 2>&1)
+            image_check_code=$?
+            set -e
+            if [ "$image_check_code" -eq 0 ]; then
+              echo "error: immutable image tag already exists: $image:$VERSION" >&2
+              exit 1
+            fi
+            case "$image_check" in
+              *"$image:$VERSION: not found"*|*"manifest unknown"*) ;;
+              *)
+                printf '%s\n' "$image_check" >&2
+                echo "error: could not prove that image tag is unpublished: $image:$VERSION" >&2
+                exit 1
+                ;;
+            esac
+          done
+      - id: push-runtime
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            ROOMCI_VERSION=${{ steps.version.outputs.value }}
+            ROOMCI_REVISION=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+          tags: |
+            ghcr.io/albert-einshutoin/roomci:${{ steps.version.outputs.value }}
+      - name: Attest runtime image
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: ghcr.io/albert-einshutoin/roomci
+          subject-digest: ${{ steps.push-runtime.outputs.digest }}
+          push-to-registry: true
+      - id: push-action
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile.action
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            ROOMCI_VERSION=${{ steps.version.outputs.value }}
+            ROOMCI_REVISION=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+          tags: |
+            ghcr.io/albert-einshutoin/roomci-action:${{ steps.version.outputs.value }}
+      - name: Attest action image
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: ghcr.io/albert-einshutoin/roomci-action
+          subject-digest: ${{ steps.push-action.outputs.digest }}
+          push-to-registry: true
+
+  publish-release:
+    name: Publish GitHub Release
+    # A public Release is held until both GHCR images have pushed successfully.
+    needs: [verify, build-binaries, dry-run-images, publish-images]
+    if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+      attestations: write
+      artifact-metadata: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          path: release-artifacts
+          merge-multiple: true
+      - name: Generate complete checksums
+        run: |
+          test "$(find release-artifacts -maxdepth 1 -type f -name '*.tar.gz' | wc -l)" -eq 4
+          (cd release-artifacts && shasum -a 256 -- *.tar.gz) > SHA256SUMS
+          test "$(wc -l < SHA256SUMS)" -eq 4
+      - uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: |
+            release-artifacts/*.tar.gz
+            SHA256SUMS
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" release-artifacts/*.tar.gz SHA256SUMS --generate-notes
