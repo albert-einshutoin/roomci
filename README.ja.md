@@ -61,6 +61,8 @@ Guest impact: Lighting scene did not match intended guest ambience.
 
 評価者オンボーディングの場合は、[`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md)、[`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md)、[`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md) を使用してください。
 実機 capture を Docker CI で replay するユースケースは、[`docs/HARDWARE_TO_DOCKER_CI_USECASES.ja.md`](docs/HARDWARE_TO_DOCKER_CI_USECASES.ja.md) を参照してください。
+依存関係の更新、RustSec 例外、`serde_yaml` の互換性維持方針は
+[`docs/DEPENDENCY_POLICY.md`](docs/DEPENDENCY_POLICY.md) を参照してください。
 
 ## クイックスタート
 

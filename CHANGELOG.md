@@ -12,6 +12,9 @@ not as separately published calendar releases.
 
 ### Added
 
+- Dependency security policy with weekly grouped Dependabot updates, a
+  fail-closed RustSec audit gate, and `serde_yaml` migration parity
+  requirements (#8).
 - Repository-root Docker GitHub Action (`uses: albert-einshutoin/roomci@main`),
   copy-paste workflow example, action self-test, and GitHub Step Summary output
   for scenario batches. `--github-summary` explicitly selects a summary file;
@@ -56,6 +59,8 @@ not as separately published calendar releases.
 
 ### Fixed
 
+- Updated transitive `anyhow` from `1.0.102` to `1.0.104`, resolving
+  `RUSTSEC-2026-0190` without an audit ignore (#8).
 - `command` steps now wire their `value` payload through to device state, so `set_brightness` / `set_temperature` / `set_mode` / `set_position` apply the requested value instead of silently no-op'ing. A value-requiring command with no value is now rejected (`command_rejected`), and `command_state_updated` is emitted only when device state actually changes (#30).
 
 ## [0.12.0] - 2026-05-19

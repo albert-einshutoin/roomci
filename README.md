@@ -61,6 +61,8 @@ For protocol subset claims, see [`docs/PROTOCOL_CONFORMANCE_REGISTRY.md`](docs/P
 
 For evaluator onboarding, use [`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md), [`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md), and [`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md).
 For real hardware capture replay in Docker CI, see [`docs/HARDWARE_TO_DOCKER_CI_USECASES.md`](docs/HARDWARE_TO_DOCKER_CI_USECASES.md).
+For dependency updates, RustSec exceptions, and the `serde_yaml` compatibility
+hold, see [`docs/DEPENDENCY_POLICY.md`](docs/DEPENDENCY_POLICY.md).
 
 ## Quick start
 

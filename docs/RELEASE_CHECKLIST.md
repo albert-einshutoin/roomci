@@ -10,6 +10,8 @@ Use this checklist before presenting `roomci` as an OSS product or before asking
 | Rust formatting | `cargo fmt --all --check` | No formatting diff |
 | Rust linting | `cargo clippy --workspace --all-targets -- -D warnings` | No warnings |
 | Rust tests | `cargo test --workspace --all-targets` | All workspace tests pass |
+| Dependency security | `cargo-audit audit --deny warnings` | No RustSec warning; direct binary invocation cannot be shadowed by a Cargo alias, and any proposed exception satisfies the strict rules in [`DEPENDENCY_POLICY.md`](DEPENDENCY_POLICY.md) before release |
+| Dependency policy contract | `sh scripts/check-dependency-policy.sh` | Dependabot, fail-closed audit, exception visibility, and `serde_yaml` migration rules are present |
 | Docs build | `RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps` | API docs build without warnings |
 | Coverage floor | `cargo tarpaulin --workspace --engine llvm --fail-under 80` | Coverage remains at or above 80% |
 | README quality drift check | `bash ./scripts/check-readme-quality.sh` | README.md and README.ja.md `Current measurements` and coverage badge match latest successful test and coverage command output |
