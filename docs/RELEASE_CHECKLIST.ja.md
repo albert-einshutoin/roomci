@@ -10,6 +10,8 @@
 | Rust formatting | `cargo fmt --all --check` | formatting diff なし |
 | Rust linting | `cargo clippy --workspace --all-targets -- -D warnings` | warning なし |
 | Rust tests | `cargo test --workspace --all-targets` | すべての workspace test が pass |
+| Dependency security | `cargo-audit audit --deny warnings` | RustSec warning なし。Cargo alias で偽装できない直接実行とし、例外案は [`DEPENDENCY_POLICY.md`](DEPENDENCY_POLICY.md) の厳格な条件を満たして release 前に review される |
+| Dependency policy contract | `sh scripts/check-dependency-policy.sh` | Dependabot、fail-closed audit、例外の可視性、`serde_yaml` 移行ルール、local tool bundle 境界が存在する |
 | Docs build | `RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps` | API docs が warning なしで build される |
 | Coverage floor | `cargo tarpaulin --workspace --engine llvm --fail-under 80` | coverage が 80% 以上を維持する |
 | README メトリクスのドリフトチェック | `bash ./scripts/check-readme-quality.sh` | README.md と README.ja.md の測定値とバッジが最新の実行結果と一致する |
