@@ -17,6 +17,9 @@ push はできません。公開できるのは `vMAJOR.MINOR.PATCH` タグだ�
 Runtime image は `ghcr.io/albert-einshutoin/roomci:<version>`、action image は
 `ghcr.io/albert-einshutoin/roomci-action:<version>` です。ただし初回公開の
 検証が完了するまで、`action.yml` は repository-local Dockerfile を参照します。
+初回は可変な `latest`、major、minor tag を公開しません。片方の image 公開後に
+失敗した場合は workflow evidence を確認し、不完全なGHCR versionだけを削除して
+同じGit tagを再実行します。Git tagの移動や既存version imageの上書きは禁止です。
 
 ## install と検証
 

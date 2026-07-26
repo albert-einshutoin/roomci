@@ -21,7 +21,6 @@ Published runtime image:
 
 ```text
 ghcr.io/albert-einshutoin/roomci:<version>
-ghcr.io/albert-einshutoin/roomci:latest
 ```
 
 The companion action image is published as
@@ -29,6 +28,11 @@ The companion action image is published as
 to reference the repository-local Dockerfile until the first public release is
 verified. This prevents a new action consumer from receiving an unverified
 registry image through a mutable tag.
+
+The initial release deliberately publishes no mutable `latest`, major, or
+minor tags. If a tag run fails after one image is pushed, remove only the
+partial GHCR version after reviewing the workflow evidence, then rerun the
+unchanged tag. Never move the Git tag or overwrite an existing version image.
 
 ## Install and verify a release
 

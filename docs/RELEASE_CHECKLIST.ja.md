@@ -31,6 +31,7 @@
 | S Tier evidence smoke | `make s-tier-evidence-smoke` | JSON report、timeline JSON、timeline NDJSON、observability JSON、run id、trace metadata が生成・検証される |
 | Protocol evidence map | `make protocol-evidence` | 検証済み protocol claim が command と non-goal doc にマップされる |
 | Release distribution contract | `make release-verify` | tag/version 契約、4 target matrix、非公開 dry run、fail-closed security gate が pass |
+| Immutable release boundary | 有効な `Immutable release tags` ruleset と `release` environment tag policy | `refs/tags/v*` は更新・削除できず、pushされた `v*` tagだけがdeploy可能 |
 | GitHub Release asset | 4 target tarball と `SHA256SUMS` を匿名 download | 4 asset すべての basename checksum が一致し、archive に `roomci`、`README.md`、`LICENSE` が入る |
 | Artifact attestation | `gh attestation verify <archive> --repo albert-einshutoin/roomci` | 公開 tarball ごとに GitHub attestation が verify される |
 | GHCR runtime image | `docker buildx imagetools inspect ghcr.io/albert-einshutoin/roomci:<version>` | manifest に `linux/amd64` と `linux/arm64` があり、version 固定 pull が成功する |

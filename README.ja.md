@@ -196,7 +196,7 @@ checkout の後に次を追加すると、シナリオを実行し、完全な�
 出力し、ジョブサマリーに合否表を追記します。
 
 ```yaml
-- uses: albert-einshutoin/roomci@main
+- uses: albert-einshutoin/roomci@v0.1.0
   with:
     scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
     report-dir: roomci-reports
@@ -354,7 +354,7 @@ make compose-poc
 
 Linux x86_64/ARM64 と macOS Intel/Apple Silicon 向けの release tarball と
 checksum を公開します。runtime image は
-`ghcr.io/albert-einshutoin/roomci:<version>`（検証済み release 後は `:latest`）です。
+`ghcr.io/albert-einshutoin/roomci:<version>` で、可変な `latest` tag は公開しません。
 タグ、attestation、延期した配布面は [`docs/RELEASING.ja.md`](docs/RELEASING.ja.md)
 を参照してください。download、checksum、attestation、upgrade の実コマンドも同書にあります。
 

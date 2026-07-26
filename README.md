@@ -197,7 +197,7 @@ Add this action after checkout to run scenarios, upload complete evidence, and
 append a concise pass/fail table to the job summary:
 
 ```yaml
-- uses: albert-einshutoin/roomci@main
+- uses: albert-einshutoin/roomci@v0.1.0
   with:
     scenarios: examples/local_first_cloud_outage.yaml examples/edge_server_failover.yaml
     report-dir: roomci-reports
@@ -362,8 +362,8 @@ Use [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) before presenting a
 
 Release tarballs and checksums are published for Linux x86_64/ARM64 and macOS
 Intel/Apple Silicon. The runtime image is
-`ghcr.io/albert-einshutoin/roomci:<version>` (or `:latest` after a verified
-release). See [`docs/RELEASING.md`](docs/RELEASING.md) for tag, attestation,
+`ghcr.io/albert-einshutoin/roomci:<version>`; no mutable `latest` tag is
+published. See [`docs/RELEASING.md`](docs/RELEASING.md) for tag, attestation,
 install/upgrade commands, and deferred-platform policy.
 
 Company-specific adapter contracts can be validated before runtime work:

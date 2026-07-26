@@ -19,6 +19,7 @@ description = "CI-first contract emulator for edge-device and building-automatio
 license = "Apache-2.0"
 repository = "https://github.com/albert-einshutoin/roomci"
 readme = "README.md"
+publish = false
 keywords = ["iot", "smart-home", "mqtt", "emulator", "ci"]
 categories = ["simulation", "command-line-utilities", "development-tools::testing"]
 
