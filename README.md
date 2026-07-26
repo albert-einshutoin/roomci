@@ -2,7 +2,7 @@
 
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
-[![Coverage](https://img.shields.io/badge/coverage-87.83%25-green.svg)](#quality-gates)
+[![Coverage](https://img.shields.io/badge/coverage-87.90%25-green.svg)](#quality-gates)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 📖 **[日本語はこちら](README.ja.md)** | **[English](README.md)**
@@ -374,7 +374,7 @@ That command starts `roomci serve` in Docker Compose, runs `examples/controllers
 - `cargo tarpaulin --workspace --fail-under 80`
 - `bash ./scripts/check-readme-quality.sh`
 
-Current measurements: **215 tests** pass, **87.83%** line coverage.
+Current measurements: **216 tests** pass, **87.90%** line coverage.
 
 Use [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) before presenting a release or company evaluation build. Use [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) as the source of truth for behavior-model support versus wire-protocol support.
 

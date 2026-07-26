@@ -362,20 +362,22 @@ where
         // partially written template because the staged source is already complete.
         if let Err(source) = fs::hard_link(&staged, target) {
             let primary = io_error("install generated file", target, source);
-            if backup.is_some() {
-                let rollback_note = match rollback(&installed) {
-                    Ok(()) => String::new(),
-                    Err(error) => format!("; rollback of earlier files also failed: {error}"),
-                };
-                return Err(InstallFailure::preserved(
-                    primary,
-                    format!(
-                        "the original file was moved to staging and cannot be restored without replacing a concurrent target{rollback_note}"
-                    ),
-                    staging,
-                ));
-            }
-            return Err(recover_or_preserve(primary, &installed, staging));
+            let failure = match backup {
+                Some(backup) => {
+                    // The backup was already moved out of the final path. Include this
+                    // current entry in rollback so an unrelated hard-link failure does
+                    // not leave the user's original file absent from the repository.
+                    let mut rollback_entries = installed;
+                    rollback_entries.push(Installed {
+                        target: target.clone(),
+                        staged,
+                        backup: Some(backup),
+                    });
+                    recover_or_preserve(primary, &rollback_entries, staging)
+                }
+                None => recover_or_preserve(primary, &installed, staging),
+            };
+            return Err(failure);
         }
         installed.push(Installed {
             target: target.clone(),
@@ -752,6 +754,42 @@ mod tests {
             fs::read_to_string(&targets[0]).unwrap(),
             "concurrent replacement\n"
         );
+    }
+
+    #[test]
+    fn force_failure_after_backup_restores_the_original_target() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let root = tempdir.path();
+        let files = template_files(false);
+        let targets = files
+            .iter()
+            .map(|file| checked_target(root, file.relative_path).unwrap())
+            .collect::<Vec<_>>();
+        fs::create_dir_all(targets[0].parent().unwrap()).unwrap();
+        fs::write(&targets[0], "original file\n").unwrap();
+        let staging = create_staging_dir(root).unwrap();
+        let staged_smoke = staging.join("roomci/smoke.yaml");
+
+        let failure = install_files_with_hooks(
+            &staging,
+            root,
+            &files,
+            &targets,
+            true,
+            InstallHooks {
+                after_revalidation: |_: &Path| {},
+                after_backup: move |target: &Path| {
+                    if target.ends_with("roomci/smoke.yaml") {
+                        fs::remove_file(&staged_smoke).unwrap();
+                    }
+                },
+                after_install: |_: &Path| {},
+            },
+        )
+        .unwrap_err();
+
+        assert!(!failure.preserve_staging, "{}", failure.error);
+        assert_eq!(fs::read_to_string(&targets[0]).unwrap(), "original file\n");
     }
 
     #[test]
