@@ -20,6 +20,8 @@
 use std::{
     collections::BTreeMap,
     fs,
+    fs::OpenOptions,
+    io::{Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
     process::ExitCode,
     time::{SystemTime, UNIX_EPOCH},
@@ -28,8 +30,9 @@ use std::{
 use clap::{ArgGroup, Parser, Subcommand};
 use roomci_core::{run_scenario, RunReport, RunResult, StateMap};
 use roomci_report::{
-    to_json, to_junit, to_markdown, to_observability_json, to_summary_json, to_timeline_json,
-    to_timeline_ndjson, RunSummary, ScenarioSummaryEntry,
+    to_github_step_summary, to_json, to_junit, to_markdown, to_observability_json, to_summary_json,
+    to_timeline_json, to_timeline_ndjson, GithubFailureDetail, RunSummary, ScenarioSummaryEntry,
+    GITHUB_SUMMARY_MAX_FAILED_ASSERTIONS,
 };
 use roomci_scenario::{
     load_adapter_contract, load_scenario, validate_adapter_contract, validate_scenario,
@@ -79,6 +82,9 @@ enum Command {
         /// Write per-scenario evidence artifacts and an aggregate summary to this directory.
         #[arg(long)]
         report_dir: Option<PathBuf>,
+        /// Append an aggregate Markdown summary to this GitHub Actions summary file.
+        #[arg(long)]
+        github_summary: Option<PathBuf>,
         /// Override the run identifier used in JSON, timeline, and observability artifacts.
         #[arg(long)]
         run_id: Option<String>,
@@ -186,6 +192,7 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             timeline_ndjson,
             observability_json,
             report_dir,
+            github_summary,
             run_id,
             verbose,
             quiet,
@@ -199,6 +206,7 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             timeline_ndjson,
             observability_json,
             report_dir,
+            github_summary,
             run_id,
             verbose,
             quiet,
@@ -491,10 +499,28 @@ struct RunOptions {
     timeline_ndjson: Option<PathBuf>,
     observability_json: Option<PathBuf>,
     report_dir: Option<PathBuf>,
+    github_summary: Option<PathBuf>,
     run_id: Option<String>,
     verbose: bool,
     quiet: bool,
     dry_run: bool,
+}
+
+const GITHUB_FAILURE_DETAIL_FIELD_MAX_BYTES: usize = 8 * 1024;
+const GITHUB_STEP_SUMMARY_FILE_MAX_BYTES: u64 = 1024 * 1024;
+
+fn bounded_github_summary_field(value: &str) -> String {
+    if value.len() <= GITHUB_FAILURE_DETAIL_FIELD_MAX_BYTES {
+        return value.to_string();
+    }
+
+    let mut boundary = GITHUB_FAILURE_DETAIL_FIELD_MAX_BYTES - '…'.len_utf8();
+    while !value.is_char_boundary(boundary) {
+        boundary -= 1;
+    }
+    let mut bounded = value[..boundary].to_string();
+    bounded.push('…');
+    bounded
 }
 
 fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
@@ -502,11 +528,10 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
     let mut passed = 0_usize;
     let mut failed = 0_usize;
     let mut last_report: Option<RunReport> = None;
+    let mut github_failures = Vec::with_capacity(GITHUB_SUMMARY_MAX_FAILED_ASSERTIONS);
+    let mut total_failed_assertions = 0_usize;
     let mut summary_entries = Vec::with_capacity(total);
-    let summary_run_id = options
-        .report_dir
-        .as_ref()
-        .map(|_| options.run_id.clone().unwrap_or_else(unique_batch_run_id));
+    let summary_run_id = options.run_id.clone().unwrap_or_else(unique_batch_run_id);
 
     if total > 1 && reports_requested(&options) && options.report_dir.is_none() {
         eprintln!(
@@ -577,6 +602,27 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
             dry_run: false,
         });
 
+        for assertion in report
+            .assertions
+            .iter()
+            .filter(|assertion| !assertion.passed)
+        {
+            total_failed_assertions += 1;
+            if github_failures.len() < GITHUB_SUMMARY_MAX_FAILED_ASSERTIONS {
+                // Step summaries are supplementary evidence. Bound each cloned
+                // field so malformed or oversized scenario input cannot retain
+                // megabytes in memory while a batch continues to execute.
+                github_failures.push(GithubFailureDetail {
+                    scenario_name: bounded_github_summary_field(&report.scenario_name),
+                    assertion_name: bounded_github_summary_field(&assertion.name),
+                    message: bounded_github_summary_field(&assertion.message),
+                    impact_message: assertion
+                        .impact_message
+                        .as_deref()
+                        .map(bounded_github_summary_field),
+                });
+            }
+        }
         last_report = Some(report);
     }
 
@@ -601,19 +647,34 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
         }
     }
 
-    if let (Some(report_dir), Some(run_id)) = (&options.report_dir, summary_run_id) {
-        let summary = RunSummary {
-            schema_version: "roomci.summary.v1",
-            run_id,
-            total,
-            passed,
-            failed,
-            scenarios: summary_entries,
-        };
+    let summary = RunSummary {
+        schema_version: "roomci.summary.v1",
+        run_id: summary_run_id,
+        total,
+        passed,
+        failed,
+        scenarios: summary_entries,
+    };
+    if let Some(report_dir) = &options.report_dir {
         write_file(
             &report_dir.join("summary.json"),
             &to_summary_json(&summary)?,
         )?;
+    }
+
+    let explicit_summary = options.github_summary.as_deref();
+    let automatic_summary = std::env::var_os("GITHUB_STEP_SUMMARY")
+        .map(PathBuf::from)
+        .filter(|_| explicit_summary.is_none());
+    if let Some(path) = explicit_summary.or(automatic_summary.as_deref()) {
+        if let Err(error) =
+            append_github_step_summary(path, &summary, &github_failures, total_failed_assertions)
+        {
+            eprintln!(
+                "warning: failed to append GitHub step summary to {}: {error}",
+                path.display()
+            );
+        }
     }
 
     println!(
@@ -628,6 +689,72 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
     } else {
         ExitCode::from(1)
     })
+}
+
+fn append_github_step_summary(
+    path: &Path,
+    summary: &RunSummary,
+    failed_assertions: &[GithubFailureDetail],
+    total_failed_assertions: usize,
+) -> Result<(), CliError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|source| CliError::Write {
+            path: parent.display().to_string(),
+            source,
+        })?;
+    }
+    let rendered = to_github_step_summary(summary, failed_assertions, total_failed_assertions);
+    let mut file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .append(true)
+        .open(path)
+        .map_err(|source| CliError::Write {
+            path: path.display().to_string(),
+            source,
+        })?;
+    let existing_len = file
+        .metadata()
+        .map_err(|source| CliError::Write {
+            path: path.display().to_string(),
+            source,
+        })?
+        .len();
+    let needs_separator = if existing_len == 0 {
+        false
+    } else {
+        file.seek(SeekFrom::End(-1))
+            .and_then(|_| {
+                let mut last_byte = [0_u8; 1];
+                file.read_exact(&mut last_byte)?;
+                Ok(last_byte[0] != b'\n')
+            })
+            .map_err(|source| CliError::Write {
+                path: path.display().to_string(),
+                source,
+            })?
+    };
+    let appended_len = rendered.len() as u64 + u64::from(needs_separator);
+    if existing_len.saturating_add(appended_len) > GITHUB_STEP_SUMMARY_FILE_MAX_BYTES {
+        return Err(CliError::Write {
+            path: path.display().to_string(),
+            source: std::io::Error::other(format!(
+                "GitHub step summary would exceed the {} byte limit",
+                GITHUB_STEP_SUMMARY_FILE_MAX_BYTES
+            )),
+        });
+    }
+    if needs_separator {
+        file.write_all(b"\n").map_err(|source| CliError::Write {
+            path: path.display().to_string(),
+            source,
+        })?;
+    }
+    file.write_all(rendered.as_bytes())
+        .map_err(|source| CliError::Write {
+            path: path.display().to_string(),
+            source,
+        })
 }
 
 fn write_per_scenario_artifacts(
@@ -749,4 +876,20 @@ fn write_file(path: &Path, contents: &str) -> Result<(), CliError> {
         path: path.display().to_string(),
         source,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn github_failure_detail_bounds_cloned_fields_at_utf8_boundaries() {
+        let source = format!("{}😀", "x".repeat(GITHUB_FAILURE_DETAIL_FIELD_MAX_BYTES));
+
+        let bounded = bounded_github_summary_field(&source);
+
+        assert!(bounded.len() <= GITHUB_FAILURE_DETAIL_FIELD_MAX_BYTES);
+        assert!(bounded.is_char_boundary(bounded.len()));
+        assert!(bounded.ends_with('…'));
+    }
 }

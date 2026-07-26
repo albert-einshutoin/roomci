@@ -310,6 +310,150 @@ fn report_dir_dry_run_writes_only_a_dry_run_summary() {
 }
 
 #[test]
+fn run_writes_explicit_github_step_summary_and_appends_to_existing_content() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let summary = tempdir.path().join("step-summary.md");
+    let automatic_summary = tempdir.path().join("automatic-summary.md");
+    std::fs::write(&summary, "existing summary\n").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg(fixture("examples/dali_scene_partial_failure.yaml"))
+        .arg("--github-summary")
+        .arg(&summary)
+        .env("GITHUB_STEP_SUMMARY", &automatic_summary)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(1));
+    let markdown = std::fs::read_to_string(summary).unwrap();
+    assert!(markdown.starts_with("existing summary\n"));
+    assert!(markdown.contains("## roomci: 1 passed, 1 failed (of 2)"));
+    assert!(markdown.contains("| 1 | local_first_cloud_outage | ✅ passed | 2/2 |"));
+    assert!(markdown.contains("| 2 | welcome_scene_partial_failure | ❌ failed | 0/1 |"));
+    assert!(markdown.contains("### Failed assertions"));
+    assert!(
+        !automatic_summary.exists(),
+        "--github-summary must take precedence over GITHUB_STEP_SUMMARY"
+    );
+}
+
+#[test]
+fn github_step_summary_inserts_a_newline_after_existing_content_without_one() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let summary = tempdir.path().join("step-summary.md");
+    std::fs::write(&summary, "existing summary without newline").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg("--github-summary")
+        .arg(&summary)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(std::fs::read_to_string(summary)
+        .unwrap()
+        .contains("existing summary without newline\n## roomci:"));
+}
+
+#[test]
+fn github_step_summary_warns_and_does_not_exceed_github_file_limit() {
+    const GITHUB_STEP_SUMMARY_MAX_BYTES: usize = 1024 * 1024;
+
+    let tempdir = tempfile::tempdir().unwrap();
+    let summary = tempdir.path().join("step-summary.md");
+    std::fs::write(&summary, vec![b'x'; GITHUB_STEP_SUMMARY_MAX_BYTES]).unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg("--github-summary")
+        .arg(&summary)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr)
+        .contains("warning: failed to append GitHub step summary"));
+    assert_eq!(
+        std::fs::metadata(summary).unwrap().len(),
+        GITHUB_STEP_SUMMARY_MAX_BYTES as u64
+    );
+}
+
+#[test]
+fn run_uses_github_step_summary_when_no_explicit_path_is_given() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let summary = tempdir.path().join("step-summary.md");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .env("GITHUB_STEP_SUMMARY", &summary)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let markdown = std::fs::read_to_string(summary).unwrap();
+    assert!(markdown.contains("## roomci: 1 passed, 0 failed (of 1)"));
+    assert!(!markdown.contains("### Failed assertions"));
+}
+
+#[test]
+fn run_warns_but_succeeds_when_automatic_github_summary_cannot_be_written() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .env("GITHUB_STEP_SUMMARY", "/dev/null/roomci-summary.md")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr)
+        .contains("warning: failed to append GitHub step summary"));
+}
+
+#[test]
+fn run_warns_but_preserves_result_when_explicit_github_summary_cannot_be_written() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg("--github-summary")
+        .arg("/dev/null/roomci-summary.md")
+        .env_remove("GITHUB_STEP_SUMMARY")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr)
+        .contains("warning: failed to append GitHub step summary"));
+}
+
+#[test]
+fn dry_run_github_summary_is_reported_as_validated_not_passed() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let summary = tempdir.path().join("step-summary.md");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("run")
+        .arg(fixture("examples/local_first_cloud_outage.yaml"))
+        .arg("--dry-run")
+        .arg("--github-summary")
+        .arg(&summary)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let markdown = std::fs::read_to_string(summary).unwrap();
+    assert!(markdown.contains("1 validated (dry run; not executed)"));
+    assert!(markdown.contains("🟦 validated"));
+    assert!(!markdown.contains("✅ passed"));
+}
+
+#[test]
 fn run_generates_timeline_and_observability_exports_with_run_id() {
     let tempdir = tempfile::tempdir().unwrap();
     let json = tempdir.path().join("roomci.json");
