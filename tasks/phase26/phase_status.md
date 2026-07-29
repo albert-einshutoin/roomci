@@ -2,7 +2,7 @@
 
 ## Status
 
-`in_progress`
+`done`
 
 ## Task Board
 
@@ -11,7 +11,7 @@
 | `01_payload_shape_validation_task.md` | `done` | Codex | `MqttPayloadFieldConstraint`; `typed_mqtt_payload_constraints_validate_runtime_values`; `integer_payload_ranges_are_exact_beyond_f64_precision`; `make verify` | Backward-compatible required/optional type, enum, and range validation with fail-closed numeric precision and typo handling |
 | `02_topic_identity_diagnostics_task.md` | `done` | Codex | Contract-specific topic paths; exact placeholder and strategy tests; `make verify` | Runtime matching unchanged; invalid private topic assumptions now produce actionable diagnostics |
 | `03_acceptance_assertion_mapping_task.md` | `done` | Codex | `make verify` (88.63% coverage) | Stable, scoped acceptance-to-evidence mapping |
-| `04_evaluator_intake_kit_task.md` | `todo` | Unassigned | Pending | Document minimum customer specs needed for a real PoC |
+| `04_evaluator_intake_kit_task.md` | `done` | Codex | `docs/EVALUATOR_INTAKE_KIT.md`; `docs/EVALUATOR_INTAKE_KIT.ja.md`; documentation entry-point links; `make verify` | Minimum customer-owned inputs map to contract fields and PoC commands without private compatibility claims |
 
 ## Quality Gates
 
@@ -48,9 +48,21 @@ Latest Task 03 verification:
 - Full `make verify` passed with 88.63% workspace coverage, including Docker,
   Compose, protocol, SDK, evidence, and VS Code asset gates.
 
+Latest Task 04 verification:
+
+- English and Japanese intake kits cover every required protocol, identity,
+  auth/TLS, safety, report, and acceptance input.
+- Every required input maps to concrete adapter fields and scenario/PoC
+  commands.
+- No-spec and partial-spec paths fail closed: missing private facts remain
+  blocked, and public fixtures never imply customer/vendor compatibility.
+- Full `make verify` passed with 88.63% workspace coverage, including Docker,
+  Compose, protocol, SDK, evidence, and VS Code asset gates.
+
 ## Notes
 
-Phase 26 can proceed without a customer because it improves the generic adapter
-contract and evaluator intake surface. It must not claim compatibility with a
-specific deployment until a user supplies real topics, payload examples,
-register maps, auth assumptions, and acceptance criteria.
+Phase 26 is complete. It improved the generic adapter contract and evaluator
+intake surface without claiming compatibility with a specific deployment.
+Real PoC claims remain blocked until a customer supplies non-production topics,
+payload examples, register maps, auth/TLS assumptions, safety boundaries, and
+acceptance criteria.
