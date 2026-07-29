@@ -100,4 +100,6 @@ mqtt:
 That keeps vendor-specific MQTT naming and payload assumptions out of code and
 lets a real integration contract be supplied later. `fields` is intentionally
 limited to JSON value types, enums, and numeric ranges; it is not a nested JSON
-Schema engine.
+Schema engine. Each enum is limited to 128 values so contract validation and
+serve-mode matching remain predictably bounded. Enum members must be scalar
+string, number, or boolean values and may use at most 16 KiB in total.

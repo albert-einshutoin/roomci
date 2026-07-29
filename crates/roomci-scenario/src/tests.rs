@@ -873,6 +873,27 @@ fn rejects_invalid_typed_adapter_payload_declarations() {
 "#,
             "minimum must be less than or equal to maximum",
         ),
+        (
+            r#"
+        optional_fields: [level]
+        fields:
+          level:
+            type: number
+            enum: [1, 1.0]
+"#,
+            "enum contains duplicate value",
+        ),
+        (
+            r#"
+        optional_fields: [settings]
+        fields:
+          settings:
+            type: object
+            enum:
+              - {mode: eco}
+"#,
+            "enum is only supported for scalar",
+        ),
     ] {
         let yaml = format!(
             r#"
@@ -900,6 +921,86 @@ acceptance:
                     && message.contains(expected_message)
         ));
     }
+}
+
+#[test]
+fn rejects_oversized_typed_payload_enum() {
+    let mut contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter:
+  name: oversized-enum
+mqtt:
+  contracts:
+    - name: device-command
+      command_topic: devices/{device_id}/command
+      state_topic: devices/{device_id}/state
+      payload:
+        optional_fields: [level]
+        fields:
+          level:
+            type: integer
+            enum: [0]
+acceptance:
+  criteria: [Payload enum size is bounded.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    contract.mqtt.contracts[0]
+        .payload
+        .fields
+        .get_mut("level")
+        .unwrap()
+        .enum_values = (0..=MAX_MQTT_PAYLOAD_ENUM_VALUES)
+        .map(|value| serde_json::json!(value))
+        .collect();
+
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("enum must contain at most 128 values")
+    ));
+}
+
+#[test]
+fn rejects_typed_payload_enum_with_oversized_values() {
+    let mut contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter:
+  name: oversized-enum-values
+mqtt:
+  contracts:
+    - name: device-command
+      command_topic: devices/{device_id}/command
+      state_topic: devices/{device_id}/state
+      payload:
+        optional_fields: [mode]
+        fields:
+          mode:
+            type: string
+            enum: [eco]
+acceptance:
+  criteria: [Payload enum value size is bounded.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    contract.mqtt.contracts[0]
+        .payload
+        .fields
+        .get_mut("mode")
+        .unwrap()
+        .enum_values = vec![serde_json::json!(
+        "x".repeat(MAX_MQTT_PAYLOAD_ENUM_VALUE_BYTES + 1)
+    )];
+
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("enum values must use at most 16384 bytes")
+    ));
 }
 
 #[test]
@@ -1095,6 +1196,75 @@ acceptance:
                 && reason.contains(expected_reason)
         ));
     }
+}
+
+#[test]
+fn numeric_mqtt_enum_values_match_by_numeric_value() {
+    let mut contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter:
+  name: numeric-enum-runtime
+mqtt:
+  contracts:
+    - name: device-command
+      command_topic: devices/{device_id}/command
+      state_topic: devices/{device_id}/state
+      payload:
+        required_fields: [level]
+        fields:
+          level:
+            type: number
+            enum: [1]
+acceptance:
+  criteria: [Numeric enum values use JSON numeric equality.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    let mqtt_contract = &mut contract.mqtt.contracts[0];
+
+    let payload = BTreeMap::from([("level".to_string(), serde_json::json!(1.0))]);
+    validate_mqtt_contract_publish(
+        std::slice::from_ref(mqtt_contract),
+        "devices/light-01/command",
+        &payload,
+    )
+    .unwrap();
+
+    let level_constraint = mqtt_contract.payload.fields.get_mut("level").unwrap();
+    level_constraint.enum_values = vec![serde_json::json!(1.0)];
+    let payload = BTreeMap::from([("level".to_string(), serde_json::json!(1))]);
+    validate_mqtt_contract_publish(
+        std::slice::from_ref(mqtt_contract),
+        "devices/light-01/command",
+        &payload,
+    )
+    .unwrap();
+
+    let level_constraint = mqtt_contract.payload.fields.get_mut("level").unwrap();
+    level_constraint.enum_values = vec![
+        serde_json::json!(9_007_199_254_740_992.0),
+        serde_json::json!(1),
+    ];
+    validate_mqtt_contract_publish(
+        std::slice::from_ref(mqtt_contract),
+        "devices/light-01/command",
+        &payload,
+    )
+    .unwrap();
+
+    let level_constraint = mqtt_contract.payload.fields.get_mut("level").unwrap();
+    level_constraint.enum_values = vec![serde_json::json!(9_007_199_254_740_992.0)];
+    assert!(matches!(
+        validate_mqtt_contract_publish(
+            std::slice::from_ref(mqtt_contract),
+            "devices/light-01/command",
+            &payload,
+        ),
+        Err(MqttContractPublishError::InvalidField { reason, .. })
+            if reason.contains("cannot compare integer and floating-point values")
+    ));
 }
 
 #[test]

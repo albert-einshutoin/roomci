@@ -100,4 +100,6 @@ mqtt:
 これにより、vendor 固有の MQTT 命名と payload 前提をコードから切り離し、
 後から実際の integration contract を供給できます。`fields` は JSON 値の型、
 enum、数値 range に意図的に限定されており、nested JSON Schema engine では
-ありません。
+ありません。contract validation と serve-mode の照合コストを予測可能な範囲に
+保つため、各 enum は最大128値・合計16 KiBに制限され、候補には scalar の
+string、number、boolean のみを指定できます。

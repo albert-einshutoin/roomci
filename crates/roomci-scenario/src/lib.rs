@@ -19,6 +19,8 @@ use roomci_ops::OpsError;
 use thiserror::Error;
 
 const MAX_EXACT_F64_INTEGER: f64 = 9_007_199_254_740_991.0;
+const MAX_MQTT_PAYLOAD_ENUM_VALUES: usize = 128;
+const MAX_MQTT_PAYLOAD_ENUM_VALUE_BYTES: usize = 16 * 1024;
 
 mod schema;
 mod validated;
@@ -156,7 +158,9 @@ fn validate_mqtt_payload_value(
     if !mqtt_payload_value_matches_type(value, constraint.field_type) {
         return Err(format!("expected {}", constraint.field_type.as_str()));
     }
-    if !constraint.enum_values.is_empty() && !constraint.enum_values.contains(value) {
+    if !constraint.enum_values.is_empty()
+        && !mqtt_payload_enum_contains(&constraint.enum_values, value)?
+    {
         return Err(format!(
             "expected one of {} allowed enum values",
             constraint.enum_values.len()
@@ -179,6 +183,43 @@ fn validate_mqtt_payload_value(
         }
     }
     Ok(())
+}
+
+fn mqtt_payload_enum_contains(
+    enum_values: &[serde_json::Value],
+    value: &serde_json::Value,
+) -> Result<bool, String> {
+    let Some(number) = value.as_number() else {
+        return Ok(enum_values.contains(value));
+    };
+    let mut has_ambiguous_numeric_candidate = false;
+
+    for candidate in enum_values {
+        if mqtt_payload_enum_values_equal(value, candidate) {
+            return Ok(true);
+        }
+        let Some(candidate_number) = candidate.as_number() else {
+            continue;
+        };
+        if compare_json_numbers(number, candidate_number).is_none() {
+            // Reject rather than round mixed representations of large values,
+            // because accepting a nearby integer would weaken the payload contract.
+            has_ambiguous_numeric_candidate = true;
+        }
+    }
+
+    if has_ambiguous_numeric_candidate {
+        Err(ambiguous_numeric_comparison_reason())
+    } else {
+        Ok(false)
+    }
+}
+
+fn mqtt_payload_enum_values_equal(left: &serde_json::Value, right: &serde_json::Value) -> bool {
+    match (left.as_number(), right.as_number()) {
+        (Some(left), Some(right)) => compare_json_numbers(left, right) == Some(Ordering::Equal),
+        _ => left == right,
+    }
 }
 
 fn compare_json_numbers(left: &serde_json::Number, right: &serde_json::Number) -> Option<Ordering> {
@@ -1116,7 +1157,12 @@ fn validate_mqtt_payload_field_constraint(
         }
     }
 
-    let mut enum_values = BTreeSet::new();
+    if constraint.enum_values.len() > MAX_MQTT_PAYLOAD_ENUM_VALUES {
+        return invalid_adapter_contract(format!(
+            "{field_path}.enum must contain at most {MAX_MQTT_PAYLOAD_ENUM_VALUES} values"
+        ));
+    }
+    let mut enum_value_bytes = 0_usize;
     for value in &constraint.enum_values {
         if !mqtt_payload_value_matches_type(value, constraint.field_type) {
             return invalid_adapter_contract(format!(
@@ -1124,8 +1170,27 @@ fn validate_mqtt_payload_field_constraint(
                 constraint.field_type.as_str()
             ));
         }
-        let serialized = value.to_string();
-        if !enum_values.insert(serialized) {
+        let Some(value_bytes) = mqtt_payload_enum_scalar_size(value) else {
+            return invalid_adapter_contract(format!(
+                "{field_path}.enum is only supported for scalar string, number, or boolean fields"
+            ));
+        };
+        enum_value_bytes = enum_value_bytes
+            .checked_add(value_bytes)
+            .filter(|size| *size <= MAX_MQTT_PAYLOAD_ENUM_VALUE_BYTES)
+            .ok_or_else(|| {
+                ScenarioError::InvalidAdapterContract(format!(
+                    "{field_path}.enum values must use at most {MAX_MQTT_PAYLOAD_ENUM_VALUE_BYTES} bytes"
+                ))
+            })?;
+    }
+    for (index, value) in constraint.enum_values.iter().enumerate() {
+        // Declaration-time duplicate detection must use the same equality as
+        // runtime matching so the documented enum set has one stable meaning.
+        if constraint.enum_values[..index]
+            .iter()
+            .any(|candidate| mqtt_payload_enum_values_equal(candidate, value))
+        {
             return invalid_adapter_contract(format!(
                 "{field_path}.enum contains duplicate value {value}"
             ));
@@ -1154,6 +1219,17 @@ fn validate_mqtt_payload_field_constraint(
         }
     }
     Ok(())
+}
+
+fn mqtt_payload_enum_scalar_size(value: &serde_json::Value) -> Option<usize> {
+    match value {
+        serde_json::Value::String(value) => Some(value.len()),
+        serde_json::Value::Number(value) => Some(value.to_string().len()),
+        serde_json::Value::Bool(_) => Some(1),
+        serde_json::Value::Null | serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+            None
+        }
+    }
 }
 
 fn invalid_adapter_contract<T>(message: String) -> Result<T, ScenarioError> {
