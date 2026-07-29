@@ -4,6 +4,10 @@
 
 企業が自社の MQTT topic、Modbus register map、BMS アラートフロー、edge-controller コマンド、デバイス ID モデル、認証前提、受入基準に対して `roomci` を評価したい場合に使用します。
 
+template を編集する前に、[評価者向けインテークキット](EVALUATOR_INTAKE_KIT.ja.md)
+で顧客所有の最小入力を収集してください。公開例が示すのは文書化された roomci の
+baseline であり、非公開環境や vendor との互換性ではありません。
+
 ## ファイル
 
 - テンプレート: [`adapter-contracts/templates/company_adapter_contract.yaml`](../adapter-contracts/templates/company_adapter_contract.yaml)

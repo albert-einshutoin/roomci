@@ -2,6 +2,10 @@
 
 Use this checklist when evaluating `roomci` before adopting it for a real smart-home, edge-device, BMS, or building-automation workflow.
 
+Collect and map the customer-owned inputs first with the
+[Evaluator Intake Kit](EVALUATOR_INTAKE_KIT.md). A public PoC pack is a
+baseline, not evidence of compatibility with a private deployment.
+
 ## 1. Pick the Integration Mode
 
 - Scenario mode: run YAML scenarios fully inside `roomci`.

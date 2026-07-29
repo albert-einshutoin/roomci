@@ -12,6 +12,10 @@ not as separately published calendar releases.
 
 ### Added
 
+- Evaluator intake kits in English and Japanese that map required MQTT,
+  payload, identity, Modbus, BMS, auth/TLS, safety, report, and acceptance
+  inputs to adapter contract fields and PoC commands while explicitly
+  preventing private/vendor compatibility overclaims (#9).
 - Backward-compatible acceptance-to-evidence mappings with stable criterion
   ids, scoped named-assertion validation, artifact capability checks, and
   report reference ids (#7). Adapter YAML remains wire-compatible; the new
@@ -52,6 +56,8 @@ not as separately published calendar releases.
 
 ### Changed
 
+- README quality measurements now match the current full workspace gate: 260
+  tests and 88.63% line coverage.
 - Public release metadata and README badges are being aligned with verifiable local repository state.
 - `roomci-cli` is now a thin argument-parsing and scenario-runner binary; serve runtime ownership moved to `roomci-serve`.
 - `roomci serve` now handles HTTP clients independently with read/write timeouts and an in-flight connection cap.

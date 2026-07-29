@@ -2,6 +2,10 @@
 
 このパスは、自分のリポジトリで `roomci` を評価する platform、IoT、smart-home、building-automation エンジニア向けです。
 
+公開例の値を置き換える前に、[評価者向けインテークキット](EVALUATOR_INTAKE_KIT.ja.md)
+を完了してください。不足している顧客所有情報は `blocked` のままとし、公開 fixture
+から推測しません。
+
 ## 30 秒パス（clone 不要）
 
 リリース済みの `roomci` バイナリをインストールした後、現在のリポジトリに実行可能な

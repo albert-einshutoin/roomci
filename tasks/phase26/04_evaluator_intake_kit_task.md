@@ -2,7 +2,7 @@
 
 ## Status
 
-`todo`
+`done`
 
 ## Problem
 
@@ -21,3 +21,17 @@ and communication specs. The repo should make the required inputs explicit.
 - Docs explain what can be done without customer specs and what cannot.
 - The checklist points to adapter contract templates and PoC pack commands.
 - No private/vendor compatibility is implied.
+
+## Delivered
+
+- Added English and Japanese evaluator intake checklists covering MQTT topics
+  and payloads, device identity, Modbus/register maps, BMS alert schemas,
+  auth/TLS assumptions, safety boundaries, report expectations, and acceptance
+  criteria.
+- Mapped every required input to adapter contract fields, scenario surfaces,
+  validation commands, and public PoC targets.
+- Defined no-spec, partial-spec, and complete non-production-spec boundaries,
+  including the explicit prohibition on inferring private/vendor
+  compatibility from public fixtures.
+- Linked the intake gate from onboarding, adapter, evidence, pre-adoption, and
+  repository documentation entry points.

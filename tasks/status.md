@@ -32,7 +32,7 @@
 | Phase 25 | `done` | Public surface evidence freshness: README demo link and quality measurement refresh | None | `phase25/phase_status.md` |
 | Phase 25.1 | `done` | Rust type-boundary maximization before adapter contract generalization | None | `phase25_1/phase_status.md` |
 | Phase 25.2 | `done` | Validated graph completion and Rust dependency audit gate before adapter contract generalization | None | `phase25_2/phase_status.md` |
-| Phase 26 | `in_progress` | Adapter contract generalization: payload, topic/identity, and acceptance/evidence mapping are complete; evaluator intake kit is next | None | `phase26/phase_status.md` |
+| Phase 26 | `done` | Adapter contract payload, topic/identity, acceptance/evidence mapping, and evaluator intake surfaces are complete | None | `phase26/phase_status.md` |
 
 ## Update Rules
 
@@ -87,9 +87,9 @@ The final self-review created Phase 15. Phases 15, 16, 17, and 18 are now comple
   ops/automation behavior is typed, target handling is stronger, and remaining
   raw boundaries are documented as compatibility, extension, adapter, or output
   boundaries.
-- **Phase 26** now tracks the next customer-independent product work: stronger
-  adapter contract validation, topic/identity diagnostics, acceptance-evidence
-  mapping, and evaluator intake docs.
+- **Phase 26** completed customer-independent adapter contract generalization:
+  stronger payload validation, topic/identity diagnostics,
+  acceptance-to-evidence mapping, and evaluator intake docs.
 
 See `tasks/backlog_inventory.md` for the current split between implemented work, already taskified implementation work, newly taskified roadmap work, and intentional non-goals.
 

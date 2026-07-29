@@ -2,6 +2,10 @@
 
 This path is for a platform, IoT, smart-home, or building-automation engineer evaluating `roomci` in their own repository.
 
+Before replacing public example values, complete the
+[Evaluator Intake Kit](EVALUATOR_INTAKE_KIT.md). Missing customer-owned facts
+remain blocked; they are never inferred from a public fixture.
+
 ## 30-second Path (no clone required)
 
 After installing a released `roomci` binary, scaffold a runnable retained-state

@@ -2,7 +2,7 @@
 
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
-[![Coverage](https://img.shields.io/badge/coverage-87.90%25-green.svg)](#quality-gates)
+[![Coverage](https://img.shields.io/badge/coverage-88.63%25-green.svg)](#quality-gates)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 📖 **[日本語はこちら](README.ja.md)** | **[English](README.md)**
@@ -59,7 +59,7 @@ Guest impact: Lighting scene did not match intended guest ambience.
 For the full interview walkthrough, see [`docs/INTERVIEW_DEMO.md`](docs/INTERVIEW_DEMO.md). For canonical product positioning, see [`docs/PRODUCT_GUIDE.md`](docs/PRODUCT_GUIDE.md), [`docs/DOMAIN_PACKS.md`](docs/DOMAIN_PACKS.md), and [`docs/GENERIC_MQTT_CONTRACTS.md`](docs/GENERIC_MQTT_CONTRACTS.md).
 For protocol subset claims, see [`docs/PROTOCOL_CONFORMANCE_REGISTRY.md`](docs/PROTOCOL_CONFORMANCE_REGISTRY.md).
 
-For evaluator onboarding, use [`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md), [`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md), and [`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md).
+For evaluator onboarding, use [`docs/EVALUATOR_INTAKE_KIT.md`](docs/EVALUATOR_INTAKE_KIT.md), [`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md), [`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md), and [`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md).
 For real hardware capture replay in Docker CI, see [`docs/HARDWARE_TO_DOCKER_CI_USECASES.md`](docs/HARDWARE_TO_DOCKER_CI_USECASES.md).
 For dependency updates, RustSec exceptions, and the `serde_yaml` compatibility
 hold, see [`docs/DEPENDENCY_POLICY.md`](docs/DEPENDENCY_POLICY.md).
@@ -389,7 +389,7 @@ That command starts `roomci serve` in Docker Compose, runs `examples/controllers
 - `cargo tarpaulin --workspace --fail-under 80`
 - `bash ./scripts/check-readme-quality.sh`
 
-Current measurements: **216 tests** pass, **87.90%** line coverage.
+Current measurements: **260 tests** pass, **88.63%** line coverage.
 
 Use [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) before presenting a release or company evaluation build. Use [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) as the source of truth for behavior-model support versus wire-protocol support.
 
