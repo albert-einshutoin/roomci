@@ -10,6 +10,7 @@ Use them when a company wants to evaluate `roomci` against its own MQTT topics, 
 - Generic MQTT example: [`adapter-contracts/examples/generic_mqtt_edge_device.yaml`](../adapter-contracts/examples/generic_mqtt_edge_device.yaml)
 - Hospitality local-first example: [`adapter-contracts/examples/hospitality_local_first_room.yaml`](../adapter-contracts/examples/hospitality_local_first_room.yaml)
 - Building automation / BMS example: [`adapter-contracts/examples/building_automation_bms.yaml`](../adapter-contracts/examples/building_automation_bms.yaml)
+- Acceptance evidence mapping example: [`adapter-contracts/mappings/acceptance_evidence_mapping.yaml`](../adapter-contracts/mappings/acceptance_evidence_mapping.yaml)
 
 ## Validate
 
@@ -22,6 +23,55 @@ Validate every shipped adapter contract:
 ```bash
 cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml
 ```
+
+Validate an acceptance-to-evidence mapping against its scenario:
+
+```bash
+cargo run -p roomci-cli -- adapter validate \
+  adapter-contracts/mappings/acceptance_evidence_mapping.yaml \
+  --scenario examples/generic_mqtt_retained_state.yaml
+```
+
+## Acceptance Evidence Mapping
+
+Existing scalar `acceptance.criteria` entries remain unchanged. Add
+`acceptance.mappings` only when a criterion needs a stable id and explicit
+evidence references:
+
+```yaml
+acceptance:
+  criteria:
+    - A command updates retained state.
+  report_formats: [json, junit]
+  mappings:
+    - id: retained-state-synchronized
+      criterion: A command updates retained state.
+      assertions:
+        - scenario: generic_mqtt_retained_state
+          assertion: retained_state_updated
+      artifacts: [json, junit]
+```
+
+The scenario assertion declares the referenced name:
+
+```yaml
+assertions:
+  - at: T+1s
+    name: retained_state_updated
+    mqtt:
+      topic: fleet/demo/site/lab/device/env_sensor_01/state
+      retained:
+        online: true
+```
+
+Mapping validation fails on missing scenarios or assertion names, duplicate or
+unsafe ids, unsupported artifact kinds, and artifacts absent from
+`report_formats`. JSON evidence stores the stable name as `reference_id`;
+Markdown and JUnit show it alongside the runtime diagnostic name.
+
+`adapter validate` proves that the references resolve and that the artifact
+kind can be generated. It does not claim that a report artifact has already
+been produced; run the mapped scenario to create evidence.
 
 ## Required Customer Inputs
 

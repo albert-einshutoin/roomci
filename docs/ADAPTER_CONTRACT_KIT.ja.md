@@ -10,6 +10,7 @@
 - Generic MQTT 例: [`adapter-contracts/examples/generic_mqtt_edge_device.yaml`](../adapter-contracts/examples/generic_mqtt_edge_device.yaml)
 - Hospitality local-first 例: [`adapter-contracts/examples/hospitality_local_first_room.yaml`](../adapter-contracts/examples/hospitality_local_first_room.yaml)
 - Building automation / BMS 例: [`adapter-contracts/examples/building_automation_bms.yaml`](../adapter-contracts/examples/building_automation_bms.yaml)
+- 受入基準と証跡のマッピング例: [`adapter-contracts/mappings/acceptance_evidence_mapping.yaml`](../adapter-contracts/mappings/acceptance_evidence_mapping.yaml)
 
 ## 検証
 
@@ -22,6 +23,55 @@ cargo run -p roomci-cli -- adapter validate adapter-contracts/examples/generic_m
 ```bash
 cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml
 ```
+
+受入基準から証跡へのマッピングを scenario と照合する場合:
+
+```bash
+cargo run -p roomci-cli -- adapter validate \
+  adapter-contracts/mappings/acceptance_evidence_mapping.yaml \
+  --scenario examples/generic_mqtt_retained_state.yaml
+```
+
+## 受入基準と証跡のマッピング
+
+既存の `acceptance.criteria` の文字列形式はそのまま利用できます。安定
+ID と明示的な証跡参照が必要な criterion にだけ
+`acceptance.mappings` を追加します。
+
+```yaml
+acceptance:
+  criteria:
+    - A command updates retained state.
+  report_formats: [json, junit]
+  mappings:
+    - id: retained-state-synchronized
+      criterion: A command updates retained state.
+      assertions:
+        - scenario: generic_mqtt_retained_state
+          assertion: retained_state_updated
+      artifacts: [json, junit]
+```
+
+参照される scenario assertion には `name` を宣言します。
+
+```yaml
+assertions:
+  - at: T+1s
+    name: retained_state_updated
+    mqtt:
+      topic: fleet/demo/site/lab/device/env_sensor_01/state
+      retained:
+        online: true
+```
+
+存在しない scenario/assertion、重複または安全でない ID、未対応の
+artifact、`report_formats` に未宣言の artifact は検証エラーになります。
+JSON 証跡では安定名を `reference_id` として保持し、Markdown/JUnit では
+runtime の診断名と併記します。
+
+`adapter validate` が保証するのは参照の解決と artifact 種別を生成できる
+ことです。artifact が既に生成済みであるとは主張しません。実際の証跡は
+対応する scenario を実行して作成してください。
 
 ## 顧客から必要な入力
 
