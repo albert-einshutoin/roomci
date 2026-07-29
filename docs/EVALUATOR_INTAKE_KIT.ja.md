@@ -29,8 +29,8 @@ protocol surface ごとに1行ずつ確認します。入手できない入力�
 | MQTT topic | マスキング済み command/state topic 例、wildcard/placeholder、方向、QoS、retained/session 前提 | `mqtt.contracts[].name`, `command_topic`, `state_topic`, `adapter` | `mqtt.contracts[]`, `steps[].mqtt_publish`, `assertions[].mqtt`; `make poc-generic-mqtt` |
 | MQTT payload | command ごとの accepted/rejected JSON 例、required/optional field、型、enum/range | `mqtt.contracts[].payload.required_fields`, `optional_fields`, `fields` | scenario step または `roomci serve` に publish し、pass/fail report を収集 |
 | device identity | device id の取得元、正規化、大文字小文字、許容例、未知 id の挙動 | `devices[].id`, `mqtt.contracts[].device_id_from_topic`, topic の `{device_id}` | 一致/未知 id を scenario 化し、`roomci adapter validate CONTRACT` で検証 |
-| Modbus/register map | unit id、address、register type、表現、scale/unit、read/write、範囲、commissioning 値 | `modbus.devices[].id`, `unit_id`, `registers[].address`, `name`, `type`, `access`, `scale`, `unit` | `modbus.devices[]`, `steps[].modbus_write`, Modbus assertion; `make poc-building-automation` |
-| BMS alert schema | source id、schema/content type、severity、署名 header、replay window、channel、ticket state、accepted/rejected 例 | `bms.alerts[].id`, `source`, `schema_version`, `content_type`, `severity`, `severity_enum`, `hmac`, `replay_window_seconds`, `channels`, `ticket_lifecycle` | `alerts`, `contacts`, BMS/contact step と assertion; `make poc-bms-ops` |
+| Modbus/register map | unit id、address、register type、表現、scale/unit、read/write、範囲、commissioning 値 | `modbus.devices[].id`, `unit_id`, `registers[].address`, `name`, `type`, `access`, `scale`, `unit`; 顧客固有の合法範囲には contract field がないため review-only / blocked | `modbus.devices[]`, `steps[].modbus_write`, Modbus assertion; `make poc-building-automation` が証明するのは公開 baseline であり、顧客固有 range の強制ではない |
+| BMS alert schema | source id、schema/content type、severity、署名 header、replay window、channel、ticket state、accepted/rejected 例 | `bms.alerts[].id`, `source`, `schema_version`, `content_type`, `severity`, `severity_enum`, `hmac`, `replay_window_seconds`, `channels`, `ticket_lifecycle` に metadata を記録 | `alerts`, `contacts`, BMS/contact step と assertion; `make poc-bms-ops` は内部の公開 baseline のみを証明する。adapter の HMAC/replay metadata は外部 webhook に適用されないため、顧客の署名 header、replay window、payload acceptance 証跡は review-only / blocked |
 | 認証/TLS 前提 | test auth mode、secret reference 名、trust source、client auth、hostname/SNI、TLS version、localhost plaintext 可否 | `auth` に `mode`, `secret_ref`, TLS note など非本番前提を記録 | 選択した serve subset が強制しないものは review note とする。現行 HTTP/MQTT serve は localhost 指向で TLS 相互運用性を証明しない |
 | 安全境界 | 許可する read/write、禁止操作、非本番 target、rate/concurrency、emergency stop/rollback owner | `edge.commands[]` で modeled command、`devices[]` と Modbus `access` で modeled target を限定 | 承認済み mock/assertion のみを記述。本番 actuator や安全上重要な unlock/control に接続しない |
 | report 要件 | 形式、読者、redaction、保持場所、run id、failure diagnostics | `acceptance.report_formats`; 任意の `acceptance.mappings[].artifacts` | CLI report flag または PoC target を選択し、JSON/Markdown/JUnit/timeline/observability/GitHub summary を確認 |
@@ -52,7 +52,9 @@ protocol surface ごとに1行ずつ確認します。入手できない入力�
 - [ ] transport と unit id が明示されている。
 - [ ] 使用する全 address に type、access、scale、unit、byte/word 解釈がある。
 - [ ] read-only / writable 境界が承認されている。
-- [ ] 未対応 function code と範囲外値の失敗挙動が定義されている。
+- [ ] 未対応 function code と範囲外値の失敗挙動が定義されている。現行 adapter /
+  scenario contract は顧客固有の合法範囲を記述・強制できないため、review-only /
+  blocked とする。
 
 ### BMS / operations
 
@@ -60,6 +62,7 @@ protocol surface ごとに1行ずつ確認します。入手できない入力�
 - [ ] schema version、content type、severity enum、required field、
   accepted/rejected sample が提供されている。
 - [ ] 署名 header/algorithm と replay window は非本番 secret reference のみを使う。
+  これらの adapter field は metadata であり、現行の外部 webhook は強制しない。
 - [ ] notification channel、ticket lifecycle、acknowledgment、escalation が定義されている。
 
 ### 認証、TLS、安全性
