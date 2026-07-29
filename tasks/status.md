@@ -32,7 +32,7 @@
 | Phase 25 | `done` | Public surface evidence freshness: README demo link and quality measurement refresh | None | `phase25/phase_status.md` |
 | Phase 25.1 | `done` | Rust type-boundary maximization before adapter contract generalization | None | `phase25_1/phase_status.md` |
 | Phase 25.2 | `done` | Validated graph completion and Rust dependency audit gate before adapter contract generalization | None | `phase25_2/phase_status.md` |
-| Phase 26 | `todo` | Adapter contract generalization that can proceed without customer-specific protocol specs | None | `phase26/phase_status.md` |
+| Phase 26 | `in_progress` | Adapter contract generalization: typed payload validation is complete; topic/identity diagnostics are next | None | `phase26/phase_status.md` |
 
 ## Update Rules
 

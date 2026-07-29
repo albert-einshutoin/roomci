@@ -2,13 +2,13 @@
 
 ## Status
 
-`todo`
+`in_progress`
 
 ## Task Board
 
 | Task | Status | Owner | Evidence | Notes |
 |---|---|---|---|---|
-| `01_payload_shape_validation_task.md` | `todo` | Unassigned | Pending | Add typed payload schema constraints beyond required fields |
+| `01_payload_shape_validation_task.md` | `done` | Codex | `MqttPayloadFieldConstraint`; `typed_mqtt_payload_constraints_validate_runtime_values`; `integer_payload_ranges_are_exact_beyond_f64_precision`; `make verify` | Backward-compatible required/optional type, enum, and range validation with fail-closed numeric precision and typo handling |
 | `02_topic_identity_diagnostics_task.md` | `todo` | Unassigned | Pending | Improve placeholder and identity mapping errors |
 | `03_acceptance_assertion_mapping_task.md` | `todo` | Unassigned | Pending | Link acceptance criteria to scenario assertions/evidence |
 | `04_evaluator_intake_kit_task.md` | `todo` | Unassigned | Pending | Document minimum customer specs needed for a real PoC |
@@ -18,6 +18,14 @@
 - `cargo fmt --all --check`
 - `cargo test --workspace --all-targets`
 - `cargo run -p roomci-cli -- adapter validate adapter-contracts/templates/company_adapter_contract.yaml adapter-contracts/examples/*.yaml`
+
+Latest Task 01 verification:
+
+- `make verify` passed with 87.61% workspace coverage.
+- All shipped adapter contracts and scenarios validated.
+- Docker, Compose, MQTT/Modbus protocol smoke, SDK smoke, report evidence, and
+  VS Code asset checks passed.
+- Rust and security reviews reported no remaining merge blockers.
 
 ## Notes
 
