@@ -9,7 +9,7 @@
 | Task | Status | Owner | Evidence | Notes |
 |---|---|---|---|---|
 | `01_payload_shape_validation_task.md` | `done` | Codex | `MqttPayloadFieldConstraint`; `typed_mqtt_payload_constraints_validate_runtime_values`; `integer_payload_ranges_are_exact_beyond_f64_precision`; `make verify` | Backward-compatible required/optional type, enum, and range validation with fail-closed numeric precision and typo handling |
-| `02_topic_identity_diagnostics_task.md` | `todo` | Unassigned | Pending | Improve placeholder and identity mapping errors |
+| `02_topic_identity_diagnostics_task.md` | `done` | Codex | Contract-specific topic paths; exact placeholder and strategy tests; `make verify` | Runtime matching unchanged; invalid private topic assumptions now produce actionable diagnostics |
 | `03_acceptance_assertion_mapping_task.md` | `todo` | Unassigned | Pending | Link acceptance criteria to scenario assertions/evidence |
 | `04_evaluator_intake_kit_task.md` | `todo` | Unassigned | Pending | Document minimum customer specs needed for a real PoC |
 
@@ -26,6 +26,16 @@ Latest Task 01 verification:
 - Docker, Compose, MQTT/Modbus protocol smoke, SDK smoke, report evidence, and
   VS Code asset checks passed.
 - Rust and security reviews reported no remaining merge blockers.
+
+Latest Task 02 verification:
+
+- Topic diagnostics identify the contract and exact command/state/identity
+  field.
+- Missing, repeated, malformed, unsupported, and mismatched placeholders fail
+  before runtime matching.
+- Untrusted diagnostic values are escaped and bounded; template and expanded
+  topic lengths fail closed at the MQTT wire limit.
+- All shipped adapter contracts and scenarios remain valid.
 
 ## Notes
 

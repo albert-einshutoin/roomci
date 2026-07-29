@@ -2,7 +2,7 @@
 
 ## Status
 
-`todo`
+`done`
 
 ## Problem
 
@@ -21,3 +21,10 @@ minimal. Evaluators need clearer feedback when mapping private MQTT topics.
 - Invalid topic templates fail validation with the contract name and field.
 - Existing examples still validate.
 - Runtime matching behavior is unchanged.
+
+## Evidence
+
+- `mqtt_contract_topic_errors_include_contract_name_and_field_path`
+- `rejects_mismatched_mqtt_contract_topic_placeholders`
+- `unsupported_mqtt_identity_strategy_reports_the_exact_field`
+- `adapter_contract_topic_diagnostics_identify_the_exact_mapping`

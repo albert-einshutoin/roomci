@@ -103,3 +103,11 @@ enum、数値 range に意図的に限定されており、nested JSON Schema en
 ありません。contract validation と serve-mode の照合コストを予測可能な範囲に
 保つため、各 enum は最大128値・合計16 KiBに制限され、候補には scalar の
 string、number、boolean のみを指定できます。
+
+topic template には `{device_id}` placeholder をちょうど1つ指定し、command と
+state のplaceholder集合を一致させる必要があります。`device_id_from_topic` で
+利用できるstrategyは `placeholder:{device_id}` のみです。validation errorには
+contract名と正確なmapping fieldが含まれるため、runtime codeを変更せずにprivate
+topicの前提を修正できます。templateと展開後topicはMQTTのUTF-8 topic上限である
+65,535 byte以内で、制御文字を含まない必要があります。診断値はCLI/CI logへ
+出力される前にescape・長さ制限されます。

@@ -103,3 +103,12 @@ limited to JSON value types, enums, and numeric ranges; it is not a nested JSON
 Schema engine. Each enum is limited to 128 values so contract validation and
 serve-mode matching remain predictably bounded. Enum members must be scalar
 string, number, or boolean values and may use at most 16 KiB in total.
+
+Topic templates must contain exactly one `{device_id}` placeholder. Command and
+state templates must declare the same placeholder set, and
+`placeholder:{device_id}` is the only supported `device_id_from_topic`
+strategy. Validation errors identify the contract and exact mapping field so an
+evaluator can correct private topic assumptions without changing runtime code.
+Templates and expanded topics must fit MQTT's 65,535-byte UTF-8 topic limit and
+must not contain control characters. Diagnostic values are escaped and bounded
+before they reach CLI or CI logs.

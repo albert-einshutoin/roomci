@@ -12,6 +12,9 @@ not as separately published calendar releases.
 
 ### Added
 
+- Actionable MQTT topic identity diagnostics with contract-specific field paths,
+  exact `{device_id}` placeholder checks, command/state placeholder consistency,
+  and an explicit `placeholder:{device_id}` strategy boundary (#5).
 - Typed MQTT adapter payload constraints for required/optional fields, JSON
   value types, enums, and numeric ranges, enforced consistently by scenario and
   serve-mode publish validation without introducing a full JSON Schema engine
