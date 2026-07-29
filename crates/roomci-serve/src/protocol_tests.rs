@@ -145,12 +145,24 @@ fn external_mqtt_publish_updates_and_rejects_by_contract() {
                 payload: BTreeMap::new(),
             },
         );
+        apply_external_mqtt_publish(
+            &mut state,
+            MqttPublish {
+                topic: "fleet/demo/site/lab/device/env_sensor_01/command".to_string(),
+                payload: BTreeMap::from([
+                    ("online".to_string(), json!("yes")),
+                    ("sample_interval_seconds".to_string(), json!(15)),
+                ]),
+            },
+        );
     }
 
     let timeline = route_request(&request("GET", "/timeline", ""), Arc::clone(&state));
     assert!(timeline.contains("external_mqtt_retained_state_updated"));
     assert!(timeline.contains("payload missing required fields"));
     assert!(timeline.contains("topic did not match"));
+    assert!(timeline.contains("payload field online is invalid"));
+    assert!(timeline.contains("expected boolean"));
 }
 
 #[test]

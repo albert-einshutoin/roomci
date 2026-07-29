@@ -15,6 +15,16 @@ mqtt:
       device_id_from_topic: placeholder:{device_id}
       payload:
         required_fields: [online, sample_interval_seconds]
+        optional_fields: [mode]
+        fields:
+          online:
+            type: boolean
+          sample_interval_seconds:
+            type: integer
+            minimum: 1
+          mode:
+            type: string
+            enum: [normal, low_power]
 
 devices:
   - id: env_sensor_01
