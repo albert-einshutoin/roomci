@@ -5,13 +5,22 @@
 //! to a known device/scene/contact, and provides time helpers used by
 //! `roomci-core` to evaluate scenarios on a virtual clock.
 
-use std::{collections::BTreeMap, fs, path::Path};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    path::Path,
+};
 
 use chrono::Duration;
 use roomci_device_model::DeviceModelError;
 use roomci_edge::EdgeError;
 use roomci_ops::OpsError;
 use thiserror::Error;
+
+const MAX_EXACT_F64_INTEGER: f64 = 9_007_199_254_740_991.0;
+const MAX_MQTT_PAYLOAD_ENUM_VALUES: usize = 128;
+const MAX_MQTT_PAYLOAD_ENUM_VALUE_BYTES: usize = 16 * 1024;
 
 mod schema;
 mod validated;
@@ -91,6 +100,12 @@ pub enum MqttContractPublishError {
     TopicMismatch { topic: String },
     #[error("payload missing required fields for {contract}: {fields}")]
     MissingRequiredFields { contract: String, fields: String },
+    #[error("payload field {field} is invalid for {contract}: {reason}")]
+    InvalidField {
+        contract: String,
+        field: String,
+        reason: String,
+    },
 }
 
 /// Match and validate a concrete MQTT publish against configured contracts.
@@ -120,7 +135,159 @@ pub fn validate_mqtt_contract_publish<'a>(
         });
     }
 
+    for (field, constraint) in &matched.contract.payload.fields {
+        let Some(value) = payload.get(field) else {
+            continue;
+        };
+        validate_mqtt_payload_value(value, constraint).map_err(|reason| {
+            MqttContractPublishError::InvalidField {
+                contract: matched.contract.name.clone(),
+                field: field.clone(),
+                reason,
+            }
+        })?;
+    }
+
     Ok(matched)
+}
+
+fn validate_mqtt_payload_value(
+    value: &serde_json::Value,
+    constraint: &MqttPayloadFieldConstraint,
+) -> Result<(), String> {
+    if !mqtt_payload_value_matches_type(value, constraint.field_type) {
+        return Err(format!("expected {}", constraint.field_type.as_str()));
+    }
+    if !constraint.enum_values.is_empty()
+        && !mqtt_payload_enum_contains(&constraint.enum_values, value)?
+    {
+        return Err(format!(
+            "expected one of {} allowed enum values",
+            constraint.enum_values.len()
+        ));
+    }
+    if let Some(number) = value.as_number() {
+        if let Some(minimum) = &constraint.minimum {
+            let ordering = compare_json_numbers(number, minimum)
+                .ok_or_else(ambiguous_numeric_comparison_reason)?;
+            if ordering == Ordering::Less {
+                return Err(format!("value {number} is below minimum {minimum}"));
+            }
+        }
+        if let Some(maximum) = &constraint.maximum {
+            let ordering = compare_json_numbers(number, maximum)
+                .ok_or_else(ambiguous_numeric_comparison_reason)?;
+            if ordering == Ordering::Greater {
+                return Err(format!("value {number} is above maximum {maximum}"));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn mqtt_payload_enum_contains(
+    enum_values: &[serde_json::Value],
+    value: &serde_json::Value,
+) -> Result<bool, String> {
+    let Some(number) = value.as_number() else {
+        return Ok(enum_values.contains(value));
+    };
+    let mut has_ambiguous_numeric_candidate = false;
+
+    for candidate in enum_values {
+        if mqtt_payload_enum_values_equal(value, candidate) {
+            return Ok(true);
+        }
+        let Some(candidate_number) = candidate.as_number() else {
+            continue;
+        };
+        if compare_json_numbers(number, candidate_number).is_none() {
+            // Reject rather than round mixed representations of large values,
+            // because accepting a nearby integer would weaken the payload contract.
+            has_ambiguous_numeric_candidate = true;
+        }
+    }
+
+    if has_ambiguous_numeric_candidate {
+        Err(ambiguous_numeric_comparison_reason())
+    } else {
+        Ok(false)
+    }
+}
+
+fn mqtt_payload_enum_values_equal(left: &serde_json::Value, right: &serde_json::Value) -> bool {
+    match (left.as_number(), right.as_number()) {
+        (Some(left), Some(right)) => compare_json_numbers(left, right) == Some(Ordering::Equal),
+        _ => left == right,
+    }
+}
+
+fn compare_json_numbers(left: &serde_json::Number, right: &serde_json::Number) -> Option<Ordering> {
+    match (json_integer_value(left), json_integer_value(right)) {
+        (Some(left), Some(right)) => Some(compare_json_integers(left, right)),
+        (None, None) => left.as_f64()?.partial_cmp(&right.as_f64()?),
+        (Some(_), None) | (None, Some(_)) => {
+            let left = left.as_f64()?;
+            let right = right.as_f64()?;
+            if left.abs() > MAX_EXACT_F64_INTEGER || right.abs() > MAX_EXACT_F64_INTEGER {
+                None
+            } else {
+                left.partial_cmp(&right)
+            }
+        }
+    }
+}
+
+fn ambiguous_numeric_comparison_reason() -> String {
+    "cannot compare integer and floating-point values outside ±9007199254740991; use consistent integer notation for exact large values".to_string()
+}
+
+#[derive(Clone, Copy)]
+enum JsonInteger {
+    Signed(i64),
+    Unsigned(u64),
+}
+
+fn json_integer_value(number: &serde_json::Number) -> Option<JsonInteger> {
+    number
+        .as_i64()
+        .map(JsonInteger::Signed)
+        .or_else(|| number.as_u64().map(JsonInteger::Unsigned))
+}
+
+fn compare_json_integers(left: JsonInteger, right: JsonInteger) -> Ordering {
+    match (left, right) {
+        (JsonInteger::Signed(left), JsonInteger::Signed(right)) => left.cmp(&right),
+        (JsonInteger::Unsigned(left), JsonInteger::Unsigned(right)) => left.cmp(&right),
+        (JsonInteger::Signed(left), JsonInteger::Unsigned(right)) => {
+            if left.is_negative() {
+                Ordering::Less
+            } else {
+                (left as u64).cmp(&right)
+            }
+        }
+        (JsonInteger::Unsigned(left), JsonInteger::Signed(right)) => {
+            if right.is_negative() {
+                Ordering::Greater
+            } else {
+                left.cmp(&(right as u64))
+            }
+        }
+    }
+}
+
+fn mqtt_payload_value_matches_type(
+    value: &serde_json::Value,
+    field_type: MqttPayloadFieldType,
+) -> bool {
+    match field_type {
+        MqttPayloadFieldType::String => value.is_string(),
+        MqttPayloadFieldType::Integer => value.is_i64() || value.is_u64(),
+        MqttPayloadFieldType::Number => value.is_number(),
+        MqttPayloadFieldType::Boolean => value.is_boolean(),
+        MqttPayloadFieldType::Object => value.is_object(),
+        MqttPayloadFieldType::Array => value.is_array(),
+    }
 }
 
 /// Return the first MQTT contract whose command topic matches the publish topic.
@@ -862,8 +1029,211 @@ fn validate_mqtt_contracts(contracts: &[MqttConnectionContract]) -> Result<(), S
                 contract.command_topic, existing, contract.name
             )));
         }
+        validate_mqtt_payload_expectation(contract)?;
     }
     Ok(())
+}
+
+fn validate_mqtt_payload_expectation(
+    contract: &MqttConnectionContract,
+) -> Result<(), ScenarioError> {
+    let path = format!("mqtt.contracts[{}].payload", contract.name);
+    let required =
+        validate_payload_field_names(&path, "required_fields", &contract.payload.required_fields)?;
+    let optional =
+        validate_payload_field_names(&path, "optional_fields", &contract.payload.optional_fields)?;
+
+    if let Some(field) = required.intersection(&optional).next() {
+        return invalid_adapter_contract(format!(
+            "{path}.fields.{field} cannot be both required and optional"
+        ));
+    }
+
+    for optional_field in &optional {
+        if !contract.payload.fields.contains_key(optional_field) {
+            return invalid_adapter_contract(format!(
+                "{path}.optional_fields contains {optional_field}, but {path}.fields.{optional_field} is not declared"
+            ));
+        }
+    }
+
+    for (field, constraint) in &contract.payload.fields {
+        if field.trim().is_empty() {
+            return invalid_adapter_contract(format!("{path}.fields contains an empty field name"));
+        }
+        if field.chars().any(char::is_control) {
+            return invalid_adapter_contract(format!(
+                "{path}.fields field names must not contain control characters"
+            ));
+        }
+        if !required.contains(field) && !optional.contains(field) {
+            return invalid_adapter_contract(format!(
+                "{path}.fields.{field} must be listed in required_fields or optional_fields"
+            ));
+        }
+        validate_mqtt_payload_field_constraint(&path, field, constraint)?;
+    }
+    Ok(())
+}
+
+fn validate_payload_field_names(
+    path: &str,
+    list_name: &str,
+    fields: &[String],
+) -> Result<BTreeSet<String>, ScenarioError> {
+    let mut unique = BTreeSet::new();
+    for field in fields {
+        if field.trim().is_empty() {
+            return invalid_adapter_contract(format!(
+                "{path}.{list_name} contains an empty field name"
+            ));
+        }
+        if field.chars().any(char::is_control) {
+            return invalid_adapter_contract(format!(
+                "{path}.{list_name} field names must not contain control characters"
+            ));
+        }
+        if !unique.insert(field.clone()) {
+            return invalid_adapter_contract(format!(
+                "{path}.{list_name} contains duplicate field {field}"
+            ));
+        }
+    }
+    Ok(unique)
+}
+
+fn validate_mqtt_payload_field_constraint(
+    path: &str,
+    field: &str,
+    constraint: &MqttPayloadFieldConstraint,
+) -> Result<(), ScenarioError> {
+    let field_path = format!("{path}.fields.{field}");
+    for (bound_name, bound) in [
+        ("minimum", constraint.minimum.as_ref()),
+        ("maximum", constraint.maximum.as_ref()),
+    ] {
+        if let Some(bound) = bound {
+            if !constraint.field_type.is_numeric() {
+                return invalid_adapter_contract(format!(
+                    "{field_path}.{bound_name} is only supported for integer or number fields"
+                ));
+            }
+            if constraint.field_type == MqttPayloadFieldType::Integer
+                && json_integer_value(bound).is_none()
+            {
+                return invalid_adapter_contract(format!(
+                    "{field_path}.{bound_name} must be an integer"
+                ));
+            }
+            // Integer JSON numbers remain exact across the full i64/u64 range.
+            // Floating-point bounds cannot distinguish adjacent integers above
+            // 2^53, so reject only that ambiguous notation and tell contract
+            // authors to use an integer literal for larger exact boundaries.
+            if json_integer_value(bound).is_none()
+                && bound
+                    .as_f64()
+                    .is_some_and(|value| value.abs() > MAX_EXACT_F64_INTEGER)
+            {
+                return invalid_adapter_contract(format!(
+                    "{field_path}.{bound_name} floating-point bounds must be within ±9007199254740991; use an integer literal for larger exact bounds"
+                ));
+            }
+        }
+    }
+    if let (Some(minimum), Some(maximum)) = (&constraint.minimum, &constraint.maximum) {
+        match compare_json_numbers(minimum, maximum) {
+            Some(Ordering::Greater) => {
+                return invalid_adapter_contract(format!(
+                    "{field_path}.minimum must be less than or equal to maximum"
+                ));
+            }
+            None => {
+                return invalid_adapter_contract(format!(
+                    "{field_path} {}",
+                    ambiguous_numeric_comparison_reason()
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    if constraint.enum_values.len() > MAX_MQTT_PAYLOAD_ENUM_VALUES {
+        return invalid_adapter_contract(format!(
+            "{field_path}.enum must contain at most {MAX_MQTT_PAYLOAD_ENUM_VALUES} values"
+        ));
+    }
+    let mut enum_value_bytes = 0_usize;
+    for value in &constraint.enum_values {
+        if !mqtt_payload_value_matches_type(value, constraint.field_type) {
+            return invalid_adapter_contract(format!(
+                "{field_path}.enum value {value} does not match declared type {}",
+                constraint.field_type.as_str()
+            ));
+        }
+        let Some(value_bytes) = mqtt_payload_enum_scalar_size(value) else {
+            return invalid_adapter_contract(format!(
+                "{field_path}.enum is only supported for scalar string, number, or boolean fields"
+            ));
+        };
+        enum_value_bytes = enum_value_bytes
+            .checked_add(value_bytes)
+            .filter(|size| *size <= MAX_MQTT_PAYLOAD_ENUM_VALUE_BYTES)
+            .ok_or_else(|| {
+                ScenarioError::InvalidAdapterContract(format!(
+                    "{field_path}.enum values must use at most {MAX_MQTT_PAYLOAD_ENUM_VALUE_BYTES} bytes"
+                ))
+            })?;
+    }
+    for (index, value) in constraint.enum_values.iter().enumerate() {
+        // Declaration-time duplicate detection must use the same equality as
+        // runtime matching so the documented enum set has one stable meaning.
+        if constraint.enum_values[..index]
+            .iter()
+            .any(|candidate| mqtt_payload_enum_values_equal(candidate, value))
+        {
+            return invalid_adapter_contract(format!(
+                "{field_path}.enum contains duplicate value {value}"
+            ));
+        }
+        if let Some(number) = value.as_number() {
+            for bound in [constraint.minimum.as_ref(), constraint.maximum.as_ref()]
+                .into_iter()
+                .flatten()
+            {
+                if compare_json_numbers(number, bound).is_none() {
+                    return invalid_adapter_contract(format!(
+                        "{field_path}.enum value {value} {}",
+                        ambiguous_numeric_comparison_reason()
+                    ));
+                }
+            }
+            if constraint.minimum.as_ref().is_some_and(|minimum| {
+                compare_json_numbers(number, minimum) == Some(Ordering::Less)
+            }) || constraint.maximum.as_ref().is_some_and(|maximum| {
+                compare_json_numbers(number, maximum) == Some(Ordering::Greater)
+            }) {
+                return invalid_adapter_contract(format!(
+                    "{field_path}.enum value {value} is outside the declared range"
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn mqtt_payload_enum_scalar_size(value: &serde_json::Value) -> Option<usize> {
+    match value {
+        serde_json::Value::String(value) => Some(value.len()),
+        serde_json::Value::Number(value) => Some(value.to_string().len()),
+        serde_json::Value::Bool(_) => Some(1),
+        serde_json::Value::Null | serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+            None
+        }
+    }
+}
+
+fn invalid_adapter_contract<T>(message: String) -> Result<T, ScenarioError> {
+    Err(ScenarioError::InvalidAdapterContract(message))
 }
 
 /// Resolve a symbolic time offset like `T`, `T+15s`, or `T-1m` into a

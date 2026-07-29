@@ -281,9 +281,19 @@ pub(crate) fn apply_external_mqtt_publish(state: &mut ServeState, publish: MqttP
                     format!(
                         "payload missing required fields for {}: {}",
                         sanitize_external_message_value(&contract),
-                        fields
+                        sanitize_external_message_value(&fields)
                     )
                 }
+                MqttContractPublishError::InvalidField {
+                    contract,
+                    field,
+                    reason,
+                } => format!(
+                    "payload field {} is invalid for {}: {}",
+                    sanitize_external_message_value(&field),
+                    sanitize_external_message_value(&contract),
+                    sanitize_external_message_value(&reason)
+                ),
             };
             state.external_observation_timeline.push(TimelineEvent {
                 at: format!("external#{event_index}"),

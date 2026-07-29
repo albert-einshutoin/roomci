@@ -93,6 +93,7 @@ pub struct BrokerConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct MqttConnectionContract {
     pub name: String,
     #[serde(default = "default_mqtt_adapter")]
@@ -106,9 +107,58 @@ pub struct MqttConnectionContract {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct MqttPayloadExpectation {
     #[serde(default)]
     pub required_fields: Vec<String>,
+    #[serde(default)]
+    pub optional_fields: Vec<String>,
+    #[serde(default)]
+    pub fields: BTreeMap<String, MqttPayloadFieldConstraint>,
+}
+
+/// The deliberately small set of JSON value kinds supported by adapter
+/// payload contracts. Keeping this enum closed prevents the adapter layer from
+/// drifting into a second, incomplete JSON Schema implementation.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum MqttPayloadFieldType {
+    String,
+    Integer,
+    Number,
+    Boolean,
+    Object,
+    Array,
+}
+
+impl MqttPayloadFieldType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::String => "string",
+            Self::Integer => "integer",
+            Self::Number => "number",
+            Self::Boolean => "boolean",
+            Self::Object => "object",
+            Self::Array => "array",
+        }
+    }
+
+    pub fn is_numeric(self) -> bool {
+        matches!(self, Self::Integer | Self::Number)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct MqttPayloadFieldConstraint {
+    #[serde(rename = "type")]
+    pub field_type: MqttPayloadFieldType,
+    #[serde(default, rename = "enum")]
+    pub enum_values: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub minimum: Option<serde_json::Number>,
+    #[serde(default)]
+    pub maximum: Option<serde_json::Number>,
 }
 
 fn default_mqtt_adapter() -> String {

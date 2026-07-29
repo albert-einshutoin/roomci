@@ -29,9 +29,46 @@ For MQTT:
 
 - topic templates
 - device-id extraction rule
-- required JSON payload fields
+- required and optional JSON payload fields
+- optional field constraints: `type`, `enum`, `minimum`, and `maximum`
 - retained-state expectation
 - QoS/session expectation
+
+### Typed MQTT payload fields
+
+`required_fields` remains compatible with existing contracts. Add
+`optional_fields` and `fields` only when the evaluator needs contract-level
+JSON value checks:
+
+```yaml
+payload:
+  required_fields: [power]
+  optional_fields: [brightness, mode]
+  fields:
+    power:
+      type: boolean
+    brightness:
+      type: integer
+      minimum: 0
+      maximum: 100
+    mode:
+      type: string
+      enum: [eco, comfort]
+```
+
+Supported types are `string`, `integer`, `number`, `boolean`, `object`, and
+`array`. Numeric ranges are available only for `integer` and `number`. Every
+entry under `fields` must be classified as required or optional. Unknown
+payload fields remain allowed.
+
+Write exact whole-number boundaries as integer literals. Floating-point
+boundary notation is limited to ±9,007,199,254,740,991 so comparisons cannot
+silently lose integer precision.
+
+This is intentionally a small adapter-contract vocabulary. It validates the
+payload values used by scenario and serve-mode MQTT publishes, but does not
+implement nested schemas, pattern matching, composition, or a full JSON Schema
+engine.
 
 For Modbus:
 

@@ -20,6 +20,17 @@ mqtt:
       device_id_from_topic: placeholder:{device_id}
       payload:
         required_fields: [power]
+        optional_fields: [brightness, mode]
+        fields:
+          power:
+            type: boolean
+          brightness:
+            type: integer
+            minimum: 0
+            maximum: 100
+          mode:
+            type: string
+            enum: [eco, comfort]
 modbus:
   devices:
     - id: demo-modbus-device
