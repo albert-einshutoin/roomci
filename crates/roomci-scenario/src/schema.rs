@@ -274,6 +274,10 @@ pub struct SensorReadingStep {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct AssertionDefinition {
     pub at: String,
+    /// Stable, user-supplied evidence reference. The runtime diagnostic name
+    /// remains separate so topic/register context is never lost.
+    #[serde(default)]
+    pub name: Option<String>,
     #[serde(default)]
     pub target: Option<String>,
     #[serde(default)]
@@ -525,4 +529,28 @@ pub struct AdapterAcceptance {
     pub criteria: Vec<String>,
     #[serde(default)]
     pub report_formats: Vec<String>,
+    /// Additive mapping keeps existing adapter YAML wire-compatible.
+    ///
+    /// This pre-1.0 public field is source-incompatible for downstream code
+    /// that constructs `AdapterAcceptance` with a struct literal.
+    #[serde(default)]
+    pub mappings: Vec<AdapterAcceptanceMapping>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct AdapterAcceptanceMapping {
+    pub id: String,
+    pub criterion: String,
+    #[serde(default)]
+    pub assertions: Vec<AdapterAssertionReference>,
+    #[serde(default)]
+    pub artifacts: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+pub struct AdapterAssertionReference {
+    pub scenario: String,
+    pub assertion: String,
 }

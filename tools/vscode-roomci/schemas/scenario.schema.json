@@ -171,7 +171,11 @@
         "required": ["at"],
         "properties": {
           "at": { "$ref": "#/$defs/timeOffset" },
-          "name": { "type": "string" },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
           "impact_level": {
             "type": "string",
             "enum": ["none", "low", "moderate", "high", "critical"]

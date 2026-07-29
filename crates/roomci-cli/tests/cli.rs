@@ -309,6 +309,138 @@ fn adapter_validate_accepts_shipped_contracts() {
 }
 
 #[test]
+fn adapter_validate_renders_acceptance_evidence_mapping() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["adapter", "validate"])
+        .arg(fixture(
+            "adapter-contracts/mappings/acceptance_evidence_mapping.yaml",
+        ))
+        .arg("--scenario")
+        .arg(fixture("examples/generic_mqtt_retained_state.yaml"))
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("acceptance mapping: retained-state-synchronized"));
+    assert!(stdout.contains("assertion: generic_mqtt_retained_state:retained_state_updated"));
+    assert!(stdout.contains("artifact capability: junit"));
+}
+
+#[test]
+fn adapter_validate_fails_closed_without_referenced_scenario() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["adapter", "validate"])
+        .arg(fixture(
+            "adapter-contracts/mappings/acceptance_evidence_mapping.yaml",
+        ))
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("acceptance.mappings[0].assertions[0].scenario"));
+    assert!(stderr.contains("missing supplied scenario generic_mqtt_retained_state"));
+}
+
+#[test]
+fn adapter_validate_escapes_control_characters_in_scenario_paths() {
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["adapter", "validate"])
+        .arg(fixture(
+            "adapter-contracts/mappings/acceptance_evidence_mapping.yaml",
+        ))
+        .arg("--scenario")
+        .arg("missing\n::error::forged.yaml")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains(r"missing\n::error::forged.yaml"));
+    assert!(!stderr.lines().any(|line| line == "::error::forged.yaml"));
+}
+
+#[test]
+fn adapter_validate_escapes_control_characters_in_successful_contract_paths() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let contract = tempdir.path().join("contract\n::notice::forged.yaml");
+    std::fs::copy(
+        fixture("adapter-contracts/examples/generic_mqtt_edge_device.yaml"),
+        &contract,
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["adapter", "validate"])
+        .arg(&contract)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains(r"contract\n::notice::forged.yaml"));
+    assert!(!stdout.lines().any(|line| line == "::notice::forged.yaml"));
+}
+
+#[test]
+fn adapter_validate_escapes_yaml_parser_diagnostics() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let contract = tempdir.path().join("invalid.yaml");
+    std::fs::write(
+        &contract,
+        r#"
+version: adapter.v1
+adapter: { name: invalid }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+  mappings:
+    - id: evidence-generated
+      criterion: Evidence is generated.
+      "unknown\n::error::forged": true
+"#,
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .args(["adapter", "validate"])
+        .arg(&contract)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains(r"unknown\n::error::forged"));
+    assert!(!stderr
+        .lines()
+        .any(|line| line.starts_with("::error::forged")));
+}
+
+#[test]
+fn adapter_validate_rejects_excessive_input_cardinality_before_io() {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_roomci"));
+    command.args(["adapter", "validate"]);
+    for _ in 0..65 {
+        command.arg("missing-contract.yaml");
+    }
+
+    let output = command.output().unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr)
+        .contains("at most 64 contract files and 64 scenario files"));
+}
+
+#[test]
 fn run_generates_reports_for_latest_local_first_scenario() {
     let tempdir = tempfile::tempdir().unwrap();
     let json = tempdir.path().join("roomci.json");

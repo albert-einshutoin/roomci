@@ -45,11 +45,13 @@ steps:
 
 assertions:
   - at: T+1s
+    name: retained_state_updated
     mqtt:
       topic: fleet/demo/site/lab/device/env_sensor_01/state
       retained:
         online: true
         sample_interval_seconds: 30
   - at: T+2s
+    name: local_broker_available
     target: mqtt.local
     condition: available

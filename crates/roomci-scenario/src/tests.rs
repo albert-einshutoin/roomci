@@ -2162,3 +2162,572 @@ fn rejects_out_of_range_duration() {
 
     assert!(matches!(error, ScenarioError::InvalidDuration(_)));
 }
+
+#[test]
+fn validates_scoped_acceptance_evidence_mapping() {
+    let contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: evidence-mapping }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Retained state is synchronized.]
+  report_formats: [json, junit]
+  mappings:
+    - id: retained-state-synchronized
+      criterion: Retained state is synchronized.
+      assertions:
+        - scenario: mqtt_smoke
+          assertion: retained_state_updated
+      artifacts: [json]
+"#,
+    )
+    .unwrap();
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario: { name: mqtt_smoke }
+assertions:
+  - at: T
+    name: retained_state_updated
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+
+    validate_adapter_scenario_mapping(&contract, &[scenario]).unwrap();
+}
+
+#[test]
+fn rejects_missing_scoped_assertion_reference_clearly() {
+    let contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: evidence-mapping }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Retained state is synchronized.]
+  report_formats: [json]
+  mappings:
+    - id: retained-state-synchronized
+      criterion: Retained state is synchronized.
+      assertions:
+        - scenario: mqtt_smoke
+          assertion: missing_assertion
+"#,
+    )
+    .unwrap();
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario: { name: mqtt_smoke }
+assertions:
+  - at: T
+    name: retained_state_updated
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+
+    assert!(matches!(
+        validate_adapter_scenario_mapping(&contract, &[scenario]),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("acceptance.mappings[0].assertions[0].assertion")
+                && message.contains("missing_assertion")
+    ));
+}
+
+#[test]
+fn rejects_duplicate_supplied_scenario_names() {
+    let contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: evidence-mapping }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+  mappings:
+    - id: evidence-generated
+      criterion: Evidence is generated.
+      artifacts: [json]
+"#,
+    )
+    .unwrap();
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario: { name: duplicate_scenario }
+assertions:
+  - at: T
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+
+    assert!(matches!(
+        validate_adapter_scenario_mapping(&contract, &[scenario.clone(), scenario]),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("duplicates scenario.name duplicate_scenario")
+    ));
+}
+
+#[test]
+fn rejects_undeclared_or_unsupported_acceptance_artifacts() {
+    for (artifact, expected) in [
+        ("junit", "not declared in acceptance.report_formats"),
+        ("vendor_pdf", "unsupported evidence artifact"),
+    ] {
+        let yaml = format!(
+            r#"
+version: adapter.v1
+adapter: {{ name: evidence-mapping }}
+edge:
+  commands:
+    - {{ name: run, source: evaluator, target: edge, expected_state: ready }}
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+  mappings:
+    - id: evidence-generated
+      criterion: Evidence is generated.
+      artifacts: [{artifact}]
+"#
+        );
+        let contract: AdapterContract = serde_yaml::from_str(&yaml).unwrap();
+        assert!(matches!(
+            validate_adapter_contract(&contract),
+            Err(ScenarioError::InvalidAdapterContract(message))
+                if message.contains(expected)
+        ));
+    }
+}
+
+#[test]
+fn acceptance_artifact_diagnostics_escape_untrusted_values() {
+    let contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: evidence-mapping }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+  mappings:
+    - id: evidence-generated
+      criterion: Evidence is generated.
+      artifacts: ["json\nforged"]
+"#,
+    )
+    .unwrap();
+
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains(r"json\nforged")
+                && !message.contains("json\nforged")
+    ));
+}
+
+#[test]
+fn rejects_multiple_stable_ids_for_one_acceptance_criterion() {
+    let contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: evidence-mapping }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+  mappings:
+    - { id: evidence-one, criterion: Evidence is generated., artifacts: [json] }
+    - { id: evidence-two, criterion: Evidence is generated., artifacts: [json] }
+"#,
+    )
+    .unwrap();
+
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("acceptance.mappings[1].criterion")
+                && message.contains("one stable id")
+    ));
+}
+
+#[test]
+fn rejects_duplicate_or_unsafe_named_assertions() {
+    for names in [("duplicate_id", "duplicate_id"), ("safe_id", "unsafe name")] {
+        let yaml = format!(
+            r#"
+version: "0.1"
+scenario: {{ name: named_assertions }}
+assertions:
+  - at: T
+    name: {}
+    guest_experience: unaffected
+  - at: T+1s
+    name: {}
+    guest_experience: unaffected
+"#,
+            names.0, names.1
+        );
+        let scenario: ScenarioFile = serde_yaml::from_str(&yaml).unwrap();
+        assert!(validate_scenario(&scenario).is_err());
+    }
+}
+
+#[test]
+fn validated_scenario_boundary_rejects_unsafe_or_duplicate_assertion_names() {
+    for names in [("safe_id", "unsafe name"), ("same_id", "same_id")] {
+        let yaml = format!(
+            r#"
+version: "0.1"
+scenario: {{ name: validated_boundary }}
+assertions:
+  - at: T
+    name: {}
+    guest_experience: unaffected
+  - at: T+1s
+    name: {}
+    guest_experience: unaffected
+"#,
+            names.0, names.1
+        );
+        let scenario: ScenarioFile = serde_yaml::from_str(&yaml).unwrap();
+        assert!(ValidatedScenario::try_from(&scenario).is_err());
+    }
+}
+
+#[test]
+fn validated_scenario_boundary_rejects_excessive_assertions() {
+    let mut scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario: { name: bounded_assertions }
+assertions:
+  - at: T
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+    scenario.assertions = vec![scenario.assertions[0].clone(); MAX_ASSERTIONS_PER_SCENARIO + 1];
+
+    assert!(matches!(
+        ValidatedScenario::try_from(&scenario),
+        Err(ScenarioError::ScenarioContract { field, reason })
+            if field == "assertions" && reason.contains("at most 4096")
+    ));
+}
+
+#[test]
+fn validated_scenario_boundary_accepts_maximum_assertions() {
+    let mut scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario: { name: maximum_assertions }
+assertions:
+  - at: T
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+    scenario.assertions = vec![scenario.assertions[0].clone(); MAX_ASSERTIONS_PER_SCENARIO];
+
+    ValidatedScenario::try_from(&scenario).unwrap();
+}
+
+#[test]
+fn mapped_acceptance_criteria_must_be_unique_non_empty_and_bounded() {
+    for criteria in [
+        "[Same criterion., Same criterion.]".to_string(),
+        "[\"\"]".to_string(),
+        format!("[\"{}\"]", "x".repeat(MAX_ACCEPTANCE_CRITERION_BYTES + 1)),
+    ] {
+        let yaml = format!(
+            r#"
+version: adapter.v1
+adapter: {{ name: evidence-mapping }}
+edge:
+  commands:
+    - {{ name: run, source: evaluator, target: edge, expected_state: ready }}
+acceptance:
+  criteria: {criteria}
+  report_formats: [json]
+  mappings:
+    - id: evidence
+      criterion: {}
+      artifacts: [json]
+"#,
+            if criteria == "[\"\"]" {
+                "\"\""
+            } else {
+                "Same criterion."
+            }
+        );
+        let contract: AdapterContract = serde_yaml::from_str(&yaml).unwrap();
+        assert!(validate_adapter_contract(&contract).is_err());
+    }
+}
+
+#[test]
+fn acceptance_collection_limits_accept_maximum_and_reject_one_more() {
+    let mut contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: collection-limits }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+
+    contract.acceptance.criteria = (0..MAX_ACCEPTANCE_CRITERIA)
+        .map(|index| format!("Criterion {index}."))
+        .collect();
+    validate_adapter_contract(&contract).unwrap();
+    contract
+        .acceptance
+        .criteria
+        .push("One too many.".to_string());
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("acceptance.criteria must contain at most")
+    ));
+
+    contract.acceptance.criteria = (0..MAX_ACCEPTANCE_MAPPINGS)
+        .map(|index| format!("Mapped criterion {index}."))
+        .collect();
+    contract.acceptance.mappings = contract
+        .acceptance
+        .criteria
+        .iter()
+        .enumerate()
+        .map(|(index, criterion)| AdapterAcceptanceMapping {
+            id: format!("criterion-{index}"),
+            criterion: criterion.clone(),
+            assertions: Vec::new(),
+            artifacts: vec!["json".to_string()],
+        })
+        .collect();
+    validate_adapter_contract(&contract).unwrap();
+    contract.acceptance.mappings.push(AdapterAcceptanceMapping {
+        id: "one-too-many".to_string(),
+        criterion: contract.acceptance.criteria[0].clone(),
+        assertions: Vec::new(),
+        artifacts: vec!["json".to_string()],
+    });
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("acceptance.mappings must contain at most")
+    ));
+}
+
+#[test]
+fn acceptance_reference_limits_accept_maximum_and_reject_one_more() {
+    let mut contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: reference-limits }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats:
+    - json
+    - markdown
+    - junit
+    - timeline-json
+    - timeline-ndjson
+    - observability-json
+    - github-summary
+  mappings:
+    - id: evidence-generated
+      criterion: Evidence is generated.
+      artifacts:
+        - json
+        - markdown
+        - junit
+        - timeline-json
+        - timeline-ndjson
+        - observability-json
+        - github-summary
+"#,
+    )
+    .unwrap();
+
+    validate_adapter_contract(&contract).unwrap();
+    contract.acceptance.mappings[0]
+        .artifacts
+        .push("json".to_string());
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("artifacts must contain at most")
+    ));
+
+    contract.acceptance.mappings[0].artifacts.clear();
+    contract.acceptance.mappings[0].assertions = (0..MAX_ASSERTION_REFERENCES_PER_MAPPING)
+        .map(|index| AdapterAssertionReference {
+            scenario: format!("scenario_{index}"),
+            assertion: "evidence".to_string(),
+        })
+        .collect();
+    validate_adapter_contract(&contract).unwrap();
+    contract.acceptance.mappings[0]
+        .assertions
+        .push(AdapterAssertionReference {
+            scenario: "one_too_many".to_string(),
+            assertion: "evidence".to_string(),
+        });
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("assertions must contain at most")
+    ));
+}
+
+#[test]
+fn mapping_scenario_limit_accepts_maximum_and_rejects_one_more() {
+    let contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: scenario-limits }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    let base_scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario: { name: scenario_0 }
+assertions:
+  - at: T
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+    let mut scenarios = (0..MAX_MAPPING_SCENARIOS)
+        .map(|index| {
+            let mut scenario = base_scenario.clone();
+            scenario.scenario.name = format!("scenario_{index}");
+            scenario
+        })
+        .collect::<Vec<_>>();
+
+    validate_adapter_scenario_mapping(&contract, &scenarios).unwrap();
+    let mut extra = base_scenario;
+    extra.scenario.name = "one_too_many".to_string();
+    scenarios.push(extra);
+    assert!(matches!(
+        validate_adapter_scenario_mapping(&contract, &scenarios),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("scenario inputs must contain at most")
+    ));
+}
+
+#[test]
+fn acceptance_report_formats_are_unique_and_bounded() {
+    let mut contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: maximum-report-formats }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    contract.acceptance.report_formats = (0..MAX_REPORT_FORMATS)
+        .map(|index| format!("format-{index}"))
+        .collect();
+    validate_adapter_contract(&contract).unwrap();
+
+    for report_formats in [
+        format!(
+            "[{}]",
+            (0..=MAX_REPORT_FORMATS)
+                .map(|index| format!("format-{index}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        format!("[\"{}\"]", "x".repeat(MAX_REPORT_FORMAT_BYTES + 1)),
+        "[json, json]".to_string(),
+    ] {
+        let yaml = format!(
+            r#"
+version: adapter.v1
+adapter: {{ name: bounded-reports }}
+edge:
+  commands:
+    - {{ name: run, source: evaluator, target: edge, expected_state: ready }}
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: {report_formats}
+"#
+        );
+        let contract: AdapterContract = serde_yaml::from_str(&yaml).unwrap();
+        assert!(validate_adapter_contract(&contract).is_err());
+    }
+}
+
+#[test]
+fn accepts_existing_hyphenated_evidence_artifact_vocabulary() {
+    let contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: evidence-mapping }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Timeline evidence is generated.]
+  report_formats: [timeline-json]
+  mappings:
+    - id: timeline-generated
+      criterion: Timeline evidence is generated.
+      artifacts: [timeline-json]
+"#,
+    )
+    .unwrap();
+
+    validate_adapter_contract(&contract).unwrap();
+}
+
+#[test]
+fn loader_rejects_oversized_yaml_before_deserialization() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let path = tempdir.path().join("oversized.yaml");
+    std::fs::write(&path, vec![b'x'; MAX_YAML_DOCUMENT_BYTES as usize + 1]).unwrap();
+
+    assert!(matches!(
+        load_scenario(&path),
+        Err(ScenarioError::Read { source, .. })
+            if source.kind() == std::io::ErrorKind::InvalidData
+                && source.to_string().contains("exceeds")
+    ));
+}

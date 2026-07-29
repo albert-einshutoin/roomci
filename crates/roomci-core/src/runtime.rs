@@ -196,8 +196,13 @@ impl RuntimeState {
                 }
                 Ok(None)
             }
-            ValidatedEventKind::Assertion(assertion) => {
-                Ok(Some(self.evaluate_assertion(assertion)))
+            ValidatedEventKind::Assertion {
+                reference_id,
+                assertion,
+            } => {
+                let mut result = self.evaluate_assertion(assertion);
+                result.reference_id.clone_from(reference_id);
+                Ok(Some(result))
             }
         }
     }
@@ -731,6 +736,7 @@ impl RuntimeState {
             message.clone(),
         );
         self.runtime_failures.push(AssertionResult {
+            reference_id: None,
             name: "mqtt_publish_contract".to_string(),
             assertion_type: "mqtt_contract".to_string(),
             passed: false,

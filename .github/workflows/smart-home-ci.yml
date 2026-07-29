@@ -90,9 +90,10 @@ jobs:
       - name: Validate adapter contracts
         run: |
           docker run --rm --entrypoint /bin/sh \
-            -v $PWD/adapter-contracts:/adapter-contracts:ro \
+            -v "$PWD/adapter-contracts:/adapter-contracts:ro" \
+            -v "$PWD/examples:/scenarios:ro" \
             roomci:ci \
-            -c "roomci adapter validate /adapter-contracts/templates/company_adapter_contract.yaml /adapter-contracts/examples/*.yaml"
+            -c "roomci adapter validate /adapter-contracts/templates/company_adapter_contract.yaml /adapter-contracts/examples/*.yaml && roomci adapter validate /adapter-contracts/mappings/acceptance_evidence_mapping.yaml --scenario /scenarios/generic_mqtt_retained_state.yaml"
 
       - name: Validate public scenarios
         run: |

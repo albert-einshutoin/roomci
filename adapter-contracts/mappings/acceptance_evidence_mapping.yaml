@@ -1,0 +1,46 @@
+version: adapter.v1
+adapter:
+  name: acceptance-evidence-mapping
+  domain_pack: generic-mqtt
+  owner: roomci
+devices:
+  - id: env_sensor_01
+    type: sensor
+    protocol: mqtt
+mqtt:
+  contracts:
+    - name: generic_device_retained_state
+      adapter: mqtt_v3_qos0_subset
+      command_topic: fleet/demo/site/lab/device/{device_id}/command
+      state_topic: fleet/demo/site/lab/device/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+      payload:
+        required_fields: [online, sample_interval_seconds]
+        optional_fields: [mode]
+        fields:
+          online:
+            type: boolean
+          sample_interval_seconds:
+            type: integer
+            minimum: 1
+          mode:
+            type: string
+            enum: [normal, low_power]
+acceptance:
+  criteria:
+    - A command updates retained state for the addressed device.
+    - The local MQTT surface remains available.
+  report_formats: [json, markdown, junit]
+  mappings:
+    - id: retained-state-synchronized
+      criterion: A command updates retained state for the addressed device.
+      assertions:
+        - scenario: generic_mqtt_retained_state
+          assertion: retained_state_updated
+      artifacts: [json, junit]
+    - id: local-broker-available
+      criterion: The local MQTT surface remains available.
+      assertions:
+        - scenario: generic_mqtt_retained_state
+          assertion: local_broker_available
+      artifacts: [markdown]

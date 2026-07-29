@@ -344,7 +344,11 @@ pub fn to_markdown(report: &RunReport) -> String {
         output.push_str("None.\n\n");
     } else {
         for assertion in &failed {
-            output.push_str(&format!("- `{}`: {}\n", assertion.name, assertion.message));
+            output.push_str(&format!(
+                "- `{}`: {}\n",
+                evidence_assertion_name(assertion),
+                assertion.message
+            ));
             if let Some(message) = &assertion.impact_message {
                 output.push_str(&format!("  Guest impact: {}\n", message));
             }
@@ -357,7 +361,7 @@ pub fn to_markdown(report: &RunReport) -> String {
         output.push_str(&format!(
             "- [{}] `{}` — {}\n",
             if assertion.passed { "pass" } else { "fail" },
-            assertion.name,
+            evidence_assertion_name(assertion),
             assertion.message
         ));
     }
@@ -431,7 +435,7 @@ fn testcase_xml(assertion: &AssertionResult) -> String {
     let mut output = String::new();
     output.push_str(&format!(
         "  <testcase classname=\"roomci\" name=\"{}\">",
-        escape_xml(&assertion.name)
+        escape_xml(&evidence_assertion_name(assertion))
     ));
     if assertion.passed {
         output.push_str("</testcase>\n");
@@ -448,6 +452,14 @@ fn testcase_xml(assertion: &AssertionResult) -> String {
         ));
     }
     output
+}
+
+fn evidence_assertion_name(assertion: &AssertionResult) -> String {
+    assertion
+        .reference_id
+        .as_deref()
+        .map(|reference_id| format!("{reference_id} ({})", assertion.name))
+        .unwrap_or_else(|| assertion.name.clone())
 }
 
 fn timeline_export_event(
@@ -569,6 +581,7 @@ mod tests {
         let mut failed_assertions = Vec::new();
         for index in 0..21 {
             failed_assertions.push(AssertionResult {
+                reference_id: None,
                 name: format!("failure-{index}"),
                 assertion_type: "state_equals".to_string(),
                 passed: false,
@@ -636,6 +649,7 @@ mod tests {
             result: RunResult::Failed,
             timeline: vec![],
             assertions: vec![AssertionResult {
+                reference_id: None,
                 name: "failure`name\nnext".to_string(),
                 assertion_type: "state_equals".to_string(),
                 passed: false,
@@ -693,6 +707,7 @@ mod tests {
             result: RunResult::Failed,
             timeline: vec![],
             assertions: vec![AssertionResult {
+                reference_id: None,
                 name: unsafe_text.clone(),
                 assertion_type: "state_equals".to_string(),
                 passed: false,
@@ -757,6 +772,18 @@ mod tests {
     }
 
     #[test]
+    fn renders_stable_assertion_reference_without_losing_diagnostic_name() {
+        let scenario = load_scenario(fixture("examples/generic_mqtt_retained_state.yaml")).unwrap();
+        let report = run_scenario(&scenario).unwrap();
+
+        let markdown = to_markdown(&report);
+        let junit = to_junit(&report);
+
+        assert!(markdown.contains("`retained_state_updated (mqtt_retained:"));
+        assert!(junit.contains("name=\"retained_state_updated (mqtt_retained:"));
+    }
+
+    #[test]
     fn renders_markdown_timeline_for_latest_scenario() {
         let scenario = load_scenario(fixture("examples/local_first_cloud_outage.yaml")).unwrap();
         let report = run_scenario(&scenario).unwrap();
@@ -816,6 +843,7 @@ mod tests {
             result: RunResult::Failed,
             timeline: vec![],
             assertions: vec![AssertionResult {
+                reference_id: None,
                 name: "room-temperature".to_string(),
                 assertion_type: "guest_visibility".to_string(),
                 passed: false,
@@ -842,6 +870,7 @@ mod tests {
             result: RunResult::Failed,
             timeline: vec![],
             assertions: vec![AssertionResult {
+                reference_id: None,
                 name: "bad&name\nx\0y\tz\rq<'\">".to_string(),
                 assertion_type: "guest_visibility".to_string(),
                 passed: true,

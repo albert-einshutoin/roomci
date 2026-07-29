@@ -12,6 +12,11 @@ not as separately published calendar releases.
 
 ### Added
 
+- Backward-compatible acceptance-to-evidence mappings with stable criterion
+  ids, scoped named-assertion validation, artifact capability checks, and
+  report reference ids (#7). Adapter YAML remains wire-compatible; the new
+  fields on pre-1.0 public Rust structs require downstream struct literals to
+  be updated.
 - Actionable MQTT topic identity diagnostics with contract-specific field paths,
   exact `{device_id}` placeholder checks, command/state placeholder consistency,
   and an explicit `placeholder:{device_id}` strategy boundary (#5).

@@ -836,3 +836,32 @@ fn commissioning_checklist_generation_passes() {
             && assertion.message.contains("2 commissioning checks")
     }));
 }
+
+#[test]
+fn named_assertion_keeps_diagnostic_name_and_evidence_reference() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario: { name: named_assertion_evidence }
+mqtt:
+  local: { enabled: true }
+assertions:
+  - at: T
+    name: local_broker_available
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let report = run_scenario(&scenario).unwrap();
+    let assertion = &report.assertions[0];
+    assert_eq!(
+        assertion.reference_id.as_deref(),
+        Some("local_broker_available")
+    );
+    assert_eq!(assertion.name, "mqtt.local");
+    assert!(serde_json::to_value(&report).unwrap()["assertions"][0]
+        .get("reference_id")
+        .is_some());
+}

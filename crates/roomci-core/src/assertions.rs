@@ -31,6 +31,7 @@ fn evaluate_mqtt_retained(
     let actual = runtime.broker.retained().get(mqtt.topic.as_str());
     let passed = actual == Some(&expected);
     AssertionResult {
+        reference_id: None,
         name: format!("mqtt_retained:{}", mqtt.topic),
         assertion_type: "mqtt_retained".to_string(),
         passed,
@@ -75,6 +76,7 @@ fn evaluate_modbus_register(
         false
     };
     AssertionResult {
+        reference_id: None,
         name: format!("modbus:{}:{}", modbus.device, modbus.register),
         assertion_type: "modbus_register".to_string(),
         passed,
@@ -103,6 +105,7 @@ fn evaluate_guest_experience_field(
     let local_ok = runtime.broker.is_online("mqtt.local");
     let passed = condition == Condition::Unaffected && local_ok;
     AssertionResult {
+        reference_id: None,
         name: "guest_experience".to_string(),
         assertion_type: "guest_experience".to_string(),
         passed,
@@ -130,6 +133,7 @@ fn evaluate_ops(
 ) -> AssertionResult {
     match runtime.ops.evaluate_assertion(ops) {
         Ok(outcome) => AssertionResult {
+            reference_id: None,
             name: "ops".to_string(),
             assertion_type: "ops".to_string(),
             passed: outcome.passed,
@@ -150,6 +154,7 @@ fn evaluate_ops(
             },
         },
         Err(error) => AssertionResult {
+            reference_id: None,
             name: "ops".to_string(),
             assertion_type: "ops".to_string(),
             passed: false,
@@ -181,6 +186,7 @@ fn evaluate_target_condition(
                 .unwrap_or(true);
             let passed = status_passed && timing_passed;
             AssertionResult {
+                reference_id: None,
                 name: "edge.secondary".to_string(),
                 assertion_type: "edge_state".to_string(),
                 passed,
@@ -208,6 +214,7 @@ fn evaluate_target_condition(
             let passed =
                 *condition == Condition::Available && runtime.broker.is_online("mqtt.local");
             AssertionResult {
+                reference_id: None,
                 name: "mqtt.local".to_string(),
                 assertion_type: "broker_state".to_string(),
                 passed,
@@ -244,6 +251,7 @@ fn evaluate_target_condition(
                 .unwrap_or(true);
             let passed = status_passed && timing_passed;
             AssertionResult {
+                reference_id: None,
                 name: "wan.backup".to_string(),
                 assertion_type: "wan_failover".to_string(),
                 passed,
@@ -270,6 +278,7 @@ fn evaluate_target_condition(
             let target = "living_area.discomfort_index";
             let passed = runtime.evaluate_between_condition(target, *condition);
             AssertionResult {
+                reference_id: None,
                 name: target.to_string(),
                 assertion_type: "comfort_metric".to_string(),
                 passed,
@@ -294,6 +303,7 @@ fn evaluate_target_condition(
             let target = "user_override";
             let passed = *condition == Condition::False && runtime.comfort.user_override_count == 0;
             AssertionResult {
+                reference_id: None,
                 name: target.to_string(),
                 assertion_type: "comfort_user_override".to_string(),
                 passed,
@@ -319,6 +329,7 @@ fn evaluate_target_condition(
                 && runtime.broker.is_online("mqtt.local")
                 && runtime.edge.active_id().is_some();
             AssertionResult {
+                reference_id: None,
                 name: "guest_experience".to_string(),
                 assertion_type: "guest_experience".to_string(),
                 passed,
@@ -376,6 +387,7 @@ fn evaluate_scene_consistency(runtime: &RuntimeState, scene: &str) -> AssertionR
         Ok(failures) => failures,
         Err(_) => {
             return AssertionResult {
+                reference_id: None,
                 name: format!("scene_consistency:{scene}"),
                 assertion_type: "scene_consistency".to_string(),
                 passed: false,
@@ -387,6 +399,7 @@ fn evaluate_scene_consistency(runtime: &RuntimeState, scene: &str) -> AssertionR
     };
     let passed = failures.is_empty();
     AssertionResult {
+        reference_id: None,
         name: format!("scene_consistency:{scene}"),
         assertion_type: "scene_consistency".to_string(),
         passed,
@@ -414,6 +427,7 @@ fn evaluate_scene_consistency(runtime: &RuntimeState, scene: &str) -> AssertionR
 fn evaluate_access_control_drift(runtime: &RuntimeState) -> AssertionResult {
     let passed = !runtime.access.unexpected_users.is_empty();
     AssertionResult {
+        reference_id: None,
         name: "access_control_drift".to_string(),
         assertion_type: "access_control_drift".to_string(),
         passed,
@@ -461,6 +475,7 @@ fn evaluate_network_control_panel_faults(runtime: &RuntimeState) -> AssertionRes
             state.get("bms_evidence").and_then(|value| value.as_str()) == Some("recorded")
         });
     AssertionResult {
+        reference_id: None,
         name: "network_control_panel_faults".to_string(),
         assertion_type: "network_control_panel_faults".to_string(),
         passed,
@@ -494,6 +509,7 @@ fn evaluate_comfort_timeseries(runtime: &RuntimeState) -> AssertionResult {
     let has_comfort_state = runtime.states.keys().any(|key| key.starts_with("comfort."));
     let passed = reading_count >= 2 && has_comfort_state;
     AssertionResult {
+        reference_id: None,
         name: "comfort_timeseries".to_string(),
         assertion_type: "comfort_timeseries".to_string(),
         passed,
@@ -536,6 +552,7 @@ fn evaluate_intercom_relay_evidence(runtime: &RuntimeState) -> AssertionResult {
         });
     let passed = has_intercom_event && has_relay_request && !real_unlock_controlled;
     AssertionResult {
+        reference_id: None,
         name: "intercom_relay_safe_evidence".to_string(),
         assertion_type: "intercom_relay_safe_evidence".to_string(),
         passed,
@@ -561,6 +578,7 @@ fn evaluate_intercom_relay_evidence(runtime: &RuntimeState) -> AssertionResult {
 fn evaluate_commissioning_checklist(runtime: &RuntimeState) -> AssertionResult {
     let passed = runtime.commissioning.check_count > 0;
     AssertionResult {
+        reference_id: None,
         name: "commissioning_checklist".to_string(),
         assertion_type: "commissioning_checklist".to_string(),
         passed,
