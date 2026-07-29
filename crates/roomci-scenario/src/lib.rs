@@ -8,7 +8,8 @@
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
-    fs,
+    fs::File,
+    io::Read,
     path::Path,
 };
 
@@ -24,6 +25,26 @@ const MAX_MQTT_PAYLOAD_ENUM_VALUES: usize = 128;
 const MAX_MQTT_PAYLOAD_ENUM_VALUE_BYTES: usize = 16 * 1024;
 const MAX_MQTT_CONTRACT_NAME_BYTES: usize = 128;
 const MAX_DIAGNOSTIC_VALUE_CHARS: usize = 256;
+const MAX_EVIDENCE_ID_BYTES: usize = 128;
+const MAX_YAML_DOCUMENT_BYTES: u64 = 4 * 1024 * 1024;
+const MAX_ACCEPTANCE_CRITERIA: usize = 256;
+const MAX_ACCEPTANCE_CRITERION_BYTES: usize = 4096;
+const MAX_ACCEPTANCE_MAPPINGS: usize = 256;
+const MAX_ASSERTION_REFERENCES_PER_MAPPING: usize = 256;
+const MAX_ARTIFACT_REFERENCES_PER_MAPPING: usize = 16;
+const MAX_REPORT_FORMATS: usize = 16;
+const MAX_REPORT_FORMAT_BYTES: usize = 64;
+const MAX_MAPPING_SCENARIOS: usize = 256;
+const MAX_ASSERTIONS_PER_SCENARIO: usize = 4096;
+const SUPPORTED_EVIDENCE_ARTIFACTS: &[&str] = &[
+    "json",
+    "markdown",
+    "junit",
+    "timeline-json",
+    "timeline-ndjson",
+    "observability-json",
+    "github-summary",
+];
 
 mod schema;
 mod validated;
@@ -39,11 +60,8 @@ pub enum ScenarioError {
         path: String,
         source: std::io::Error,
     },
-    #[error("failed to parse scenario {path}: {source}")]
-    Parse {
-        path: String,
-        source: serde_yaml::Error,
-    },
+    #[error("failed to parse scenario {path}: {reason}")]
+    Parse { path: String, reason: String },
     #[error("invalid relative time expression {0}")]
     InvalidRelativeTime(String),
     #[error("invalid duration {0}")]
@@ -359,29 +377,47 @@ fn mqtt_runtime_topic_is_valid(topic: &str) -> bool {
 /// actionable error messages.
 pub fn load_scenario(path: impl AsRef<Path>) -> Result<ScenarioFile, ScenarioError> {
     let path_ref = path.as_ref();
-    let path_display = path_ref.display().to_string();
-    let contents = fs::read_to_string(path_ref).map_err(|source| ScenarioError::Read {
-        path: path_display.clone(),
-        source,
-    })?;
+    let path_display = sanitize_diagnostic_value(&path_ref.display().to_string());
+    let contents = read_bounded_yaml(path_ref, &path_display)?;
     serde_yaml::from_str(&contents).map_err(|source| ScenarioError::Parse {
         path: path_display,
-        source,
+        reason: sanitize_diagnostic_value(&source.to_string()),
     })
 }
 
 /// Read a company adapter contract YAML file from disk and deserialize it.
 pub fn load_adapter_contract(path: impl AsRef<Path>) -> Result<AdapterContract, ScenarioError> {
     let path_ref = path.as_ref();
-    let path_display = path_ref.display().to_string();
-    let contents = fs::read_to_string(path_ref).map_err(|source| ScenarioError::Read {
-        path: path_display.clone(),
-        source,
-    })?;
+    let path_display = sanitize_diagnostic_value(&path_ref.display().to_string());
+    let contents = read_bounded_yaml(path_ref, &path_display)?;
     serde_yaml::from_str(&contents).map_err(|source| ScenarioError::Parse {
         path: path_display,
-        source,
+        reason: sanitize_diagnostic_value(&source.to_string()),
     })
+}
+
+fn read_bounded_yaml(path: &Path, path_display: &str) -> Result<String, ScenarioError> {
+    let file = File::open(path).map_err(|source| ScenarioError::Read {
+        path: path_display.to_string(),
+        source,
+    })?;
+    let mut contents = String::new();
+    file.take(MAX_YAML_DOCUMENT_BYTES + 1)
+        .read_to_string(&mut contents)
+        .map_err(|source| ScenarioError::Read {
+            path: path_display.to_string(),
+            source,
+        })?;
+    if contents.len() as u64 > MAX_YAML_DOCUMENT_BYTES {
+        return Err(ScenarioError::Read {
+            path: path_display.to_string(),
+            source: std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("YAML document exceeds {MAX_YAML_DOCUMENT_BYTES} bytes"),
+            ),
+        });
+    }
+    Ok(contents)
 }
 
 /// Validate a company adapter contract before it is used to map private specs.
@@ -503,7 +539,213 @@ pub fn validate_adapter_contract(contract: &AdapterContract) -> Result<(), Scena
             "acceptance.report_formats must declare at least one report format".to_string(),
         ));
     }
+    validate_acceptance_mappings(&contract.acceptance)?;
 
+    Ok(())
+}
+
+fn validate_acceptance_mappings(acceptance: &AdapterAcceptance) -> Result<(), ScenarioError> {
+    if acceptance.criteria.len() > MAX_ACCEPTANCE_CRITERIA {
+        return Err(ScenarioError::InvalidAdapterContract(format!(
+            "acceptance.criteria must contain at most {MAX_ACCEPTANCE_CRITERIA} entries"
+        )));
+    }
+    if acceptance.mappings.len() > MAX_ACCEPTANCE_MAPPINGS {
+        return Err(ScenarioError::InvalidAdapterContract(format!(
+            "acceptance.mappings must contain at most {MAX_ACCEPTANCE_MAPPINGS} entries"
+        )));
+    }
+    if acceptance.report_formats.len() > MAX_REPORT_FORMATS {
+        return Err(ScenarioError::InvalidAdapterContract(format!(
+            "acceptance.report_formats must contain at most {MAX_REPORT_FORMATS} entries"
+        )));
+    }
+    let mut report_formats = BTreeSet::new();
+    for (index, report_format) in acceptance.report_formats.iter().enumerate() {
+        if report_format.is_empty()
+            || report_format.len() > MAX_REPORT_FORMAT_BYTES
+            || report_format.chars().any(char::is_control)
+        {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "acceptance.report_formats[{index}] must be non-empty, control-free, and at most {MAX_REPORT_FORMAT_BYTES} bytes"
+            )));
+        }
+        if !report_formats.insert(report_format.as_str()) {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "acceptance.report_formats[{index}] duplicates report format"
+            )));
+        }
+    }
+    if !acceptance.mappings.is_empty() {
+        let mut criteria = BTreeSet::new();
+        for (index, criterion) in acceptance.criteria.iter().enumerate() {
+            if criterion.trim().is_empty()
+                || criterion.len() > MAX_ACCEPTANCE_CRITERION_BYTES
+                || criterion.chars().any(char::is_control)
+            {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "acceptance.criteria[{index}] must be non-empty, control-free, and at most {MAX_ACCEPTANCE_CRITERION_BYTES} bytes when mappings are declared"
+                )));
+            }
+            if !criteria.insert(criterion.as_str()) {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "acceptance.criteria[{index}] duplicates acceptance criterion"
+                )));
+            }
+        }
+    }
+    let mut mapping_ids = BTreeSet::new();
+    let mut mapped_criteria = BTreeSet::new();
+    for (index, mapping) in acceptance.mappings.iter().enumerate() {
+        let path = format!("acceptance.mappings[{index}]");
+        validate_evidence_id(&format!("{path}.id"), &mapping.id)?;
+        if !mapping_ids.insert(mapping.id.as_str()) {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "{path}.id duplicates acceptance mapping id {}",
+                mapping.id
+            )));
+        }
+        if !acceptance.criteria.contains(&mapping.criterion) {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "{path}.criterion does not match any acceptance.criteria entry"
+            )));
+        }
+        if !mapped_criteria.insert(mapping.criterion.as_str()) {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "{path}.criterion duplicates a mapped acceptance criterion; combine its evidence references under one stable id"
+            )));
+        }
+        if mapping.assertions.is_empty() && mapping.artifacts.is_empty() {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "{path} must reference at least one assertion or artifact"
+            )));
+        }
+        if mapping.assertions.len() > MAX_ASSERTION_REFERENCES_PER_MAPPING {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "{path}.assertions must contain at most {MAX_ASSERTION_REFERENCES_PER_MAPPING} entries"
+            )));
+        }
+        if mapping.artifacts.len() > MAX_ARTIFACT_REFERENCES_PER_MAPPING {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "{path}.artifacts must contain at most {MAX_ARTIFACT_REFERENCES_PER_MAPPING} entries"
+            )));
+        }
+
+        let mut assertion_refs = BTreeSet::new();
+        for (reference_index, reference) in mapping.assertions.iter().enumerate() {
+            let reference_path = format!("{path}.assertions[{reference_index}]");
+            if reference.scenario.len() > MAX_EVIDENCE_ID_BYTES
+                || validate_scenario_name(&reference.scenario).is_err()
+            {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "{reference_path}.scenario must be at most {MAX_EVIDENCE_ID_BYTES} bytes and match ^[a-z0-9][a-z0-9_]*$"
+                )));
+            }
+            validate_evidence_id(&format!("{reference_path}.assertion"), &reference.assertion)?;
+            if !assertion_refs.insert(reference) {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "{reference_path} duplicates assertion reference {}:{}",
+                    reference.scenario, reference.assertion
+                )));
+            }
+        }
+
+        let mut artifacts = BTreeSet::new();
+        for (artifact_index, artifact) in mapping.artifacts.iter().enumerate() {
+            let artifact_path = format!("{path}.artifacts[{artifact_index}]");
+            if !SUPPORTED_EVIDENCE_ARTIFACTS.contains(&artifact.as_str()) {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "{artifact_path} uses unsupported evidence artifact {}",
+                    sanitize_diagnostic_value(artifact)
+                )));
+            }
+            if !report_formats.contains(artifact.as_str()) {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "{artifact_path} references {}, which is not declared in acceptance.report_formats",
+                    sanitize_diagnostic_value(artifact)
+                )));
+            }
+            if !artifacts.insert(artifact.as_str()) {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "{artifact_path} duplicates evidence artifact {artifact}"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_evidence_id(field: &str, value: &str) -> Result<(), ScenarioError> {
+    let valid = !value.is_empty()
+        && value.len() <= MAX_EVIDENCE_ID_BYTES
+        && value.bytes().enumerate().all(|(index, byte)| {
+            byte.is_ascii_lowercase()
+                || byte.is_ascii_digit()
+                || (index > 0 && matches!(byte, b'_' | b'-'))
+        });
+    if valid {
+        Ok(())
+    } else {
+        Err(ScenarioError::InvalidAdapterContract(format!(
+            "{field} must be at most {MAX_EVIDENCE_ID_BYTES} bytes and match ^[a-z0-9][a-z0-9_-]*$"
+        )))
+    }
+}
+
+/// Cross-check adapter evidence references against explicitly supplied
+/// scenarios. This does not claim artifacts already exist; it only proves the
+/// referenced assertion IDs and declared artifact kinds are resolvable.
+pub fn validate_adapter_scenario_mapping(
+    contract: &AdapterContract,
+    scenarios: &[ScenarioFile],
+) -> Result<(), ScenarioError> {
+    validate_adapter_contract(contract)?;
+    if scenarios.len() > MAX_MAPPING_SCENARIOS {
+        return Err(ScenarioError::InvalidAdapterContract(format!(
+            "scenario inputs must contain at most {MAX_MAPPING_SCENARIOS} entries"
+        )));
+    }
+
+    let mut assertion_index = BTreeMap::<&str, BTreeSet<&str>>::new();
+    for scenario in scenarios {
+        validate_assertion_count(&scenario.assertions)?;
+        validate_scenario(scenario)?;
+        let names = scenario
+            .assertions
+            .iter()
+            .filter_map(|assertion| assertion.name.as_deref())
+            .collect::<BTreeSet<_>>();
+        if assertion_index
+            .insert(scenario.scenario.name.as_str(), names)
+            .is_some()
+        {
+            return Err(ScenarioError::InvalidAdapterContract(format!(
+                "scenario input duplicates scenario.name {}",
+                sanitize_diagnostic_value(&scenario.scenario.name)
+            )));
+        }
+    }
+
+    for (mapping_index, mapping) in contract.acceptance.mappings.iter().enumerate() {
+        for (reference_index, reference) in mapping.assertions.iter().enumerate() {
+            let path =
+                format!("acceptance.mappings[{mapping_index}].assertions[{reference_index}]");
+            let assertions = assertion_index
+                .get(reference.scenario.as_str())
+                .ok_or_else(|| {
+                    ScenarioError::InvalidAdapterContract(format!(
+                        "{path}.scenario references missing supplied scenario {}",
+                        reference.scenario
+                    ))
+                })?;
+            if !assertions.contains(reference.assertion.as_str()) {
+                return Err(ScenarioError::InvalidAdapterContract(format!(
+                    "{path}.assertion references missing named assertion {} in scenario {}",
+                    reference.assertion, reference.scenario
+                )));
+            }
+        }
+    }
     Ok(())
 }
 
@@ -613,16 +855,45 @@ fn require_non_empty(field: &str, value: &str) -> Result<(), ScenarioError> {
 /// Called by `roomci-core::run_scenario` before execution; callers can also
 /// invoke it directly for a `--dry-run`-style validation pass.
 pub fn validate_scenario(scenario: &ScenarioFile) -> Result<(), ScenarioError> {
-    validate_scenario_name(&scenario.scenario.name)?;
-    if scenario.assertions.is_empty() {
+    ValidatedScenario::try_from(scenario).map(|_| ())
+}
+
+pub(crate) fn validate_assertion_names(
+    assertions: &[AssertionDefinition],
+) -> Result<(), ScenarioError> {
+    let mut assertion_names = BTreeSet::new();
+    for (index, assertion) in assertions.iter().enumerate() {
+        let Some(name) = assertion.name.as_deref() else {
+            continue;
+        };
+        if validate_evidence_id(&format!("assertions[{index}].name"), name).is_err() {
+            return Err(ScenarioError::ScenarioContract {
+                field: format!("assertions[{index}].name"),
+                reason: format!(
+                    "must be at most {MAX_EVIDENCE_ID_BYTES} bytes and match ^[a-z0-9][a-z0-9_-]*$"
+                ),
+            });
+        }
+        if !assertion_names.insert(name) {
+            return Err(ScenarioError::ScenarioContract {
+                field: format!("assertions[{index}].name"),
+                reason: format!("duplicates named assertion {name}"),
+            });
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_assertion_count(
+    assertions: &[AssertionDefinition],
+) -> Result<(), ScenarioError> {
+    if assertions.len() > MAX_ASSERTIONS_PER_SCENARIO {
         return Err(ScenarioError::ScenarioContract {
             field: "assertions".to_string(),
-            reason: "must contain at least one assertion item".to_string(),
+            reason: format!("must contain at most {MAX_ASSERTIONS_PER_SCENARIO} items"),
         });
     }
-
-    validate_scenario_version(&scenario.version)?;
-    ValidatedScenario::try_from(scenario).map(|_| ())
+    Ok(())
 }
 
 fn validate_scenario_name(name: &str) -> Result<(), ScenarioError> {
@@ -1189,7 +1460,8 @@ fn invalid_mqtt_contract_topic<T>(
     })
 }
 
-pub(crate) fn sanitize_diagnostic_value(value: &str) -> String {
+/// Escape and bound untrusted text before embedding it in CLI diagnostics.
+pub fn sanitize_diagnostic_value(value: &str) -> String {
     let mut sanitized = String::new();
     let mut characters = value.chars();
     for character in characters.by_ref().take(MAX_DIAGNOSTIC_VALUE_CHARS) {

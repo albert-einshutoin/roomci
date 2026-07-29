@@ -92,6 +92,10 @@ pub struct TimelineEvent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct AssertionResult {
     pub name: String,
+    /// Stable source assertion name used by adapter acceptance mappings.
+    /// Kept separate from `name`, which carries runtime diagnostic context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference_id: Option<String>,
     pub assertion_type: String,
     pub passed: bool,
     pub message: String,

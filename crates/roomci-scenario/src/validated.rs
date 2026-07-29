@@ -7,10 +7,11 @@ use roomci_ops::OpsModel;
 
 use crate::{
     parse_duration, resolve_time_offset, typed_assertion_kind, typed_fault_kind, typed_step_kind,
-    validate_scenario_name, validate_scenario_version, yaml_map_to_json, AssertionDefinition,
-    CommandStep, FaultStep, InlineAssertionKind, IntercomStep, ModbusAssertion, ModbusWriteStep,
-    MqttAssertion, MqttPublishStep, ScenarioError, ScenarioFile, SensorReadingStep,
-    TargetConditionAssertion, TypedAssertionKind, TypedFaultKind, TypedStepKind,
+    validate_assertion_count, validate_assertion_names, validate_scenario_name,
+    validate_scenario_version, yaml_map_to_json, AssertionDefinition, CommandStep, FaultStep,
+    InlineAssertionKind, IntercomStep, ModbusAssertion, ModbusWriteStep, MqttAssertion,
+    MqttPublishStep, ScenarioError, ScenarioFile, SensorReadingStep, TargetConditionAssertion,
+    TypedAssertionKind, TypedFaultKind, TypedStepKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -208,6 +209,7 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
     type Error = ScenarioError;
 
     fn try_from(scenario: &ScenarioFile) -> Result<Self, Self::Error> {
+        validate_assertion_count(&scenario.assertions)?;
         validate_scenario_version(&scenario.version)?;
         validate_scenario_name(&scenario.scenario.name)?;
         if scenario.assertions.is_empty() {
@@ -216,6 +218,7 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
                 reason: "must contain at least one assertion item".to_string(),
             });
         }
+        validate_assertion_names(&scenario.assertions)?;
 
         let modbus = ModbusModel::try_from_config(&scenario.modbus)?;
         let scene_targets = scenario
@@ -275,7 +278,11 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
         for assertion in &scenario.assertions {
             let at = resolve_time_offset(&assertion.at)?;
             let kind = ValidatedAssertionKind::try_from_assertion(assertion, &modbus, &lighting)?;
-            scheduled_events.push(ValidatedScheduledEvent::assertion(at, kind));
+            scheduled_events.push(ValidatedScheduledEvent::assertion(
+                at,
+                assertion.name.clone(),
+                kind,
+            ));
         }
 
         scheduled_events.sort_by_key(|event| (event.at.num_milliseconds(), event.order));
@@ -339,11 +346,18 @@ impl ValidatedScheduledEvent {
         }
     }
 
-    fn assertion(at: Duration, assertion: ValidatedAssertionKind) -> Self {
+    fn assertion(
+        at: Duration,
+        reference_id: Option<String>,
+        assertion: ValidatedAssertionKind,
+    ) -> Self {
         Self {
             at,
             order: 1,
-            kind: ValidatedEventKind::Assertion(assertion),
+            kind: ValidatedEventKind::Assertion {
+                reference_id,
+                assertion,
+            },
         }
     }
 
@@ -360,7 +374,10 @@ impl ValidatedScheduledEvent {
 pub enum ValidatedEventKind {
     GlobalFault(ValidatedFaultKind),
     Step(ValidatedStepKind),
-    Assertion(ValidatedAssertionKind),
+    Assertion {
+        reference_id: Option<String>,
+        assertion: ValidatedAssertionKind,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

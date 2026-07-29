@@ -37,8 +37,8 @@ use roomci_report::{
     GITHUB_SUMMARY_MAX_FAILED_ASSERTIONS,
 };
 use roomci_scenario::{
-    load_adapter_contract, load_scenario, validate_adapter_contract, validate_scenario,
-    yaml_map_to_json, ScenarioFile,
+    load_adapter_contract, load_scenario, sanitize_diagnostic_value,
+    validate_adapter_scenario_mapping, validate_scenario, yaml_map_to_json, ScenarioFile,
 };
 use roomci_serve::{run_serve, ServeOptions};
 use serde::Serialize;
@@ -166,6 +166,9 @@ enum AdapterCommand {
     Validate {
         #[arg(required = true)]
         contracts: Vec<PathBuf>,
+        /// Scenario files containing named assertions referenced by mappings.
+        #[arg(long = "scenario", value_name = "PATH")]
+        scenarios: Vec<PathBuf>,
     },
 }
 
@@ -186,6 +189,8 @@ enum CliError {
     },
     #[error("serve error: {0}")]
     Serve(String),
+    #[error("adapter validation input limit exceeded: {0}")]
+    AdapterInputLimit(String),
 }
 
 fn main() -> ExitCode {
@@ -252,12 +257,49 @@ fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
             debug_md,
         } => debug_scenario(&scenario, debug_json.as_deref(), debug_md.as_deref()),
         Command::Adapter {
-            command: AdapterCommand::Validate { contracts },
+            command:
+                AdapterCommand::Validate {
+                    contracts,
+                    scenarios,
+                },
         } => {
+            if contracts.len() > 64 || scenarios.len() > 64 {
+                return Err(CliError::AdapterInputLimit(
+                    "at most 64 contract files and 64 scenario files are allowed".to_string(),
+                ));
+            }
+            if contracts.len().saturating_mul(scenarios.len().max(1)) > 256 {
+                return Err(CliError::AdapterInputLimit(
+                    "contract/scenario validation combinations must not exceed 256".to_string(),
+                ));
+            }
+            let scenarios = scenarios
+                .iter()
+                .map(load_scenario)
+                .collect::<Result<Vec<_>, _>>()?;
             for contract in contracts {
                 let adapter_contract = load_adapter_contract(&contract)?;
-                validate_adapter_contract(&adapter_contract)?;
-                println!("adapter contract valid: {}", contract.display());
+                validate_adapter_scenario_mapping(&adapter_contract, &scenarios)?;
+                println!(
+                    "adapter contract valid: {}",
+                    sanitize_diagnostic_value(&contract.display().to_string())
+                );
+                for mapping in &adapter_contract.acceptance.mappings {
+                    println!(
+                        "acceptance mapping: {} -> criterion {:?}",
+                        mapping.id,
+                        sanitize_diagnostic_value(&mapping.criterion)
+                    );
+                    for reference in &mapping.assertions {
+                        println!(
+                            "  assertion: {}:{}",
+                            reference.scenario, reference.assertion
+                        );
+                    }
+                    for artifact in &mapping.artifacts {
+                        println!("  artifact capability: {artifact}");
+                    }
+                }
             }
             Ok(ExitCode::SUCCESS)
         }
@@ -534,7 +576,6 @@ struct RunOptions {
 
 const GITHUB_FAILURE_DETAIL_FIELD_MAX_BYTES: usize = 8 * 1024;
 const GITHUB_STEP_SUMMARY_FILE_MAX_BYTES: u64 = 1024 * 1024;
-
 fn bounded_github_summary_field(value: &str) -> String {
     if value.len() <= GITHUB_FAILURE_DETAIL_FIELD_MAX_BYTES {
         return value.to_string();
@@ -640,7 +681,13 @@ fn run_scenarios(options: RunOptions) -> Result<ExitCode, CliError> {
                 // megabytes in memory while a batch continues to execute.
                 github_failures.push(GithubFailureDetail {
                     scenario_name: bounded_github_summary_field(&report.scenario_name),
-                    assertion_name: bounded_github_summary_field(&assertion.name),
+                    assertion_name: bounded_github_summary_field(
+                        &assertion
+                            .reference_id
+                            .as_deref()
+                            .map(|reference_id| format!("{reference_id} ({})", assertion.name))
+                            .unwrap_or_else(|| assertion.name.clone()),
+                    ),
                     message: bounded_github_summary_field(&assertion.message),
                     impact_message: assertion
                         .impact_message

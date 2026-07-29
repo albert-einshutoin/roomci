@@ -27,6 +27,7 @@
   "assertions": [
     {
       "name": "mqtt_retained:fleet/demo/site/lab/device/env_sensor_01/state",
+      "reference_id": "retained_state_updated",
       "assertion_type": "mqtt_retained",
       "passed": true,
       "message": "retained MQTT state matched",
@@ -35,6 +36,7 @@
     },
     {
       "name": "mqtt.local",
+      "reference_id": "local_broker_available",
       "assertion_type": "broker_state",
       "passed": true,
       "message": "local MQTT broker is available",
