@@ -2430,6 +2430,23 @@ assertions:
 }
 
 #[test]
+fn validated_scenario_boundary_accepts_maximum_assertions() {
+    let mut scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario: { name: maximum_assertions }
+assertions:
+  - at: T
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+    scenario.assertions = vec![scenario.assertions[0].clone(); MAX_ASSERTIONS_PER_SCENARIO];
+
+    ValidatedScenario::try_from(&scenario).unwrap();
+}
+
+#[test]
 fn mapped_acceptance_criteria_must_be_unique_non_empty_and_bounded() {
     for criteria in [
         "[Same criterion., Same criterion.]".to_string(),
@@ -2463,7 +2480,193 @@ acceptance:
 }
 
 #[test]
+fn acceptance_collection_limits_accept_maximum_and_reject_one_more() {
+    let mut contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: collection-limits }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+
+    contract.acceptance.criteria = (0..MAX_ACCEPTANCE_CRITERIA)
+        .map(|index| format!("Criterion {index}."))
+        .collect();
+    validate_adapter_contract(&contract).unwrap();
+    contract
+        .acceptance
+        .criteria
+        .push("One too many.".to_string());
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("acceptance.criteria must contain at most")
+    ));
+
+    contract.acceptance.criteria = (0..MAX_ACCEPTANCE_MAPPINGS)
+        .map(|index| format!("Mapped criterion {index}."))
+        .collect();
+    contract.acceptance.mappings = contract
+        .acceptance
+        .criteria
+        .iter()
+        .enumerate()
+        .map(|(index, criterion)| AdapterAcceptanceMapping {
+            id: format!("criterion-{index}"),
+            criterion: criterion.clone(),
+            assertions: Vec::new(),
+            artifacts: vec!["json".to_string()],
+        })
+        .collect();
+    validate_adapter_contract(&contract).unwrap();
+    contract.acceptance.mappings.push(AdapterAcceptanceMapping {
+        id: "one-too-many".to_string(),
+        criterion: contract.acceptance.criteria[0].clone(),
+        assertions: Vec::new(),
+        artifacts: vec!["json".to_string()],
+    });
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("acceptance.mappings must contain at most")
+    ));
+}
+
+#[test]
+fn acceptance_reference_limits_accept_maximum_and_reject_one_more() {
+    let mut contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: reference-limits }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats:
+    - json
+    - markdown
+    - junit
+    - timeline-json
+    - timeline-ndjson
+    - observability-json
+    - github-summary
+  mappings:
+    - id: evidence-generated
+      criterion: Evidence is generated.
+      artifacts:
+        - json
+        - markdown
+        - junit
+        - timeline-json
+        - timeline-ndjson
+        - observability-json
+        - github-summary
+"#,
+    )
+    .unwrap();
+
+    validate_adapter_contract(&contract).unwrap();
+    contract.acceptance.mappings[0]
+        .artifacts
+        .push("json".to_string());
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("artifacts must contain at most")
+    ));
+
+    contract.acceptance.mappings[0].artifacts.clear();
+    contract.acceptance.mappings[0].assertions = (0..MAX_ASSERTION_REFERENCES_PER_MAPPING)
+        .map(|index| AdapterAssertionReference {
+            scenario: format!("scenario_{index}"),
+            assertion: "evidence".to_string(),
+        })
+        .collect();
+    validate_adapter_contract(&contract).unwrap();
+    contract.acceptance.mappings[0]
+        .assertions
+        .push(AdapterAssertionReference {
+            scenario: "one_too_many".to_string(),
+            assertion: "evidence".to_string(),
+        });
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("assertions must contain at most")
+    ));
+}
+
+#[test]
+fn mapping_scenario_limit_accepts_maximum_and_rejects_one_more() {
+    let contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: scenario-limits }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    let base_scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario: { name: scenario_0 }
+assertions:
+  - at: T
+    guest_experience: unaffected
+"#,
+    )
+    .unwrap();
+    let mut scenarios = (0..MAX_MAPPING_SCENARIOS)
+        .map(|index| {
+            let mut scenario = base_scenario.clone();
+            scenario.scenario.name = format!("scenario_{index}");
+            scenario
+        })
+        .collect::<Vec<_>>();
+
+    validate_adapter_scenario_mapping(&contract, &scenarios).unwrap();
+    let mut extra = base_scenario;
+    extra.scenario.name = "one_too_many".to_string();
+    scenarios.push(extra);
+    assert!(matches!(
+        validate_adapter_scenario_mapping(&contract, &scenarios),
+        Err(ScenarioError::InvalidAdapterContract(message))
+            if message.contains("scenario inputs must contain at most")
+    ));
+}
+
+#[test]
 fn acceptance_report_formats_are_unique_and_bounded() {
+    let mut contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter: { name: maximum-report-formats }
+edge:
+  commands:
+    - { name: run, source: evaluator, target: edge, expected_state: ready }
+acceptance:
+  criteria: [Evidence is generated.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+    contract.acceptance.report_formats = (0..MAX_REPORT_FORMATS)
+        .map(|index| format!("format-{index}"))
+        .collect();
+    validate_adapter_contract(&contract).unwrap();
+
     for report_formats in [
         format!(
             "[{}]",
