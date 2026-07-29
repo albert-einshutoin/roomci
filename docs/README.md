@@ -21,6 +21,7 @@ its own.
 | Coverage | [Hospitality domain pack coverage](HOSPITALITY_STACK_COVERAGE.md) | Stable link for the hospitality domain-pack scope boundary |
 | Journey | [Core QA journey](CORE_QA_JOURNEY.md) | Stable link for the evaluator journey now maintained in the product guide |
 | Adapters | [Adapter contract kit](ADAPTER_CONTRACT_KIT.md) | Templates, examples, and validation for company-specific protocol contracts |
+| Adapters | [Evaluator intake kit](EVALUATOR_INTAKE_KIT.md) | Minimum customer-owned MQTT, Modbus, BMS, auth/TLS, safety, report, and acceptance inputs for a real PoC |
 | Adapters | [Adapter SDK samples](ADAPTER_SDK_SAMPLES.md) | Small Go, TypeScript, and Lua-like examples for HTTP, MQTT, and Modbus adapter wiring |
 | Developers | [Developer workflow](DEVELOPER_WORKFLOW.md) | First run, Python automation, scenario debugging, and CI artifact review |
 | Developers | [Python reference client](PYTHON_SDK.md) | Python HTTP reference client and MQTT/Modbus smoke path |

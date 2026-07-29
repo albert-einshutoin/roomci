@@ -21,6 +21,7 @@
 | Coverage | [ホスピタリティドメインパックカバレッジ](HOSPITALITY_STACK_COVERAGE.md) | ホスピタリティドメインパックのスコープ境界への安定リンク |
 | Journey | [コア QA ジャーニー](CORE_QA_JOURNEY.md) | プロダクトガイドで維持される評価者ジャーニーへの安定リンク |
 | Adapters | [アダプターコントラクトキット](ADAPTER_CONTRACT_KIT.md) | 企業固有プロトコルコントラクトのテンプレート、例、検証 |
+| Adapters | [評価者向けインテークキット](EVALUATOR_INTAKE_KIT.ja.md) | 実 PoC に必要な顧客所有の MQTT、Modbus、BMS、認証/TLS、安全、report、受入入力 |
 | Adapters | [アダプター SDK サンプル](ADAPTER_SDK_SAMPLES.md) | HTTP、MQTT、Modbus アダプター配線向けの Go、TypeScript、Lua 風の小さな例 |
 | Developers | [開発者ワークフロー](DEVELOPER_WORKFLOW.md) | 初回実行、Python 自動化、シナリオデバッグ、CI アーティファクトレビュー |
 | Developers | [Python リファレンスクライアント](PYTHON_SDK.md) | Python HTTP リファレンスクライアントと MQTT/Modbus スモークパス |

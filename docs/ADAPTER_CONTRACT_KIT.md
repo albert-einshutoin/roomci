@@ -4,6 +4,10 @@ Adapter contracts describe company-specific protocol details without hard-coding
 
 Use them when a company wants to evaluate `roomci` against its own MQTT topics, Modbus register maps, BMS alert flows, edge-controller commands, device identity model, auth assumptions, and acceptance criteria.
 
+Use the [Evaluator Intake Kit](EVALUATOR_INTAKE_KIT.md) to collect the minimum
+customer-owned inputs before editing a template. Public examples establish the
+documented roomci baseline; they do not imply private or vendor compatibility.
+
 ## Files
 
 - Template: [`adapter-contracts/templates/company_adapter_contract.yaml`](../adapter-contracts/templates/company_adapter_contract.yaml)

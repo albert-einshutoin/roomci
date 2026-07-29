@@ -59,6 +59,7 @@ make protocol-evidence
 - External protocol depth: [`EXTERNAL_PROTOCOL_DEPTH.md`](EXTERNAL_PROTOCOL_DEPTH.md)
 - Protocol support matrix: [`PROTOCOL_SUPPORT_MATRIX.md`](PROTOCOL_SUPPORT_MATRIX.md)
 - Adapter contract kit: [`ADAPTER_CONTRACT_KIT.md`](ADAPTER_CONTRACT_KIT.md)
+- 評価者向けインテークキット: [`EVALUATOR_INTAKE_KIT.ja.md`](EVALUATOR_INTAKE_KIT.ja.md)
 - B Tier protocol profiles: [`B_TIER_PROTOCOL_PROFILES.md`](B_TIER_PROTOCOL_PROFILES.md)
 - Adapter SDK samples: [`ADAPTER_SDK_SAMPLES.md`](ADAPTER_SDK_SAMPLES.md)
 - Python reference client: [`PYTHON_SDK.md`](PYTHON_SDK.md)
