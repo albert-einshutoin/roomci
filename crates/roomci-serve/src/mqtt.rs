@@ -338,7 +338,9 @@ pub(crate) fn mqtt_retained_replay_for_subscribe(
         return_codes.push(0x00);
         for (topic, payload) in &retained {
             if mqtt_topic_matches_filter(filter, topic) {
-                publishes.push(mqtt_publish_response_packet(topic, payload));
+                if let Some(packet) = mqtt_publish_response_packet(topic, payload) {
+                    publishes.push(packet);
+                }
             }
         }
     }
@@ -383,16 +385,25 @@ fn mqtt_suback_packet(packet_id: u16, return_codes: &[u8]) -> Vec<u8> {
 fn mqtt_publish_response_packet(
     topic: &str,
     payload: &BTreeMap<String, serde_json::Value>,
-) -> Vec<u8> {
+) -> Option<Vec<u8>> {
+    if topic.is_empty()
+        || topic.chars().any(char::is_control)
+        || topic.chars().any(char::is_whitespace)
+        || topic.contains('#')
+        || topic.contains('+')
+    {
+        return None;
+    }
+    let topic_len = u16::try_from(topic.len()).ok()?;
     let payload = serde_json::to_vec(payload).unwrap_or_else(|_| b"{}".to_vec());
     let mut variable = Vec::with_capacity(2 + topic.len() + payload.len());
-    variable.extend_from_slice(&(topic.len() as u16).to_be_bytes());
+    variable.extend_from_slice(&topic_len.to_be_bytes());
     variable.extend_from_slice(topic.as_bytes());
     variable.extend_from_slice(&payload);
     let mut packet = vec![0x31];
     encode_mqtt_remaining_length(variable.len(), &mut packet);
     packet.extend(variable);
-    packet
+    Some(packet)
 }
 
 fn encode_mqtt_remaining_length(mut length: usize, packet: &mut Vec<u8>) {

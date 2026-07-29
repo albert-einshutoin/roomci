@@ -119,6 +119,16 @@ fn validate_mqtt_topic_text(
     value: &str,
     allow_device_placeholder: bool,
 ) -> Result<(), ScenarioError> {
+    if value.len() > crate::MAX_MQTT_TOPIC_BYTES {
+        return invalid_mqtt_topic(
+            field,
+            value,
+            "must not exceed 65535 bytes after UTF-8 encoding",
+        );
+    }
+    if value.chars().any(char::is_control) {
+        return invalid_mqtt_topic(field, value, "must not contain control characters");
+    }
     let trimmed = value.trim();
     let valid_placeholder = allow_device_placeholder && trimmed.contains("{device_id}");
     if trimmed.is_empty() {
@@ -150,7 +160,7 @@ fn validate_mqtt_topic_text(
 fn invalid_mqtt_topic<T>(field: &str, value: &str, reason: &str) -> Result<T, ScenarioError> {
     Err(ScenarioError::InvalidMqttTopic {
         field: field.to_string(),
-        value: value.to_string(),
+        value: crate::sanitize_diagnostic_value(value),
         reason: reason.to_string(),
     })
 }

@@ -544,6 +544,31 @@ fn mqtt_subscribe_rejects_unsupported_qos() {
 }
 
 #[test]
+fn mqtt_retained_replay_skips_topics_that_exceed_the_wire_length() {
+    let state = serve_state();
+    let subscribe = parse_mqtt_subscribe(&mqtt_subscribe_payload(
+        10,
+        "fleet/demo/site/lab/device/+/state",
+        0,
+    ))
+    .unwrap();
+    let baseline = mqtt_retained_replay_for_subscribe(&state.lock().unwrap(), &subscribe);
+    let oversized_topic = format!(
+        "fleet/demo/site/lab/device/{}/state",
+        "x".repeat(u16::MAX as usize)
+    );
+    state.lock().unwrap().external_mqtt_retained_state.insert(
+        oversized_topic,
+        BTreeMap::from([("online".to_string(), json!(true))]),
+    );
+
+    let replay = mqtt_retained_replay_for_subscribe(&state.lock().unwrap(), &subscribe);
+
+    assert_eq!(replay.return_codes, vec![0x00]);
+    assert_eq!(replay.publishes, baseline.publishes);
+}
+
+#[test]
 fn mqtt_connect_with_legacy_protocol_name_is_rejected() {
     let connack = mqtt_connack_for(mqtt_connect_packet_with("MQIsdp", 3, "legacy"));
 

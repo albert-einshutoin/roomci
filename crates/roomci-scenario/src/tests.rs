@@ -444,6 +444,294 @@ assertions:
 }
 
 #[test]
+fn mqtt_contract_topic_errors_include_contract_name_and_field_path() {
+    for (command_topic, state_topic, expected_field, expected_reason) in [
+        (
+            "",
+            "fleet/demo/device/{device_id}/state",
+            "mqtt.contracts[device_state].command_topic",
+            "must not be empty",
+        ),
+        (
+            "fleet/demo/device/{device_id}/command",
+            "fleet/demo/device/state",
+            "mqtt.contracts[device_state].state_topic",
+            "must include exactly one {device_id} placeholder",
+        ),
+        (
+            "fleet/{device_id}/{device_id}/command",
+            "fleet/{device_id}/state",
+            "mqtt.contracts[device_state].command_topic",
+            "must include exactly one {device_id} placeholder",
+        ),
+        (
+            "fleet/{device_id/command",
+            "fleet/{device_id}/state",
+            "mqtt.contracts[device_state].command_topic",
+            "contains an unclosed placeholder",
+        ),
+        (
+            "fleet/{device_id}}/command",
+            "fleet/{device_id}/state",
+            "mqtt.contracts[device_state].command_topic",
+            "closing brace without an opening brace",
+        ),
+        (
+            "fleet/{}/command",
+            "fleet/{device_id}/state",
+            "mqtt.contracts[device_state].command_topic",
+            "contains an empty placeholder",
+        ),
+        (
+            "fleet/{{device_id}}/command",
+            "fleet/{device_id}/state",
+            "mqtt.contracts[device_state].command_topic",
+            "contains a nested or unclosed placeholder",
+        ),
+        (
+            "fleet/{room_id}/{device_id}/command",
+            "fleet/{room_id}/{device_id}/state",
+            "mqtt.contracts[device_state].command_topic",
+            "only the {device_id} placeholder is supported",
+        ),
+        (
+            "fleet/{デバイス}/{device_id}/command",
+            "fleet/{デバイス}/{device_id}/state",
+            "mqtt.contracts[device_state].command_topic",
+            "only the {device_id} placeholder is supported",
+        ),
+    ] {
+        let yaml = format!(
+            r#"
+version: "0.1"
+scenario:
+  name: invalid_mqtt_contract_topic
+mqtt:
+  contracts:
+    - name: device_state
+      command_topic: "{command_topic}"
+      state_topic: "{state_topic}"
+      device_id_from_topic: placeholder:{{device_id}}
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#
+        );
+        let scenario: ScenarioFile = serde_yaml::from_str(&yaml).unwrap();
+
+        assert!(matches!(
+            validate_scenario(&scenario),
+            Err(ScenarioError::InvalidMqttTopic { field, reason, .. })
+                if field == expected_field && reason.contains(expected_reason)
+        ));
+    }
+}
+
+#[test]
+fn rejects_mismatched_mqtt_contract_topic_placeholders() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: mismatched_mqtt_contract_placeholders
+mqtt:
+  contracts:
+    - name: device_state
+      command_topic: fleet/{device_id}/command
+      state_topic: fleet/{room_id}/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    assert!(matches!(
+        validate_scenario(&scenario),
+        Err(ScenarioError::InvalidMqttTopic { field, reason, .. })
+            if field == "mqtt.contracts[device_state].state_topic"
+                && reason.contains("placeholders must match command_topic")
+                && reason.contains("{room_id}")
+    ));
+}
+
+#[test]
+fn unsupported_mqtt_identity_strategy_reports_the_exact_field() {
+    let scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: unsupported_mqtt_identity_strategy
+mqtt:
+  contracts:
+    - name: device_state
+      command_topic: fleet/{device_id}/command
+      state_topic: fleet/{device_id}/state
+      device_id_from_topic: regex:(?<device_id>[^/]+)
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+
+    let error = validate_scenario(&scenario).unwrap_err();
+
+    assert!(matches!(
+        &error,
+        ScenarioError::UnsupportedMqttDeviceIdStrategy(contract, strategy)
+            if contract == "device_state" && strategy.starts_with("regex:")
+    ));
+    assert!(error
+        .to_string()
+        .contains("mqtt.contracts[device_state].device_id_from_topic"));
+    assert!(error
+        .to_string()
+        .contains("only placeholder:{device_id} is supported"));
+}
+
+#[test]
+fn mqtt_contract_diagnostics_escape_untrusted_values() {
+    let scenario_yaml = r#"
+version: "0.1"
+scenario:
+  name: safe_mqtt_diagnostics
+mqtt:
+  contracts:
+    - name: device_state
+      command_topic: fleet/{device_id}/command
+      state_topic: fleet/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#;
+    let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).unwrap();
+
+    let mut invalid_topic = scenario.clone();
+    invalid_topic.mqtt.contracts[0].command_topic =
+        "fleet/{device_id}/command\n::error::forged".to_string();
+    let topic_error = validate_scenario(&invalid_topic).unwrap_err();
+    assert!(!topic_error.to_string().contains('\n'));
+    assert!(topic_error.to_string().contains(r"\n::error::forged"));
+
+    let mut nul_topic = scenario.clone();
+    nul_topic.mqtt.contracts[0].command_topic = "fleet/\0/{device_id}/command".to_string();
+    let nul_error = validate_scenario(&nul_topic).unwrap_err();
+    assert!(!nul_error.to_string().contains('\0'));
+    assert!(nul_error.to_string().contains(r"\u{0}"));
+
+    let mut invalid_strategy = scenario.clone();
+    invalid_strategy.mqtt.contracts[0].device_id_from_topic = "regex\n::error::forged".to_string();
+    let strategy_error = validate_scenario(&invalid_strategy).unwrap_err();
+    assert!(!strategy_error.to_string().contains('\n'));
+    assert!(strategy_error
+        .to_string()
+        .contains(r"regex\n::error::forged"));
+
+    let mut bidi_strategy = scenario.clone();
+    bidi_strategy.mqtt.contracts[0].device_id_from_topic =
+        "regex\u{202e}\u{2028}forged".to_string();
+    let bidi_error = validate_scenario(&bidi_strategy).unwrap_err();
+    assert!(!bidi_error.to_string().contains('\u{202e}'));
+    assert!(!bidi_error.to_string().contains('\u{2028}'));
+    assert!(bidi_error.to_string().contains(r"\u{202e}\u{2028}forged"));
+
+    let mut invalid_name = scenario;
+    invalid_name.mqtt.contracts[0].name = "device]\n::error::forged".to_string();
+    let name_error = validate_scenario(&invalid_name).unwrap_err();
+    assert!(matches!(
+        name_error,
+        ScenarioError::InvalidIdentifier { ref field, .. }
+            if field == "mqtt.contracts[].name"
+    ));
+    assert!(!name_error.to_string().contains('\n'));
+    assert!(name_error.to_string().contains(r"device]\n::error::forged"));
+}
+
+#[test]
+fn mqtt_contract_topics_enforce_utf8_byte_limits_before_and_after_expansion() {
+    let mut scenario: ScenarioFile = serde_yaml::from_str(
+        r#"
+version: "0.1"
+scenario:
+  name: bounded_mqtt_topics
+mqtt:
+  contracts:
+    - name: device_state
+      command_topic: fleet/{device_id}/command
+      state_topic: fleet/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+steps:
+  - at: T
+    event: no-op
+assertions:
+  - at: T+1s
+    target: mqtt.local
+    condition: available
+"#,
+    )
+    .unwrap();
+    for topic in ["fleet/device 1/command", "fleet/device\u{00a0}1/command"] {
+        assert!(match_mqtt_contract(&scenario.mqtt.contracts[0], topic).is_none());
+        assert!(
+            extract_mqtt_placeholder_value("fleet/{device_id}/command", topic, "{device_id}")
+                .is_none()
+        );
+        assert!(matches!(
+            validate_mqtt_contract_publish(&scenario.mqtt.contracts, topic, &BTreeMap::new(),),
+            Err(MqttContractPublishError::TopicMismatch { .. })
+        ));
+    }
+
+    let contract = &mut scenario.mqtt.contracts[0];
+    contract.state_topic = format!(
+        "{}{{device_id}}",
+        "é".repeat((MAX_MQTT_TOPIC_BYTES - "{device_id}".len()) / 2)
+    );
+    assert_eq!(contract.state_topic.len(), MAX_MQTT_TOPIC_BYTES);
+    validate_scenario(&scenario).unwrap();
+    assert!(match_mqtt_contract(
+        &scenario.mqtt.contracts[0],
+        "fleet/device-identifier-longer-than-placeholder/command"
+    )
+    .is_none());
+    assert!(matches!(
+        validate_mqtt_contract_publish(
+            &scenario.mqtt.contracts,
+            "fleet/device-identifier-longer-than-placeholder/command",
+            &BTreeMap::new(),
+        ),
+        Err(MqttContractPublishError::TopicMismatch { .. })
+    ));
+
+    scenario.mqtt.contracts[0].state_topic.push('x');
+    assert!(matches!(
+        validate_scenario(&scenario),
+        Err(ScenarioError::InvalidMqttTopic { field, reason, .. })
+            if field == "mqtt.contracts[device_state].state_topic"
+                && reason.contains("must not exceed 65535 bytes")
+    ));
+}
+
+#[test]
 fn rejects_unknown_target_condition_assertion() {
     let scenario: ScenarioFile = serde_yaml::from_str(
         r#"
@@ -792,6 +1080,34 @@ fn validates_adapter_contract_examples() {
         let contract = load_adapter_contract(fixture(path)).unwrap();
         validate_adapter_contract(&contract).unwrap();
     }
+}
+
+#[test]
+fn adapter_contract_topic_diagnostics_identify_the_exact_mapping() {
+    let contract: AdapterContract = serde_yaml::from_str(
+        r#"
+version: adapter.v1
+adapter:
+  name: invalid-topic-mapping
+mqtt:
+  contracts:
+    - name: private-device
+      command_topic: private/{device_id}/command
+      state_topic: private/{room_id}/{device_id}/state
+      device_id_from_topic: placeholder:{device_id}
+acceptance:
+  criteria: [Topic identity mapping is actionable.]
+  report_formats: [json]
+"#,
+    )
+    .unwrap();
+
+    assert!(matches!(
+        validate_adapter_contract(&contract),
+        Err(ScenarioError::InvalidMqttTopic { field, reason, .. })
+            if field == "mqtt.contracts[private-device].state_topic"
+                && reason.contains("placeholders must match command_topic")
+    ));
 }
 
 #[test]

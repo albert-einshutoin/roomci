@@ -19,8 +19,11 @@ use roomci_ops::OpsError;
 use thiserror::Error;
 
 const MAX_EXACT_F64_INTEGER: f64 = 9_007_199_254_740_991.0;
+pub(crate) const MAX_MQTT_TOPIC_BYTES: usize = u16::MAX as usize;
 const MAX_MQTT_PAYLOAD_ENUM_VALUES: usize = 128;
 const MAX_MQTT_PAYLOAD_ENUM_VALUE_BYTES: usize = 16 * 1024;
+const MAX_MQTT_CONTRACT_NAME_BYTES: usize = 128;
+const MAX_DIAGNOSTIC_VALUE_CHARS: usize = 256;
 
 mod schema;
 mod validated;
@@ -69,7 +72,9 @@ pub enum ScenarioError {
     MissingMqttTopicMapping(String),
     #[error("ambiguous MQTT command topic mapping {0}")]
     AmbiguousMqttMapping(String),
-    #[error("MQTT contract {0} uses unsupported device_id_from_topic strategy {1}")]
+    #[error(
+        "MQTT contract {0} field mqtt.contracts[{0}].device_id_from_topic uses unsupported strategy {1}; only placeholder:{{device_id}} is supported"
+    )]
     UnsupportedMqttDeviceIdStrategy(String, String),
     #[error("invalid adapter contract: {0}")]
     InvalidAdapterContract(String),
@@ -305,8 +310,14 @@ pub fn match_mqtt_contract<'a>(
     contract: &'a MqttConnectionContract,
     topic: &str,
 ) -> Option<MqttContractPublishMatch<'a>> {
+    if !mqtt_runtime_topic_is_valid(topic) {
+        return None;
+    }
     let device_id = extract_mqtt_placeholder_value(&contract.command_topic, topic, "{device_id}")?;
     let state_topic = contract.state_topic.replace("{device_id}", &device_id);
+    if !mqtt_runtime_topic_is_valid(&state_topic) {
+        return None;
+    }
     Some(MqttContractPublishMatch {
         contract,
         device_id,
@@ -323,10 +334,23 @@ pub fn extract_mqtt_placeholder_value(
     let (prefix, suffix) = template.split_once(placeholder)?;
     let rest = value.strip_prefix(prefix)?;
     let extracted = rest.strip_suffix(suffix)?;
-    if extracted.is_empty() || extracted.contains('/') {
+    if extracted.is_empty()
+        || extracted.contains('/')
+        || extracted.chars().any(char::is_control)
+        || extracted.chars().any(char::is_whitespace)
+    {
         return None;
     }
     Some(extracted.to_string())
+}
+
+fn mqtt_runtime_topic_is_valid(topic: &str) -> bool {
+    !topic.is_empty()
+        && topic.len() <= MAX_MQTT_TOPIC_BYTES
+        && !topic.chars().any(char::is_control)
+        && !topic.chars().any(char::is_whitespace)
+        && !topic.contains('#')
+        && !topic.contains('+')
 }
 
 /// Read a scenario YAML file from disk and deserialize it.
@@ -997,41 +1021,201 @@ fn typed_inline_assertion<'a>(
 fn validate_mqtt_contracts(contracts: &[MqttConnectionContract]) -> Result<(), ScenarioError> {
     let mut command_topics = BTreeMap::<String, String>::new();
     for contract in contracts {
+        validate_mqtt_contract_name(&contract.name)?;
+        let command_topic_path = format!("mqtt.contracts[{}].command_topic", contract.name);
+        let state_topic_path = format!("mqtt.contracts[{}].state_topic", contract.name);
         if contract.adapter != "mqtt_v3_qos0_subset" {
             return Err(ScenarioError::UnsupportedMqttAdapter(
-                contract.adapter.clone(),
+                sanitize_diagnostic_value(&contract.adapter),
             ));
         }
-        if contract.command_topic.trim().is_empty() || contract.state_topic.trim().is_empty() {
-            return Err(ScenarioError::MissingMqttTopicMapping(
-                contract.name.clone(),
-            ));
-        }
+        MqttTopic::parse(&command_topic_path, contract.command_topic.clone())?;
+        MqttTopic::parse(&state_topic_path, contract.state_topic.clone())?;
         if contract.device_id_from_topic != "placeholder:{device_id}" {
             return Err(ScenarioError::UnsupportedMqttDeviceIdStrategy(
                 contract.name.clone(),
-                contract.device_id_from_topic.clone(),
+                sanitize_diagnostic_value(&contract.device_id_from_topic),
             ));
         }
-        if !contract.command_topic.contains("{device_id}")
-            || !contract.state_topic.contains("{device_id}")
-        {
-            return Err(ScenarioError::UnsupportedMqttDeviceIdStrategy(
-                contract.name.clone(),
-                "missing {device_id} placeholder".to_string(),
-            ));
+        let command_placeholders =
+            mqtt_topic_placeholders(&command_topic_path, &contract.command_topic)?;
+        let state_placeholders = mqtt_topic_placeholders(&state_topic_path, &contract.state_topic)?;
+        for (path, value, placeholders) in [
+            (
+                command_topic_path.as_str(),
+                contract.command_topic.as_str(),
+                &command_placeholders,
+            ),
+            (
+                state_topic_path.as_str(),
+                contract.state_topic.as_str(),
+                &state_placeholders,
+            ),
+        ] {
+            if placeholders
+                .iter()
+                .filter(|placeholder| placeholder.as_str() == "{device_id}")
+                .count()
+                != 1
+            {
+                return invalid_mqtt_contract_topic(
+                    path,
+                    value,
+                    "must include exactly one {device_id} placeholder".to_string(),
+                );
+            }
+        }
+        let command_placeholder_set = command_placeholders.iter().collect::<BTreeSet<_>>();
+        let state_placeholder_set = state_placeholders.iter().collect::<BTreeSet<_>>();
+        if command_placeholder_set != state_placeholder_set {
+            return invalid_mqtt_contract_topic(
+                &state_topic_path,
+                &contract.state_topic,
+                format!(
+                    "placeholders must match command_topic; command_topic has [{}], state_topic has [{}]",
+                    command_placeholders.join(", "),
+                    state_placeholders.join(", ")
+                ),
+            );
+        }
+        for (path, value, placeholders) in [
+            (
+                command_topic_path.as_str(),
+                contract.command_topic.as_str(),
+                &command_placeholders,
+            ),
+            (
+                state_topic_path.as_str(),
+                contract.state_topic.as_str(),
+                &state_placeholders,
+            ),
+        ] {
+            if let Some(unsupported) = placeholders
+                .iter()
+                .find(|placeholder| placeholder.as_str() != "{device_id}")
+            {
+                return invalid_mqtt_contract_topic(
+                    path,
+                    value,
+                    format!("only the {{device_id}} placeholder is supported; found {unsupported}"),
+                );
+            }
         }
         if let Some(existing) =
             command_topics.insert(contract.command_topic.clone(), contract.name.clone())
         {
             return Err(ScenarioError::AmbiguousMqttMapping(format!(
                 "{} used by {} and {}",
-                contract.command_topic, existing, contract.name
+                sanitize_diagnostic_value(&contract.command_topic),
+                existing,
+                contract.name
             )));
         }
         validate_mqtt_payload_expectation(contract)?;
     }
     Ok(())
+}
+
+fn validate_mqtt_contract_name(name: &str) -> Result<(), ScenarioError> {
+    if name.trim().is_empty()
+        || name.len() > MAX_MQTT_CONTRACT_NAME_BYTES
+        || name.chars().any(char::is_whitespace)
+        || name.chars().any(char::is_control)
+        || name.contains('[')
+        || name.contains(']')
+    {
+        return Err(ScenarioError::InvalidIdentifier {
+            field: "mqtt.contracts[].name".to_string(),
+            value: sanitize_diagnostic_value(name),
+        });
+    }
+    Ok(())
+}
+
+fn mqtt_topic_placeholders(field: &str, value: &str) -> Result<Vec<String>, ScenarioError> {
+    let mut placeholders = Vec::new();
+    let mut opening = None;
+
+    for (index, character) in value.char_indices() {
+        match (character, opening) {
+            ('{', None) => opening = Some(index),
+            ('{', Some(_)) => {
+                return invalid_mqtt_contract_topic(
+                    field,
+                    value,
+                    "contains a nested or unclosed placeholder".to_string(),
+                );
+            }
+            ('}', Some(start)) => {
+                if index == start + 1 {
+                    return invalid_mqtt_contract_topic(
+                        field,
+                        value,
+                        "contains an empty placeholder".to_string(),
+                    );
+                }
+                placeholders.push(value[start..=index].to_string());
+                opening = None;
+            }
+            ('}', None) => {
+                return invalid_mqtt_contract_topic(
+                    field,
+                    value,
+                    "contains a closing brace without an opening brace".to_string(),
+                );
+            }
+            _ => {}
+        }
+    }
+    if opening.is_some() {
+        return invalid_mqtt_contract_topic(
+            field,
+            value,
+            "contains an unclosed placeholder".to_string(),
+        );
+    }
+    Ok(placeholders)
+}
+
+fn invalid_mqtt_contract_topic<T>(
+    field: &str,
+    value: &str,
+    reason: String,
+) -> Result<T, ScenarioError> {
+    Err(ScenarioError::InvalidMqttTopic {
+        field: field.to_string(),
+        value: sanitize_diagnostic_value(value),
+        reason: sanitize_diagnostic_value(&reason),
+    })
+}
+
+pub(crate) fn sanitize_diagnostic_value(value: &str) -> String {
+    let mut sanitized = String::new();
+    let mut characters = value.chars();
+    for character in characters.by_ref().take(MAX_DIAGNOSTIC_VALUE_CHARS) {
+        if diagnostic_character_requires_escape(character) {
+            sanitized.extend(character.escape_default());
+        } else {
+            sanitized.push(character);
+        }
+    }
+    if characters.next().is_some() {
+        sanitized.push('…');
+    }
+    sanitized
+}
+
+fn diagnostic_character_requires_escape(character: char) -> bool {
+    character.is_control()
+        || (character.is_whitespace() && character != ' ')
+        || matches!(
+            character,
+            '\u{061c}'
+                | '\u{200e}'
+                | '\u{200f}'
+                | '\u{202a}'..='\u{202e}'
+                | '\u{2066}'..='\u{2069}'
+        )
 }
 
 fn validate_mqtt_payload_expectation(
