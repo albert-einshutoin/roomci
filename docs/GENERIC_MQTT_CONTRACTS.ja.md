@@ -85,6 +85,19 @@ mqtt:
       device_id_from_topic: placeholder:{device_id}
       payload:
         required_fields: [online, sample_interval_seconds]
+        optional_fields: [mode]
+        fields:
+          online:
+            type: boolean
+          sample_interval_seconds:
+            type: integer
+            minimum: 1
+          mode:
+            type: string
+            enum: [normal, low_power]
 ```
 
-これにより、vendor 固有の MQTT 命名をコードから切り離し、後から実際の integration contract を供給できます。
+これにより、vendor 固有の MQTT 命名と payload 前提をコードから切り離し、
+後から実際の integration contract を供給できます。`fields` は JSON 値の型、
+enum、数値 range に意図的に限定されており、nested JSON Schema engine では
+ありません。

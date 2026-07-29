@@ -12,6 +12,10 @@ not as separately published calendar releases.
 
 ### Added
 
+- Typed MQTT adapter payload constraints for required/optional fields, JSON
+  value types, enums, and numeric ranges, enforced consistently by scenario and
+  serve-mode publish validation without introducing a full JSON Schema engine
+  (#2).
 - `roomci init [PATH] [--ci github] [--force]` for clone-free evaluator
   onboarding. It generates a runnable MQTT retained-state smoke scenario,
   VS Code YAML schema settings, and an optional versioned GitHub Actions

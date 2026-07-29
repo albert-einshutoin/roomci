@@ -349,9 +349,24 @@ mqtt:
       device_id_from_topic: placeholder:{device_id}
       payload:
         required_fields: [online, sample_interval_seconds]
+        optional_fields: [mode]
+        fields:
+          online:
+            type: boolean
+          sample_interval_seconds:
+            type: integer
+            minimum: 1
+          mode:
+            type: string
+            enum: [normal, low_power]
 ```
 
-The supported subset is documented in [`docs/MQTT_SERVE_SUBSET.md`](docs/MQTT_SERVE_SUBSET.md). The integration checklist is in [`docs/PRE_ADOPTION_POC_CHECKLIST.md`](docs/PRE_ADOPTION_POC_CHECKLIST.md).
+Typed payload constraints are intentionally limited to required/optional field
+classification, JSON value types, enums, and numeric ranges. Unknown fields
+remain allowed. The supported subset is documented in
+[`docs/MQTT_SERVE_SUBSET.md`](docs/MQTT_SERVE_SUBSET.md). The integration
+checklist is in
+[`docs/PRE_ADOPTION_POC_CHECKLIST.md`](docs/PRE_ADOPTION_POC_CHECKLIST.md).
 
 `roomci serve --modbus-port <port>` enables a minimal Modbus TCP subset for external PoC clients. It supports MBAP, read holding/input register, write single register, and documented exception responses. The supported subset is documented in [`docs/MODBUS_TCP_SUBSET.md`](docs/MODBUS_TCP_SUBSET.md).
 

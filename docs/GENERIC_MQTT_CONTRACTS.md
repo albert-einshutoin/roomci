@@ -85,6 +85,19 @@ mqtt:
       device_id_from_topic: placeholder:{device_id}
       payload:
         required_fields: [online, sample_interval_seconds]
+        optional_fields: [mode]
+        fields:
+          online:
+            type: boolean
+          sample_interval_seconds:
+            type: integer
+            minimum: 1
+          mode:
+            type: string
+            enum: [normal, low_power]
 ```
 
-That keeps vendor-specific MQTT naming out of code and lets a real integration contract be supplied later.
+That keeps vendor-specific MQTT naming and payload assumptions out of code and
+lets a real integration contract be supplied later. `fields` is intentionally
+limited to JSON value types, enums, and numeric ranges; it is not a nested JSON
+Schema engine.
