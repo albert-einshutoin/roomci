@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | `01_payload_shape_validation_task.md` | `done` | Codex | `MqttPayloadFieldConstraint`; `typed_mqtt_payload_constraints_validate_runtime_values`; `integer_payload_ranges_are_exact_beyond_f64_precision`; `make verify` | Backward-compatible required/optional type, enum, and range validation with fail-closed numeric precision and typo handling |
 | `02_topic_identity_diagnostics_task.md` | `done` | Codex | Contract-specific topic paths; exact placeholder and strategy tests; `make verify` | Runtime matching unchanged; invalid private topic assumptions now produce actionable diagnostics |
-| `03_acceptance_assertion_mapping_task.md` | `done` | Codex | `make verify` (88.41% coverage) | Stable, scoped acceptance-to-evidence mapping |
+| `03_acceptance_assertion_mapping_task.md` | `done` | Codex | `make verify` (88.63% coverage) | Stable, scoped acceptance-to-evidence mapping |
 | `04_evaluator_intake_kit_task.md` | `todo` | Unassigned | Pending | Document minimum customer specs needed for a real PoC |
 
 ## Quality Gates
@@ -45,7 +45,7 @@ Latest Task 03 verification:
 - JSON, Markdown, JUnit, and GitHub summaries preserve the stable reference
   without replacing runtime diagnostic names.
 - Missing/duplicate/unsafe references and undeclared artifacts fail clearly.
-- Full `make verify` passed with 88.41% workspace coverage, including Docker,
+- Full `make verify` passed with 88.63% workspace coverage, including Docker,
   Compose, protocol, SDK, evidence, and VS Code asset gates.
 
 ## Notes
