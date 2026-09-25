@@ -4,14 +4,19 @@ use std::{
     collections::BTreeMap,
     fs,
     io::{Read, Write},
-    net::{TcpStream, ToSocketAddrs},
+    net::{SocketAddr, TcpStream, ToSocketAddrs},
     path::Path,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, Arc,
+    },
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
 
 use chrono::Utc;
 use roomci_core::{AssertionResult, RunReport, RunResult, TimelineEvent};
-use rumqttc::{Client, Connection, Event, MqttOptions, Packet, QoS, RecvTimeoutError};
+use rumqttc::{Client, ConnectionError, Event, MqttOptions, Packet, QoS, RecvTimeoutError};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -134,17 +139,20 @@ impl Outcome {
 
 struct Observer {
     client: Client,
-    connection: Connection,
+    events: mpsc::Receiver<(Instant, Result<Event, ConnectionError>)>,
+    stop: Arc<AtomicBool>,
+    worker: Option<JoinHandle<()>>,
     timeline: Vec<TimelineEvent>,
     run_id: String,
     device_id: String,
     reported_topic: String,
     status_topic: String,
-    last_report: Option<Value>,
+    last_report: Option<(Instant, Value)>,
     last_seen: Option<Value>,
     status: Option<String>,
     pubacks: usize,
     subacks: usize,
+    ready: bool,
 }
 
 impl Observer {
@@ -156,19 +164,35 @@ impl Observer {
         );
         options.set_keep_alive(Duration::from_secs(5));
         options.set_clean_session(true);
-        let (client, connection) = Client::new(options, 20);
+        let (client, mut connection) = Client::new(options, 20);
+        let (sender, events) = mpsc::channel();
+        let stop = Arc::new(AtomicBool::new(false));
+        let worker_stop = Arc::clone(&stop);
+        let worker = std::thread::spawn(move || {
+            while !worker_stop.load(Ordering::Relaxed) {
+                match connection.recv_timeout(Duration::from_millis(50)) {
+                    Ok(event) => {
+                        let failed = event.is_err();
+                        if sender.send((Instant::now(), event)).is_err() {
+                            break;
+                        }
+                        if failed {
+                            std::thread::sleep(Duration::from_millis(50));
+                        }
+                    }
+                    Err(RecvTimeoutError::Timeout) => {}
+                    Err(RecvTimeoutError::Disconnected) => break,
+                }
+            }
+        });
         let prefix = format!("roomci/{run_id}/{}", contract.device_id);
         let reported_topic = format!("{prefix}/reported");
         let status_topic = format!("{prefix}/status");
-        client
-            .subscribe(&reported_topic, QoS::AtLeastOnce)
-            .map_err(|e| e.to_string())?;
-        client
-            .subscribe(&status_topic, QoS::AtLeastOnce)
-            .map_err(|e| e.to_string())?;
         Ok(Self {
             client,
-            connection,
+            events,
+            stop,
+            worker: Some(worker),
             timeline: Vec::new(),
             run_id: run_id.into(),
             device_id: contract.device_id.clone(),
@@ -179,6 +203,7 @@ impl Observer {
             status: None,
             pubacks: 0,
             subacks: 0,
+            ready: false,
         })
     }
 
@@ -197,19 +222,55 @@ impl Observer {
             return Ok(());
         }
         match self
-            .connection
+            .events
             .recv_timeout(remaining.min(Duration::from_millis(250)))
         {
-            Ok(Ok(Event::Incoming(Packet::SubAck(_)))) => self.subacks += 1,
-            Ok(Ok(Event::Incoming(Packet::PubAck(_)))) => self.pubacks += 1,
-            Ok(Ok(Event::Incoming(Packet::Publish(publish)))) => {
+            Ok((received_at, event)) => self.process_event(event, received_at),
+            Err(mpsc::RecvTimeoutError::Timeout) => Ok(()),
+            Err(error) => Err(format!("observer receive: {error:?}")),
+        }
+    }
+
+    fn poll_ready(&mut self) -> Result<bool, String> {
+        match self.events.try_recv() {
+            Ok((received_at, event)) => {
+                self.process_event(event, received_at)?;
+                Ok(true)
+            }
+            Err(mpsc::TryRecvError::Empty) => Ok(false),
+            Err(error) => Err(format!("observer receive: {error:?}")),
+        }
+    }
+
+    fn process_event(
+        &mut self,
+        event: Result<Event, ConnectionError>,
+        received_at: Instant,
+    ) -> Result<(), String> {
+        match event {
+            Ok(Event::Incoming(Packet::ConnAck(_))) if !self.ready => {
+                self.subacks = 0;
+                self.client
+                    .subscribe(&self.reported_topic, QoS::AtLeastOnce)
+                    .map_err(|e| e.to_string())?;
+                self.client
+                    .subscribe(&self.status_topic, QoS::AtLeastOnce)
+                    .map_err(|e| e.to_string())?;
+            }
+            Ok(Event::Incoming(Packet::SubAck(_))) => {
+                self.subacks += 1;
+                if self.subacks >= 2 {
+                    self.ready = true;
+                }
+            }
+            Ok(Event::Incoming(Packet::PubAck(_))) => self.pubacks += 1,
+            Ok(Event::Incoming(Packet::Publish(publish))) => {
                 if publish.topic == self.reported_topic {
                     if publish.retain {
-                        self.record(
-                            "ignored_retained_report",
-                            Some(publish.topic),
-                            "preexisting retained report cannot prove SUT activity",
-                        );
+                        let message = serde_json::from_slice::<Value>(&publish.payload)
+                            .map(|value| value.to_string())
+                            .unwrap_or_else(|_| "invalid retained report".into());
+                        self.record("ignored_retained_report", Some(publish.topic), message);
                         return Ok(());
                     }
                     match serde_json::from_slice::<Value>(&publish.payload) {
@@ -221,7 +282,7 @@ impl Observer {
                         {
                             self.record("sut_reported", Some(publish.topic), value.to_string());
                             self.last_seen = Some(value.clone());
-                            self.last_report = Some(value);
+                            self.last_report = Some((received_at, value));
                         }
                         _ => self.record(
                             "ignored_report",
@@ -250,9 +311,18 @@ impl Observer {
                     }
                 }
             }
-            Ok(Err(error)) => return Err(format!("observer connection: {error}")),
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(error) => return Err(format!("observer receive: {error:?}")),
+            Err(error)
+                if !self.ready
+                    && matches!(
+                        error,
+                        ConnectionError::Io(_)
+                            | ConnectionError::NetworkTimeout
+                            | ConnectionError::FlushTimeout
+                    ) =>
+            {
+                self.record("observer_connect_retry", None, error.to_string());
+            }
+            Err(error) => return Err(format!("observer connection: {error}")),
             _ => {}
         }
         Ok(())
@@ -265,7 +335,7 @@ impl Observer {
     ) -> Result<bool, String> {
         while Instant::now() < deadline {
             self.poll(deadline)?;
-            if predicate(self) {
+            if predicate(self) && Instant::now() <= deadline {
                 return Ok(true);
             }
         }
@@ -293,35 +363,126 @@ impl Observer {
     }
 }
 
+impl Drop for Observer {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(worker) = self.worker.take() {
+            let _ = worker.join();
+        }
+    }
+}
+
+fn resolved_addresses(host: &str, port: u16) -> Result<Vec<SocketAddr>, String> {
+    let addresses: Vec<_> = (host, port)
+        .to_socket_addrs()
+        .map_err(|e| e.to_string())?
+        .collect();
+    if addresses.is_empty() {
+        return Err(format!("no addresses for {host}:{port}"));
+    }
+    Ok(addresses)
+}
+
+fn connect_candidates(
+    addresses: &[SocketAddr],
+    deadline: Instant,
+) -> Result<Option<TcpStream>, String> {
+    for (index, address) in addresses.iter().enumerate() {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Err("connection deadline exceeded before all addresses were tried".into());
+        }
+        // Share the remaining connection time so an unreachable first address cannot starve later ones.
+        let allowance = (remaining / (addresses.len() - index) as u32)
+            .max(Duration::from_millis(1))
+            .min(remaining);
+        if let Ok(stream) = TcpStream::connect_timeout(address, allowance) {
+            if Instant::now() <= deadline {
+                return Ok(Some(stream));
+            }
+            return Err("connection completed after deadline".into());
+        }
+    }
+    Ok(None)
+}
+
+fn write_before(stream: &mut TcpStream, mut bytes: &[u8], deadline: Instant) -> Result<(), String> {
+    while !bytes.is_empty() {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Err("write deadline exceeded".into());
+        }
+        stream
+            .set_write_timeout(Some(remaining))
+            .map_err(|e| e.to_string())?;
+        let count = stream.write(bytes).map_err(|e| e.to_string())?;
+        if count == 0 {
+            return Err("connection closed during write".into());
+        }
+        bytes = &bytes[count..];
+    }
+    if Instant::now() > deadline {
+        return Err("write completed after deadline".into());
+    }
+    Ok(())
+}
+
+fn read_exact_before(
+    stream: &mut TcpStream,
+    mut bytes: &mut [u8],
+    deadline: Instant,
+) -> Result<bool, String> {
+    while !bytes.is_empty() {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Ok(false);
+        }
+        stream
+            .set_read_timeout(Some(remaining))
+            .map_err(|e| e.to_string())?;
+        match stream.read(bytes) {
+            Ok(0) | Err(_) => return Ok(false),
+            Ok(count) => bytes = &mut bytes[count..],
+        }
+    }
+    Ok(Instant::now() <= deadline)
+}
+
 fn proxy_request(
     contract: &Contract,
     method: &str,
     path: &str,
     body: Option<&str>,
+    deadline: Instant,
 ) -> Result<Value, String> {
-    let addr = (contract.proxy_host.as_str(), contract.proxy_api_port)
-        .to_socket_addrs()
-        .map_err(|e| e.to_string())?
-        .next()
-        .ok_or("proxy address missing")?;
-    let mut stream =
-        TcpStream::connect_timeout(&addr, Duration::from_secs(2)).map_err(|e| e.to_string())?;
-    stream
-        .set_read_timeout(Some(Duration::from_secs(2)))
-        .map_err(|e| e.to_string())?;
-    stream
-        .set_write_timeout(Some(Duration::from_secs(2)))
-        .map_err(|e| e.to_string())?;
+    let addresses = resolved_addresses(&contract.proxy_host, contract.proxy_api_port)?;
+    let mut stream = connect_candidates(&addresses, deadline)?
+        .ok_or("proxy API unavailable at every resolved address")?;
     let body = body.unwrap_or("");
     let request = format!("{method} {path} HTTP/1.0\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", contract.proxy_host, body.len());
-    stream
-        .write_all(request.as_bytes())
-        .map_err(|e| e.to_string())?;
+    write_before(&mut stream, request.as_bytes(), deadline)?;
     let mut response = Vec::new();
-    stream
-        .take(64 * 1024)
-        .read_to_end(&mut response)
-        .map_err(|e| e.to_string())?;
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Err("proxy API response deadline exceeded".into());
+        }
+        stream
+            .set_read_timeout(Some(remaining))
+            .map_err(|e| e.to_string())?;
+        let mut chunk = [0u8; 4096];
+        let count = stream.read(&mut chunk).map_err(|e| e.to_string())?;
+        if count == 0 {
+            break;
+        }
+        if response.len() + count > 64 * 1024 {
+            return Err("proxy API response too large".into());
+        }
+        response.extend_from_slice(&chunk[..count]);
+    }
+    if Instant::now() > deadline {
+        return Err("proxy API response completed after deadline".into());
+    }
     let response = String::from_utf8(response).map_err(|e| e.to_string())?;
     let (head, payload) = response
         .split_once("\r\n\r\n")
@@ -335,15 +496,16 @@ fn proxy_request(
     serde_json::from_str(payload).map_err(|e| e.to_string())
 }
 
-fn proxy_state(contract: &Contract, enabled: bool) -> Result<(), String> {
+fn proxy_state(contract: &Contract, enabled: bool, deadline: Instant) -> Result<(), String> {
     let path = format!("/proxies/{}", contract.proxy_name);
     let response = proxy_request(
         contract,
         "POST",
         &path,
         Some(&json!({"enabled":enabled}).to_string()),
+        deadline,
     )?;
-    let observed = proxy_request(contract, "GET", &path, None)?;
+    let observed = proxy_request(contract, "GET", &path, None, deadline)?;
     for value in [&response, &observed] {
         if value.get("name").and_then(Value::as_str) != Some(&contract.proxy_name)
             || value.get("enabled").and_then(Value::as_bool) != Some(enabled)
@@ -360,22 +522,20 @@ fn proxy_state(contract: &Contract, enabled: bool) -> Result<(), String> {
     Ok(())
 }
 
-fn proxy_mqtt_reachable(contract: &Contract, run_id: &str) -> Result<bool, String> {
-    let addr = (contract.proxy_host.as_str(), contract.proxy_port)
-        .to_socket_addrs()
-        .map_err(|e| e.to_string())?
-        .next()
-        .ok_or("proxy listen address missing")?;
-    let mut stream = match TcpStream::connect_timeout(&addr, Duration::from_millis(300)) {
-        Ok(stream) => stream,
-        Err(_) => return Ok(false),
-    };
-    stream
-        .set_read_timeout(Some(Duration::from_millis(300)))
-        .map_err(|e| e.to_string())?;
-    stream
-        .set_write_timeout(Some(Duration::from_millis(300)))
-        .map_err(|e| e.to_string())?;
+fn proxy_mqtt_reachable(
+    contract: &Contract,
+    run_id: &str,
+    deadline: Instant,
+) -> Result<bool, String> {
+    let addresses = resolved_addresses(&contract.proxy_host, contract.proxy_port)?;
+    mqtt_reachable_at(&addresses, run_id, deadline)
+}
+
+fn mqtt_reachable_at(
+    addresses: &[SocketAddr],
+    run_id: &str,
+    deadline: Instant,
+) -> Result<bool, String> {
     let client_id = format!("roomci-probe-{run_id}");
     let remaining = 10 + 2 + client_id.len();
     let mut connect = vec![
@@ -394,20 +554,85 @@ fn proxy_mqtt_reachable(contract: &Contract, run_id: &str) -> Result<bool, Strin
     ];
     connect.extend_from_slice(&(client_id.len() as u16).to_be_bytes());
     connect.extend_from_slice(client_id.as_bytes());
-    if stream.write_all(&connect).is_err() {
-        return Ok(false);
+    for (index, address) in addresses.iter().enumerate() {
+        let now = Instant::now();
+        let remaining = deadline.saturating_duration_since(now);
+        if remaining.is_zero() {
+            return Ok(false);
+        }
+        let attempt_deadline = now
+            + (remaining / (addresses.len() - index) as u32)
+                .max(Duration::from_millis(1))
+                .min(remaining);
+        let allowance = attempt_deadline.saturating_duration_since(Instant::now());
+        if allowance.is_zero() {
+            continue;
+        }
+        let Ok(mut stream) = TcpStream::connect_timeout(address, allowance) else {
+            continue;
+        };
+        if write_before(&mut stream, &connect, attempt_deadline).is_err() {
+            continue;
+        }
+        let mut connack = [0; 4];
+        if read_exact_before(&mut stream, &mut connack, attempt_deadline)?
+            && Instant::now() <= deadline
+            && connack == [0x20, 0x02, 0x00, 0x00]
+        {
+            return Ok(true);
+        }
     }
-    let mut connack = [0; 4];
-    Ok(stream.read_exact(&mut connack).is_ok() && connack == [0x20, 0x02, 0x00, 0x00])
+    Ok(false)
 }
 
-fn proxy_is_blocked(contract: &Contract) -> Result<bool, String> {
-    let addr = (contract.proxy_host.as_str(), contract.proxy_port)
-        .to_socket_addrs()
-        .map_err(|e| e.to_string())?
-        .next()
-        .ok_or("proxy listen address missing")?;
-    Ok(TcpStream::connect_timeout(&addr, Duration::from_millis(500)).is_err())
+fn proxy_is_blocked(contract: &Contract, deadline: Instant) -> Result<bool, String> {
+    let addresses = resolved_addresses(&contract.proxy_host, contract.proxy_port)?;
+    all_candidates_blocked(&addresses, deadline)
+}
+
+fn all_candidates_blocked(addresses: &[SocketAddr], deadline: Instant) -> Result<bool, String> {
+    let mut unverified = Vec::new();
+    for (index, address) in addresses.iter().enumerate() {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Err(
+                "block verification deadline exceeded before all addresses were checked".into(),
+            );
+        }
+        let allowance = (remaining / (addresses.len() - index) as u32)
+            .max(Duration::from_millis(1))
+            .min(remaining);
+        match TcpStream::connect_timeout(address, allowance) {
+            Ok(_) => return Ok(false),
+            Err(error) if error.kind() == std::io::ErrorKind::ConnectionRefused => {}
+            Err(error) => unverified.push(format!("{address}: {error}")),
+        }
+    }
+    if Instant::now() > deadline {
+        return Err("block verification completed after deadline".into());
+    }
+    if unverified.is_empty() {
+        Ok(true)
+    } else {
+        Err(format!(
+            "block verification unavailable: {}",
+            unverified.join(", ")
+        ))
+    }
+}
+
+fn wait_for_proxy_mqtt(contract: &Contract, run_id: &str, deadline: Instant) -> Result<(), String> {
+    while Instant::now() < deadline {
+        if proxy_mqtt_reachable(contract, run_id, deadline)? && Instant::now() <= deadline {
+            return Ok(());
+        }
+        std::thread::sleep(
+            deadline
+                .saturating_duration_since(Instant::now())
+                .min(Duration::from_millis(50)),
+        );
+    }
+    Err("MQTT path unavailable before recovery deadline".into())
 }
 
 fn matches_report(value: &Value, revision: u64, expected: &str) -> bool {
@@ -415,11 +640,136 @@ fn matches_report(value: &Value, revision: u64, expected: &str) -> bool {
         && value.get("value").and_then(Value::as_str) == Some(expected)
 }
 
+fn assess_recovery_report(
+    observer: &mut Observer,
+    contract: &Contract,
+    deadline: Instant,
+    stable_until: &mut Option<Instant>,
+    failure: &mut Option<&'static str>,
+) {
+    let Some((received_at, value)) = observer.last_report.take() else {
+        return;
+    };
+    if (stable_until.is_none() && received_at > deadline)
+        || stable_until.is_some_and(|until| received_at > until)
+    {
+        observer.record("late_report", None, value.to_string());
+    } else if value.get("revision").and_then(Value::as_u64) == Some(2) {
+        if !matches_report(&value, 2, &contract.latest_value) {
+            *failure = Some(if stable_until.is_some() {
+                "rollback_observed"
+            } else {
+                "wrong_latest_value"
+            });
+        } else if stable_until.is_none() {
+            *stable_until = Some(received_at + Duration::from_millis(contract.stability_ms));
+            observer.record("latest_reached", None, value.to_string());
+        }
+    } else if stable_until.is_some() {
+        *failure = Some("rollback_observed");
+    } else {
+        observer.record("stale_report", None, value.to_string());
+    }
+}
+
+fn observe_recovery(
+    observer: &mut Observer,
+    contract: &Contract,
+    deadline: Instant,
+) -> Result<Outcome, String> {
+    std::thread::scope(|scope| {
+        let (sender, receiver) = mpsc::channel();
+        let run_id = observer.run_id.clone();
+        scope.spawn(move || {
+            let _ = sender.send(wait_for_proxy_mqtt(contract, &run_id, deadline));
+        });
+        let mut probe_result = None;
+        let mut path_recovered = false;
+        let mut stable_until = None;
+        let mut failure = None;
+        loop {
+            if probe_result.is_none() {
+                if let Ok(result) = receiver.try_recv() {
+                    probe_result = Some(result);
+                }
+            }
+            if !path_recovered {
+                if let Some(result) = &probe_result {
+                    if let Err(error) = result {
+                        return Ok(Outcome::Inconclusive(format!(
+                            "fault_release_failed: {error}"
+                        )));
+                    }
+                    path_recovered = true;
+                    observer.record(
+                        "fault_released",
+                        Some(contract.proxy_name.clone()),
+                        "proxy enabled and GET confirmed; MQTT CONNACK through proxy confirmed",
+                    );
+                }
+            }
+            if path_recovered {
+                if let Some(reason) = failure {
+                    return Ok(Outcome::Failed(reason));
+                }
+                if stable_until.is_some_and(|until| Instant::now() >= until) {
+                    // A queued rollback must be considered before the verdict is frozen.
+                    for _ in 0..1024 {
+                        if !observer.poll_ready()? {
+                            return Ok(Outcome::Passed);
+                        }
+                        assess_recovery_report(
+                            observer,
+                            contract,
+                            deadline,
+                            &mut stable_until,
+                            &mut failure,
+                        );
+                        if let Some(reason) = failure {
+                            return Ok(Outcome::Failed(reason));
+                        }
+                    }
+                    return Ok(Outcome::Inconclusive("observer_queue_not_drained".into()));
+                }
+            }
+            let now = Instant::now();
+            if now >= deadline && probe_result.is_none() {
+                probe_result = Some(
+                    receiver
+                        .recv()
+                        .map_err(|_| "MQTT probe ended without a result".to_string())?,
+                );
+                continue;
+            }
+            if now >= deadline && stable_until.is_none() {
+                return Ok(Outcome::Failed("missing_latest_report"));
+            }
+            let poll_until = stable_until.unwrap_or(deadline);
+            if now < poll_until {
+                observer.poll(poll_until)?;
+                assess_recovery_report(
+                    observer,
+                    contract,
+                    deadline,
+                    &mut stable_until,
+                    &mut failure,
+                );
+            } else if !path_recovered {
+                std::thread::sleep(
+                    deadline
+                        .saturating_duration_since(now)
+                        .min(Duration::from_millis(50)),
+                );
+            }
+        }
+    })
+}
+
 fn run_steps(observer: &mut Observer, contract: &Contract) -> Outcome {
     let result = (|| -> Result<Outcome, String> {
         if !observer.wait_for(
             Instant::now() + Duration::from_millis(contract.ready_timeout_ms),
-            |s| s.subacks >= 2,
+            |s| s.ready,
         )? {
             return Ok(Outcome::Inconclusive("observer_not_ready".into()));
         }
@@ -434,14 +784,13 @@ fn run_steps(observer: &mut Observer, contract: &Contract) -> Outcome {
             &contract.initial_value,
             Instant::now() + Duration::from_millis(contract.ready_timeout_ms),
         )?;
-        if !observer.wait_for(
-            Instant::now() + Duration::from_millis(contract.ready_timeout_ms),
-            |s| {
-                s.last_report
-                    .as_ref()
-                    .is_some_and(|v| matches_report(v, 1, &contract.initial_value))
-            },
-        )? {
+        let initial_deadline = Instant::now() + Duration::from_millis(contract.ready_timeout_ms);
+        if !observer.wait_for(initial_deadline, |s| {
+            s.last_report.as_ref().is_some_and(|(received_at, value)| {
+                *received_at <= initial_deadline
+                    && matches_report(value, 1, &contract.initial_value)
+            })
+        })? {
             return Ok(Outcome::Inconclusive("initial_report_missing".into()));
         }
         observer.record("initial_ready", None, "SUT reported initial revision 1");
@@ -451,21 +800,22 @@ fn run_steps(observer: &mut Observer, contract: &Contract) -> Outcome {
             Some(contract.proxy_name.clone()),
             "disable SUT-only TCP proxy",
         );
-        proxy_state(contract, false).map_err(|e| format!("fault_not_applied: {e}"))?;
+        let fault_deadline = Instant::now() + Duration::from_millis(contract.fault_timeout_ms);
+        proxy_state(contract, false, fault_deadline)
+            .map_err(|e| format!("fault_not_applied: {e}"))?;
         observer.record(
             "fault_applied",
             Some(contract.proxy_name.clone()),
             "proxy disabled and GET confirmed",
         );
-        if !proxy_is_blocked(contract)? {
+        if !proxy_is_blocked(contract, fault_deadline)
+            .map_err(|e| format!("fault_not_applied: {e}"))?
+        {
             return Ok(Outcome::Inconclusive(
                 "fault_not_applied: proxy_still_accepts_connections".into(),
             ));
         }
-        if !observer.wait_for(
-            Instant::now() + Duration::from_millis(contract.fault_timeout_ms),
-            |s| s.status.as_deref() == Some("offline"),
-        )? {
+        if !observer.wait_for(fault_deadline, |s| s.status.as_deref() == Some("offline"))? {
             return Ok(Outcome::Inconclusive(
                 "fault_not_affected: sut_disconnect_not_observed".into(),
             ));
@@ -482,55 +832,9 @@ fn run_steps(observer: &mut Observer, contract: &Contract) -> Outcome {
             &contract.latest_value,
             Instant::now() + Duration::from_millis(contract.fault_timeout_ms),
         )?;
-        proxy_state(contract, true).map_err(|e| format!("fault_release_failed: {e}"))?;
         let deadline = Instant::now() + Duration::from_millis(contract.recovery_timeout_ms);
-        let probe_deadline = deadline.min(Instant::now() + Duration::from_secs(1));
-        let mut path_recovered = false;
-        while Instant::now() < probe_deadline {
-            if proxy_mqtt_reachable(contract, &observer.run_id)? {
-                path_recovered = true;
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(50));
-        }
-        if !path_recovered {
-            return Ok(Outcome::Inconclusive(
-                "fault_release_failed: MQTT path unavailable".into(),
-            ));
-        }
-        observer.record(
-            "fault_released",
-            Some(contract.proxy_name.clone()),
-            "proxy enabled and GET confirmed; MQTT CONNACK through proxy confirmed",
-        );
-        let mut reached = false;
-        while Instant::now() < deadline {
-            observer.poll(deadline)?;
-            if let Some(value) = observer.last_report.take() {
-                if value.get("revision").and_then(Value::as_u64) == Some(2) {
-                    if !matches_report(&value, 2, &contract.latest_value) {
-                        return Ok(Outcome::Failed("wrong_latest_value"));
-                    }
-                    reached = true;
-                    observer.record("latest_reached", None, value.to_string());
-                    break;
-                }
-                observer.record("stale_report", None, value.to_string());
-            }
-        }
-        if !reached {
-            return Ok(Outcome::Failed("missing_latest_report"));
-        }
-        let stable_until = Instant::now() + Duration::from_millis(contract.stability_ms);
-        while Instant::now() < stable_until {
-            observer.poll(stable_until)?;
-            if let Some(value) = observer.last_report.take() {
-                if !matches_report(&value, 2, &contract.latest_value) {
-                    return Ok(Outcome::Failed("rollback_observed"));
-                }
-            }
-        }
-        Ok(Outcome::Passed)
+        proxy_state(contract, true, deadline).map_err(|e| format!("fault_release_failed: {e}"))?;
+        observe_recovery(observer, contract, deadline)
     })();
     match result {
         Ok(outcome) => outcome,
@@ -578,7 +882,11 @@ pub(super) fn execute(
         Ok(mut observer) => {
             let outcome = run_steps(&mut observer, &contract);
             // Always attempt to restore the test path, including after a failed precondition.
-            let cleanup = proxy_state(&contract, true);
+            let cleanup = proxy_state(
+                &contract,
+                true,
+                Instant::now() + Duration::from_millis(contract.fault_timeout_ms),
+            );
             let outcome = match cleanup {
                 Ok(()) => {
                     observer.record("proxy_cleanup", None, "proxy enabled");
@@ -593,7 +901,7 @@ pub(super) fn execute(
                 }
             };
             let mut state = BTreeMap::new();
-            if let Some(value) = observer.last_seen {
+            if let Some(value) = observer.last_seen.take() {
                 state.insert("observed_report".into(), value);
             }
             state.insert(
@@ -604,7 +912,7 @@ pub(super) fn execute(
                 "expected_latest".into(),
                 json!({"revision":2,"value":contract.latest_value}),
             );
-            (observer.timeline, state, outcome)
+            (std::mem::take(&mut observer.timeline), state, outcome)
         }
         Err(error) => (
             Vec::new(),
@@ -667,6 +975,233 @@ mod tests {
     use super::*;
     use std::net::TcpListener;
 
+    fn test_contract(proxy_port: u16) -> Contract {
+        serde_json::from_value(json!({
+            "scenario":"recovery","broker_host":"localhost","broker_port":1883,
+            "proxy_host":"127.0.0.1","proxy_api_port":8474,"proxy_port":proxy_port,"proxy_name":"sut",
+            "device_id":"device-1","initial_value":"old","latest_value":"new",
+            "ready_timeout_ms":2000,"fault_timeout_ms":1000,"recovery_timeout_ms":5000,"stability_ms":100
+        }))
+        .unwrap()
+    }
+
+    fn read_mqtt_packet(stream: &mut TcpStream) -> Vec<u8> {
+        let mut header = [0u8; 1];
+        stream.read_exact(&mut header).unwrap();
+        let mut remaining = 0usize;
+        for shift in (0..28).step_by(7) {
+            let mut digit = [0u8; 1];
+            stream.read_exact(&mut digit).unwrap();
+            remaining += ((digit[0] & 0x7f) as usize) << shift;
+            if digit[0] & 0x80 == 0 {
+                break;
+            }
+        }
+        let mut payload = vec![0; remaining];
+        stream.read_exact(&mut payload).unwrap();
+        [vec![header[0]], payload].concat()
+    }
+
+    #[test]
+    fn observer_waits_for_broker_start_within_ready_deadline() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let responder = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(400));
+            let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            assert_eq!(read_mqtt_packet(&mut stream)[0], 0x10);
+            stream.write_all(&[0x20, 0x02, 0x00, 0x00]).unwrap();
+            for _ in 0..2 {
+                let packet = read_mqtt_packet(&mut stream);
+                assert_eq!(packet[0], 0x82);
+                stream
+                    .write_all(&[0x90, 0x03, packet[1], packet[2], 0x01])
+                    .unwrap();
+            }
+            std::thread::sleep(Duration::from_millis(500));
+        });
+        let contract: Contract = serde_json::from_value(json!({
+            "scenario":"recovery","broker_host":"127.0.0.1","broker_port":port,
+            "proxy_host":"127.0.0.1","proxy_api_port":8474,"proxy_port":1884,"proxy_name":"sut",
+            "device_id":"device-1","initial_value":"old","latest_value":"new",
+            "ready_timeout_ms":2000,"fault_timeout_ms":1000,"recovery_timeout_ms":1000,"stability_ms":100
+        })).unwrap();
+        let mut observer = Observer::new(&contract, "delayed").unwrap();
+        assert!(observer
+            .wait_for(Instant::now() + Duration::from_secs(2), |s| s.subacks >= 2)
+            .unwrap());
+        responder.join().unwrap();
+        assert!(observer
+            .poll(Instant::now() + Duration::from_secs(1))
+            .is_err());
+    }
+
+    #[test]
+    fn observer_readiness_expires_when_broker_never_starts() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let mut contract = test_contract(1884);
+        contract.broker_host = "127.0.0.1".into();
+        contract.broker_port = port;
+        let mut observer = Observer::new(&contract, "absent").unwrap();
+        let start = Instant::now();
+        assert!(!observer
+            .wait_for(start + Duration::from_millis(350), |s| s.ready)
+            .unwrap());
+        assert!(start.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn later_address_can_connect_but_one_refusal_does_not_prove_blocking() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let live = listener.local_addr().unwrap();
+        let refused_listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let refused = refused_listener.local_addr().unwrap();
+        drop(refused_listener);
+        let addresses = [refused, live];
+        assert!(
+            connect_candidates(&addresses, Instant::now() + Duration::from_secs(1))
+                .unwrap()
+                .is_some()
+        );
+        assert!(
+            !all_candidates_blocked(&addresses, Instant::now() + Duration::from_secs(1)).unwrap()
+        );
+        assert!(
+            all_candidates_blocked(&[refused], Instant::now() + Duration::from_secs(1)).unwrap()
+        );
+    }
+
+    #[test]
+    fn mqtt_probe_tries_next_address_after_missing_connack() {
+        let first = TcpListener::bind("127.0.0.1:0").unwrap();
+        let second = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addresses = [first.local_addr().unwrap(), second.local_addr().unwrap()];
+        let first_thread = std::thread::spawn(move || {
+            let (mut stream, _) = first.accept().unwrap();
+            let mut packet = [0u8; 128];
+            assert!(stream.read(&mut packet).unwrap() > 0);
+            std::thread::sleep(Duration::from_millis(1100));
+        });
+        let second_thread = std::thread::spawn(move || {
+            let (mut stream, _) = second.accept().unwrap();
+            let mut packet = [0u8; 128];
+            assert!(stream.read(&mut packet).unwrap() > 0);
+            stream.write_all(&[0x20, 0x02, 0x00, 0x00]).unwrap();
+        });
+        assert!(
+            mqtt_reachable_at(&addresses, "multi", Instant::now() + Duration::from_secs(2))
+                .unwrap()
+        );
+        first_thread.join().unwrap();
+        second_thread.join().unwrap();
+    }
+
+    #[test]
+    fn probe_waits_for_path_after_one_second_without_extending_deadline() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let responder = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(1200));
+            let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut packet = [0u8; 128];
+            assert!(stream.read(&mut packet).unwrap() > 0);
+            stream.write_all(&[0x20, 0x02, 0x00, 0x00]).unwrap();
+        });
+        let contract = test_contract(port);
+        assert!(
+            wait_for_proxy_mqtt(&contract, "late", Instant::now() + Duration::from_secs(3)).is_ok()
+        );
+        responder.join().unwrap();
+        let absent = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = absent.local_addr().unwrap().port();
+        drop(absent);
+        let contract = test_contract(port);
+        let start = Instant::now();
+        assert!(
+            wait_for_proxy_mqtt(&contract, "timeout", start + Duration::from_millis(350))
+                .unwrap_err()
+                .contains("recovery deadline")
+        );
+        assert!(start.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn observer_records_latest_report_while_proxy_probe_is_waiting() {
+        let broker = TcpListener::bind("127.0.0.1:0").unwrap();
+        let broker_port = broker.local_addr().unwrap().port();
+        let broker_thread = std::thread::spawn(move || {
+            let (mut stream, _) = broker.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            assert_eq!(read_mqtt_packet(&mut stream)[0], 0x10);
+            stream.write_all(&[0x20, 0x02, 0x00, 0x00]).unwrap();
+            for _ in 0..2 {
+                let packet = read_mqtt_packet(&mut stream);
+                stream
+                    .write_all(&[0x90, 0x03, packet[1], packet[2], 0x01])
+                    .unwrap();
+            }
+            std::thread::sleep(Duration::from_millis(100));
+            let topic = b"roomci/concurrent/device-1/reported";
+            let payload =
+                br#"{"run_id":"concurrent","device_id":"device-1","revision":2,"value":"new"}"#;
+            let length = 2 + topic.len() + payload.len();
+            assert!(length < 128);
+            let mut packet = vec![0x30, length as u8];
+            packet.extend_from_slice(&(topic.len() as u16).to_be_bytes());
+            packet.extend_from_slice(topic);
+            packet.extend_from_slice(payload);
+            stream.write_all(&packet).unwrap();
+            std::thread::sleep(Duration::from_millis(1500));
+        });
+        let probe = TcpListener::bind("127.0.0.1:0").unwrap();
+        let probe_port = probe.local_addr().unwrap().port();
+        let probe_thread = std::thread::spawn(move || {
+            let (mut stream, _) = probe.accept().unwrap();
+            let mut packet = [0u8; 128];
+            assert!(stream.read(&mut packet).unwrap() > 0);
+            std::thread::sleep(Duration::from_millis(800));
+            stream.write_all(&[0x20, 0x02, 0x00, 0x00]).unwrap();
+        });
+        let mut contract = test_contract(probe_port);
+        contract.broker_host = "127.0.0.1".into();
+        contract.broker_port = broker_port;
+        let mut observer = Observer::new(&contract, "concurrent").unwrap();
+        assert!(observer
+            .wait_for(Instant::now() + Duration::from_secs(2), |s| s.ready)
+            .unwrap());
+        let outcome = observe_recovery(
+            &mut observer,
+            &contract,
+            Instant::now() + Duration::from_secs(2),
+        )
+        .unwrap();
+        assert!(matches!(outcome, Outcome::Passed));
+        let latest = observer
+            .timeline
+            .iter()
+            .position(|event| event.event_type == "latest_reached")
+            .unwrap();
+        let released = observer
+            .timeline
+            .iter()
+            .position(|event| event.event_type == "fault_released")
+            .unwrap();
+        assert!(latest < released, "observer did not progress during probe");
+        broker_thread.join().unwrap();
+        probe_thread.join().unwrap();
+    }
+
     #[test]
     fn report_requires_exact_revision_and_value() {
         assert!(!matches_report(
@@ -684,6 +1219,60 @@ mod tests {
             2,
             "new"
         ));
+    }
+
+    #[test]
+    fn report_receipt_time_sets_recovery_and_stability_boundaries() {
+        let contract = test_contract(1884);
+        let mut observer = Observer::new(&contract, "timed").unwrap();
+        let now = Instant::now();
+        let deadline = now + Duration::from_millis(50);
+        let stable_end = now + Duration::from_millis(100);
+        let mut stable_until = None;
+        let mut failure = None;
+        observer.last_report = Some((
+            deadline + Duration::from_millis(1),
+            json!({"revision":2,"value":"new"}),
+        ));
+        assess_recovery_report(
+            &mut observer,
+            &contract,
+            deadline,
+            &mut stable_until,
+            &mut failure,
+        );
+        assert!(stable_until.is_none());
+        assert!(failure.is_none());
+
+        stable_until = Some(stable_end);
+        observer.last_report = Some((
+            stable_end + Duration::from_millis(1),
+            json!({"revision":1,"value":"old"}),
+        ));
+        assess_recovery_report(
+            &mut observer,
+            &contract,
+            deadline,
+            &mut stable_until,
+            &mut failure,
+        );
+        assert!(
+            failure.is_none(),
+            "post-window rollback changed the verdict"
+        );
+
+        observer.last_report = Some((
+            stable_end - Duration::from_millis(1),
+            json!({"revision":1,"value":"old"}),
+        ));
+        assess_recovery_report(
+            &mut observer,
+            &contract,
+            deadline,
+            &mut stable_until,
+            &mut failure,
+        );
+        assert_eq!(failure, Some("rollback_observed"));
     }
 
     #[test]
@@ -728,7 +1317,12 @@ mod tests {
                 "ready_timeout_ms":1000,"fault_timeout_ms":1000,"recovery_timeout_ms":1000,"stability_ms":100
             })).unwrap();
             assert_eq!(
-                proxy_state(&contract, requested).unwrap_err(),
+                proxy_state(
+                    &contract,
+                    requested,
+                    Instant::now() + Duration::from_secs(2)
+                )
+                .unwrap_err(),
                 "proxy state verification failed"
             );
             responder.join().unwrap();
@@ -752,7 +1346,36 @@ mod tests {
             "device_id":"device-1","initial_value":"old","latest_value":"new",
             "ready_timeout_ms":1000,"fault_timeout_ms":1000,"recovery_timeout_ms":1000,"stability_ms":100
         })).unwrap();
-        assert!(!proxy_mqtt_reachable(&contract, "probe").unwrap());
+        assert!(!proxy_mqtt_reachable(
+            &contract,
+            "probe",
+            Instant::now() + Duration::from_millis(300)
+        )
+        .unwrap());
+        responder.join().unwrap();
+    }
+
+    #[test]
+    fn probe_accepts_connack_within_recovery_deadline() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let responder = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut packet = [0u8; 128];
+            assert!(stream.read(&mut packet).unwrap() > 0);
+            std::thread::sleep(Duration::from_millis(400));
+            stream.write_all(&[0x20, 0x02, 0x00, 0x00]).unwrap();
+        });
+        let contract: Contract = serde_json::from_value(json!({
+            "scenario":"recovery","broker_host":"localhost","broker_port":1883,
+            "proxy_host":"127.0.0.1","proxy_api_port":8474,"proxy_port":port,"proxy_name":"sut",
+            "device_id":"device-1","initial_value":"old","latest_value":"new",
+            "ready_timeout_ms":1000,"fault_timeout_ms":1000,"recovery_timeout_ms":5000,"stability_ms":100
+        })).unwrap();
+        assert!(
+            proxy_mqtt_reachable(&contract, "probe", Instant::now() + Duration::from_secs(5))
+                .unwrap()
+        );
         responder.join().unwrap();
     }
 }
