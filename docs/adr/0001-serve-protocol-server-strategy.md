@@ -58,6 +58,13 @@ local CI contract emulator, not a production server stack.
 
 ## Follow-Up
 
+The external recovery regression in #78 uses a separate real Mosquitto broker
+and Toxiproxy route. This does not expand the embedded `roomci serve` MQTT
+subset. The runner uses a standard MQTT client for QoS 1 publish/subscribe and
+observes reports from the real broker. The SUT-only path is isolated at the
+Compose network layer. See [External MQTT recovery](../EXTERNAL_MQTT_RECOVERY.md)
+for the clean-session/retained contract and the distinct external verdict.
+
 No protocol migration task is promoted from this ADR.
 
 Future customer-independent work should focus on adapter-contract expression,

@@ -2731,3 +2731,39 @@ fn loader_rejects_oversized_yaml_before_deserialization() {
                 && source.to_string().contains("exceeds")
     ));
 }
+#[test]
+fn unsupported_broker_options_and_fault_duration_fail_before_run() {
+    let base = "version: '0.1'\nscenario: { name: strict_options }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n";
+    for (addition, reason) in [
+        (
+            "mqtt: { local: { enabled: false } }\n",
+            "mqtt.local.enabled",
+        ),
+        (
+            "mqtt: { local: { retained: false } }\n",
+            "mqtt.local.retained",
+        ),
+        (
+            "faults:\n  - { at: T, target: mqtt.local, type: offline, duration: 1s }\n",
+            "faults[].duration",
+        ),
+        (
+            "steps:\n  - { at: T, fault: { target: mqtt.local, type: offline, duration: 1s } }\n",
+            "steps[].fault.duration",
+        ),
+    ] {
+        let scenario =
+            serde_yaml::from_str::<crate::ScenarioFile>(&format!("{base}{addition}")).unwrap();
+        let error = crate::validate_scenario(&scenario).unwrap_err();
+        assert!(error.to_string().contains(reason), "{error}");
+    }
+    assert!(serde_yaml::from_str::<crate::ScenarioFile>(&format!(
+        "{base}mqtt: {{ local: {{ enabld: true }} }}\n"
+    ))
+    .is_err());
+    let valid = serde_yaml::from_str::<crate::ScenarioFile>(&format!(
+        "{base}mqtt: {{ local: {{ enabled: true, retained: true }} }}\n"
+    ))
+    .unwrap();
+    crate::validate_scenario(&valid).unwrap();
+}

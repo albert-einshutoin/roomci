@@ -29,6 +29,10 @@ scenario -> contract emulator -> assertions -> timeline/report evidence
 
 `roomci` provides:
 
+- a real-broker MQTT recovery regression for a separate reference gateway,
+  with a verified SUT-only TCP cut and external-observation verdict
+  ([contract and limitations](EXTERNAL_MQTT_RECOVERY.md));
+
 - YAML scenarios for expected device, edge, network, and operations behavior;
 - a virtual-time runner for deterministic local and CI execution;
 - a localhost `serve` mode for external controller PoCs;
@@ -125,4 +129,3 @@ available.
 
 It should not claim full protocol conformance, vendor compatibility, production
 orchestration, or private-stack emulation.
-

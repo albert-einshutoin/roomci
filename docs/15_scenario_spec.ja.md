@@ -57,6 +57,11 @@ T-30m
 
 ## 障害宣言
 
+内部モデルでは `faults[].duration` とstep内のfault durationを実行前に拒否します。
+`mqtt.local.enabled: false`、`mqtt.*.retained: false`、未知の構造化された
+`mqtt` キーも拒否します。実broker試験の契約は
+[外部MQTT復旧試験](EXTERNAL_MQTT_RECOVERY.md)を参照してください。
+
 障害はグローバルに宣言できます。
 
 ```yaml

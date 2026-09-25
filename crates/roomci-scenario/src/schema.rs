@@ -75,6 +75,7 @@ pub struct ScenarioClock {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct MqttConfig {
     #[serde(default)]
     pub local: BrokerConfig,
@@ -85,11 +86,12 @@ pub struct MqttConfig {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct BrokerConfig {
     #[serde(default)]
-    pub retained: bool,
+    pub retained: Option<bool>,
     #[serde(default)]
-    pub enabled: bool,
+    pub enabled: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -229,6 +231,7 @@ pub struct MqttPublishStep {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct FaultStep {
     #[serde(default)]
     pub at: Option<String>,

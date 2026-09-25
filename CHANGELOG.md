@@ -12,6 +12,10 @@ not as separately published calendar releases.
 
 ### Added
 
+- Real-broker external MQTT recovery check with a separate clean-session
+  reference SUT, SUT-only Toxiproxy cut/release, broker-observed verdict,
+  strict JSON/JUnit evidence, and a Docker Compose CI regression (#78).
+
 - Evaluator intake kits in English and Japanese that map required MQTT,
   payload, identity, Modbus, BMS, auth/TLS, safety, report, and acceptance
   inputs to adapter contract fields and PoC commands while explicitly
@@ -56,8 +60,15 @@ not as separately published calendar releases.
 
 ### Changed
 
-- README quality measurements now match the current full workspace gate: 260
-  tests and 88.63% line coverage.
+- Explicit `mqtt.local.enabled: false` and `mqtt.*.retained: false` now fail
+  validation; unknown structured MQTT keys are parse errors. Those options
+  previously could be accepted without taking effect. Internal scenario
+  `faults[].duration` and step fault durations are now rejected before run
+  because they had no recovery action (#29, #42, partial scope).
+
+- README quality measurements now match the current full workspace gate: 265
+  tests and 83.66% line coverage. Real-broker integration behavior runs in
+  Docker Compose and is not instrumented by tarpaulin.
 - Public release metadata and README badges are being aligned with verifiable local repository state.
 - `roomci-cli` is now a thin argument-parsing and scenario-runner binary; serve runtime ownership moved to `roomci-serve`.
 - `roomci serve` now handles HTTP clients independently with read/write timeouts and an in-flight connection cap.

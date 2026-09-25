@@ -112,8 +112,11 @@ faults:
   - at: T+10s
     target: mqtt.cloud
     type: offline
-    duration: 10m
 ```
+
+内部モデルの `faults[].duration` とstep内のfault durationは、時間経過による
+解除処理がないため実行前に拒否します。実brokerと別プロセスSUTのTCP経路を
+切断・再開する試験は[外部MQTT復旧試験](EXTERNAL_MQTT_RECOVERY.md)を参照してください。
 
 ## ターゲット命名規則
 

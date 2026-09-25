@@ -1,0 +1,6 @@
+FROM python:3.13-slim
+RUN pip install --no-cache-dir paho-mqtt==2.1.0
+COPY sut.py /sut.py
+COPY inject_retained.py /inject_retained.py
+COPY verify_isolation.py /verify_isolation.py
+CMD ["python", "-u", "/sut.py"]

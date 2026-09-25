@@ -57,6 +57,12 @@ The scenario runner converts this into virtual time.
 
 ## Fault declaration
 
+Timed recovery through `faults[].duration` is unsupported in the internal
+model and rejected before running. `mqtt.local.enabled: false` and
+`mqtt.*.retained: false` are also rejected; unknown structured `mqtt` fields
+are parse errors. The real-broker recovery command has a separate strict
+contract: [External MQTT recovery](EXTERNAL_MQTT_RECOVERY.md).
+
 Faults can be declared globally:
 
 ```yaml

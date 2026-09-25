@@ -34,6 +34,17 @@
 | Phase 25.2 | `done` | Validated graph completion and Rust dependency audit gate before adapter contract generalization | None | `phase25_2/phase_status.md` |
 | Phase 26 | `done` | Adapter contract payload, topic/identity, acceptance/evidence mapping, and evaluator intake surfaces are complete | None | `phase26/phase_status.md` |
 
+## External MQTT recovery regression
+
+Issue #78 implements the first separate-SUT recovery regression after Phase 26.
+Local Docker Compose evidence in `reports/external-mqtt` distinguishes the
+broken clean-session reconnect from the fixed SUT under one contract, and
+checks absent/stopped SUT, stale/foreign/retained reports, rollback, missing
+fault application, and a second clean run. The hosted `external-mqtt-recovery`
+job remains the final repeatability gate for its PR. This is reference-SUT
+evidence, not customer compatibility or demand validation. #29 and #42 receive
+the narrow input-boundary changes; #44 and #6 remain separate tracking work.
+
 ## Update Rules
 
 - Update this file when a phase changes status.
