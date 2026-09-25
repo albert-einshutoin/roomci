@@ -31,3 +31,5 @@ To substitute a customer SUT in this Compose setup, start it on `sut_net` and co
 The external contract intentionally has no `faults[].duration`: it explicitly applies and releases one SUT-only TCP cut. Internal-model `faults[].duration` and step fault durations are rejected before execution until their recovery semantics exist. `mqtt.local.enabled: false`, `mqtt.*.retained: false`, and unknown structured `mqtt` keys are rejected; arbitrary MQTT payload maps remain open for adapter data.
 
 The proxy's disable/enable API is documented by [Toxiproxy](https://github.com/Shopify/toxiproxy), and [Paho's reconnect guidance](https://github.com/eclipse-paho/paho.mqtt.python) explains why the fixed client subscribes in its connection callback.
+
+The separate [Node-RED Bring Your Own SUT validation](EXTERNAL_SUT_VALIDATION.md) measures the external adapter and correlation work needed for a generic thermostat payload; it does not replace this reference regression.

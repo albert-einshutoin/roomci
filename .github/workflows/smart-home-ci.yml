@@ -25,6 +25,21 @@ jobs:
           path: reports/external-mqtt
           if-no-files-found: error
 
+  node-red-external-sut:
+    name: Third-party Node-RED MQTT recovery
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run Node-RED recovery and correlation negative control
+        run: bash examples/node-red-mqtt-recovery/run.sh
+      - name: Upload Node-RED external SUT evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: node-red-external-sut
+          path: reports/node-red-external-sut
+          if-no-files-found: error
+
   action-self-test:
     name: GitHub Action self-test
     runs-on: ubuntu-latest

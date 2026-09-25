@@ -1,0 +1,45 @@
+services:
+  broker:
+    image: eclipse-mosquitto:2.0.22
+    networks: [broker_net]
+    volumes:
+      - ../external-mqtt-recovery/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    networks: [broker_net, sut_net]
+    depends_on: [broker]
+  adapter:
+    build:
+      context: .
+      dockerfile: Dockerfile.adapter
+    environment:
+      RUN_ID: ${RUN_ID:?RUN_ID required}
+      DEVICE_ID: thermostat-1
+      BROKER_HOST: broker
+    networks: [broker_net]
+    depends_on: [broker]
+  node-red:
+    image: nodered/node-red@sha256:7aa04e1c7be16aec5b4b4d6e64ae863c4720b0ab18e2c1f46905f7b0c71e3a19
+    environment:
+      NR_DESIRED_TOPIC: byos/${RUN_ID:?RUN_ID required}/thermostat-1/desired
+      NR_REPORTED_TOPIC: byos/${RUN_ID:?RUN_ID required}/thermostat-1/reported
+      NR_STATUS_TOPIC: byos/${RUN_ID:?RUN_ID required}/thermostat-1/status
+      NR_OMIT_LATEST: ${OMIT_LATEST:-false}
+      FLOWS: flows.json
+    volumes:
+      - ./flows.json:/data/flows.json:ro
+    networks: [sut_net]
+    depends_on: [toxiproxy]
+  runner:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    volumes:
+      - ./recovery.yaml:/contract/recovery.yaml:ro
+      - ../../reports/node-red-external-sut:/reports
+    networks: [broker_net]
+    depends_on: [toxiproxy]
+
+networks:
+  broker_net: {}
+  sut_net: {}

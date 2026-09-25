@@ -1,0 +1,12 @@
+device_identity: thermostat-1
+roomci_topic: roomci/<run-id>/thermostat-1/{desired,reported,status}
+application_topic: byos/<run-id>/thermostat-1/{desired,reported,status}
+desired_payload: {targetTemperature: 21}
+reported_payload: {temperature: 21}
+desired_value: targetTemperature
+observed_value: temperature
+status: {birth: online, will: offline, retained: false}
+correlation: fresh_run_topic_and_desired_value_after_online_birth
+readiness: adapter_subscribed_and_node_red_mqtt_birth
+recovery_timeout_ms: 30000
+stability_ms: 1000
