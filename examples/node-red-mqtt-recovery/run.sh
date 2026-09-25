@@ -61,14 +61,17 @@ run_case() {
   "${compose[@]}" run --rm --no-deps --entrypoint /bin/sh runner -c \
     'curl --fail --silent --show-error --retry 10 --retry-delay 1 --retry-connrefused -X POST -H "Content-Type: application/json" -d '\''{"name":"sut","listen":"0.0.0.0:1884","upstream":"broker:1883","enabled":true}'\'' http://toxiproxy:8474/proxies'
   "${compose[@]}" up -d node-red
-  "${compose[@]}" exec -T node-red node -e '
-    const net = require("net");
-    const socket = net.connect({host:"broker",port:1883});
-    socket.on("connect", () => process.exit(3));
-    socket.on("error", () => process.exit(0));
-    socket.setTimeout(1000, () => process.exit(4));
-  '
-  echo 'broker ready; direct Node-RED to broker route unavailable' > "$out/$active_case/isolation.log"
+  python3 - "$("${compose[@]}" ps -q broker)" \
+    "$("${compose[@]}" ps -q toxiproxy)" \
+    "$("${compose[@]}" ps -q node-red)" <<'PY' | tee "$out/$active_case/isolation.log"
+import json, subprocess, sys
+containers = json.loads(subprocess.check_output(['docker', 'inspect', *sys.argv[1:]]))
+broker, proxy, sut = (set(container['NetworkSettings']['Networks']) for container in containers)
+assert broker and sut and proxy, 'network attachment missing'
+assert not broker & sut, 'Node-RED has a direct broker network'
+assert broker & proxy and sut & proxy, 'proxy does not bridge both networks'
+print('broker ready; Node-RED and broker have no shared network; proxy bridges both')
+PY
 
   local injection_pid=
   if [[ "$OMIT_LATEST" == true ]]; then
