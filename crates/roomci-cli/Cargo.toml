@@ -17,6 +17,7 @@ path = "src/main.rs"
 [dependencies]
 clap.workspace = true
 chrono.workspace = true
+mio = { version = "1.2.3", features = ["net", "os-poll"] }
 roomci-core = { path = "../roomci-core" }
 roomci-report = { path = "../roomci-report" }
 roomci-scenario = { path = "../roomci-scenario" }

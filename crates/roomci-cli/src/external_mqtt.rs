@@ -15,6 +15,7 @@ use std::{
 };
 
 use chrono::Utc;
+use mio::{net::TcpStream as MioTcpStream, Events, Interest, Poll, Token};
 use roomci_core::{AssertionResult, RunReport, RunResult, TimelineEvent};
 use rumqttc::{Client, ConnectionError, Event, MqttOptions, Packet, QoS, RecvTimeoutError};
 use serde::{Deserialize, Serialize};
@@ -505,7 +506,7 @@ fn proxy_mqtt_reachable(
     contract: &Contract,
     run_id: &str,
     deadline: Instant,
-) -> Result<bool, String> {
+) -> Result<Option<Instant>, String> {
     let addresses = resolved_addresses(&contract.proxy_host, contract.proxy_port)?;
     mqtt_reachable_at(&addresses, run_id, deadline)
 }
@@ -514,13 +515,13 @@ fn mqtt_reachable_at(
     addresses: &[SocketAddr],
     run_id: &str,
     deadline: Instant,
-) -> Result<bool, String> {
+) -> Result<Option<Instant>, String> {
     if addresses.is_empty() {
-        return Ok(false);
+        return Ok(None);
     }
     let cancelled = AtomicBool::new(false);
     let (sender, receiver) = mpsc::channel();
-    let reachable = std::thread::scope(|scope| {
+    let received_at = std::thread::scope(|scope| {
         for (index, address) in addresses.iter().copied().enumerate() {
             let sender = sender.clone();
             let cancelled = &cancelled;
@@ -534,15 +535,15 @@ fn mqtt_reachable_at(
             });
         }
         drop(sender);
-        let mut reachable = false;
+        let mut first_receipt = None;
         for _ in addresses {
             let remaining = deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero() {
                 break;
             }
             match receiver.recv_timeout(remaining) {
-                Ok(Some(received_at)) if received_at <= deadline => {
-                    reachable = true;
+                Ok(Some(observed_at)) if observed_at <= deadline => {
+                    first_receipt = Some(observed_at);
                     break;
                 }
                 Ok(_) => {}
@@ -551,12 +552,14 @@ fn mqtt_reachable_at(
         }
         cancelled.store(true, Ordering::Relaxed);
         // Scoped workers own their sockets and exit after at most one short I/O wait.
-        reachable
+        first_receipt
     });
-    Ok(reachable
-        || receiver
+    Ok(received_at.or_else(|| {
+        receiver
             .try_iter()
-            .any(|received_at| received_at.is_some_and(|at| at <= deadline)))
+            .flatten()
+            .find(|received_at| *received_at <= deadline)
+    }))
 }
 
 fn mqtt_probe_address(
@@ -565,19 +568,56 @@ fn mqtt_probe_address(
     deadline: Instant,
     cancelled: &AtomicBool,
 ) -> Option<Instant> {
-    let mut stream = loop {
+    mqtt_probe_address_with_ready(address, client_id, deadline, cancelled, || true)
+}
+
+fn connect_probe_socket(
+    address: SocketAddr,
+    deadline: Instant,
+    cancelled: &AtomicBool,
+    connection_ready: &impl Fn() -> bool,
+) -> std::io::Result<Option<TcpStream>> {
+    let mut stream = MioTcpStream::connect(address)?;
+    let mut poll = Poll::new()?;
+    poll.registry()
+        .register(&mut stream, Token(0), Interest::WRITABLE)?;
+    let mut events = Events::with_capacity(4);
+    let mut connected = false;
+    loop {
         if cancelled.load(Ordering::Relaxed) {
-            return None;
+            return Ok(None);
         }
         let remaining = deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
-            return None;
+            return Ok(None);
         }
-        match TcpStream::connect_timeout(&address, remaining.min(Duration::from_millis(25))) {
-            Ok(stream) => break stream,
-            Err(_) => std::thread::sleep(remaining.min(Duration::from_millis(10))),
+        if connected && connection_ready() {
+            poll.registry().deregister(&mut stream)?;
+            let stream: TcpStream = stream.into();
+            stream.set_nonblocking(false)?;
+            return Ok(Some(stream));
         }
-    };
+        match poll.poll(&mut events, Some(remaining.min(Duration::from_millis(25)))) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
+        }
+        if !connected && events.iter().any(|event| event.token() == Token(0)) {
+            if let Some(error) = stream.take_error()? {
+                return Err(error);
+            }
+            connected = stream.peer_addr().is_ok();
+        }
+    }
+}
+
+fn mqtt_probe_address_with_ready(
+    address: SocketAddr,
+    client_id: &str,
+    deadline: Instant,
+    cancelled: &AtomicBool,
+    connection_ready: impl Fn() -> bool,
+) -> Option<Instant> {
     let remaining = 10 + 2 + client_id.len();
     let mut connect = vec![
         0x10,
@@ -595,35 +635,86 @@ fn mqtt_probe_address(
     ];
     connect.extend_from_slice(&(client_id.len() as u16).to_be_bytes());
     connect.extend_from_slice(client_id.as_bytes());
-    if write_before(&mut stream, &connect, deadline).is_err() {
-        return None;
-    }
-    let mut connack = [0; 4];
-    let mut received = 0;
-    while received < connack.len() && !cancelled.load(Ordering::Relaxed) {
+    loop {
+        if cancelled.load(Ordering::Relaxed) {
+            return None;
+        }
         let remaining = deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
             return None;
         }
-        if stream
-            .set_read_timeout(Some(remaining.min(Duration::from_millis(25))))
-            .is_err()
+        let mut stream = match connect_probe_socket(address, deadline, cancelled, &connection_ready)
         {
+            Ok(Some(stream)) => stream,
+            Ok(None) => return None,
+            Err(_) => {
+                std::thread::sleep(remaining.min(Duration::from_millis(10)));
+                continue;
+            }
+        };
+        let mut pending = connect.as_slice();
+        while !pending.is_empty() && !cancelled.load(Ordering::Relaxed) {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                return None;
+            }
+            if stream
+                .set_write_timeout(Some(remaining.min(Duration::from_millis(25))))
+                .is_err()
+            {
+                break;
+            }
+            match stream.write(pending) {
+                Ok(0) => break,
+                Ok(count) => pending = &pending[count..],
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+                    ) => {}
+                Err(_) => break,
+            }
+        }
+        if !pending.is_empty() {
+            continue;
+        }
+        let mut connack = [0; 4];
+        let mut received = 0;
+        while received < connack.len() && !cancelled.load(Ordering::Relaxed) {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                return None;
+            }
+            if stream
+                .set_read_timeout(Some(remaining.min(Duration::from_millis(25))))
+                .is_err()
+            {
+                break;
+            }
+            match stream.read(&mut connack[received..]) {
+                Ok(0) => break,
+                Ok(count) => received += count,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+                    ) => {}
+                Err(_) => break,
+            }
+        }
+        if received == connack.len() && connack == [0x20, 0x02, 0x00, 0x00] {
+            let received_at = Instant::now();
+            if received_at <= deadline {
+                return Some(received_at);
+            }
             return None;
         }
-        match stream.read(&mut connack[received..]) {
-            Ok(0) => return None,
-            Ok(count) => received += count,
-            Err(error)
-                if matches!(
-                    error.kind(),
-                    std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
-                ) => {}
-            Err(_) => return None,
-        }
+        std::thread::sleep(
+            deadline
+                .saturating_duration_since(Instant::now())
+                .min(Duration::from_millis(10)),
+        );
     }
-    let received_at = Instant::now();
-    (connack == [0x20, 0x02, 0x00, 0x00] && received_at <= deadline).then_some(received_at)
 }
 
 fn proxy_is_blocked(contract: &Contract, deadline: Instant) -> Result<bool, String> {
@@ -664,7 +755,8 @@ fn all_candidates_blocked(addresses: &[SocketAddr], deadline: Instant) -> Result
 
 fn wait_for_proxy_mqtt(contract: &Contract, run_id: &str, deadline: Instant) -> Result<(), String> {
     while Instant::now() < deadline {
-        if proxy_mqtt_reachable(contract, run_id, deadline)? && Instant::now() <= deadline {
+        // The probe validates the CONNACK receipt time; joining workers may finish later.
+        if proxy_mqtt_reachable(contract, run_id, deadline)?.is_some() {
             return Ok(());
         }
         std::thread::sleep(
@@ -1050,6 +1142,36 @@ mod tests {
         String::from_utf8(packet[13..13 + length].to_vec()).unwrap()
     }
 
+    fn expect_probe_closed(stream: &mut TcpStream) {
+        stream
+            .set_read_timeout(Some(Duration::from_millis(500)))
+            .unwrap();
+        let mut byte = [0];
+        match stream.read(&mut byte) {
+            Ok(0) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::ConnectionReset => {}
+            other => panic!("probe connection remained open: {other:?}"),
+        }
+    }
+
+    fn accept_probe_with_deadline(listener: &TcpListener) -> TcpStream {
+        listener.set_nonblocking(true).unwrap();
+        let stop = Instant::now() + Duration::from_secs(1);
+        loop {
+            assert!(Instant::now() < stop, "probe never opened a TCP connection");
+            match listener.accept() {
+                Ok((stream, _)) => {
+                    stream.set_nonblocking(false).unwrap();
+                    return stream;
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => panic!("accept failed: {error}"),
+            }
+        }
+    }
+
     #[test]
     fn initial_report_wait_handles_early_late_and_absent_reports() {
         for report_first in [Some(true), Some(false), None] {
@@ -1146,6 +1268,7 @@ mod tests {
                 ipv4_ids.send(read_probe_client_id(&mut stream)).unwrap();
                 std::thread::sleep(Duration::from_millis(400));
                 let _ = stream.write_all(&[0x20, 0x02, 0x00, 0x00]);
+                expect_probe_closed(&mut stream);
             });
             let ipv6_responder = two_addresses.then(|| {
                 std::thread::spawn(move || {
@@ -1153,6 +1276,7 @@ mod tests {
                     ids.send(read_probe_client_id(&mut stream)).unwrap();
                     std::thread::sleep(Duration::from_millis(400));
                     let _ = stream.write_all(&[0x20, 0x02, 0x00, 0x00]);
+                    expect_probe_closed(&mut stream);
                 })
             });
             assert!(mqtt_reachable_at(
@@ -1160,7 +1284,8 @@ mod tests {
                 "dual",
                 Instant::now() + Duration::from_millis(600)
             )
-            .unwrap());
+            .unwrap()
+            .is_some());
             ipv4_responder.join().unwrap();
             if let Some(responder) = ipv6_responder {
                 responder.join().unwrap();
@@ -1174,6 +1299,92 @@ mod tests {
     }
 
     #[test]
+    fn mqtt_probe_keeps_one_tcp_attempt_during_delayed_connect_completion() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let responder = std::thread::spawn(move || {
+            let mut stream = accept_probe_with_deadline(&listener);
+            stream
+                .set_read_timeout(Some(Duration::from_secs(1)))
+                .unwrap();
+            assert_eq!(read_mqtt_packet(&mut stream)[0], 0x10);
+            std::thread::sleep(Duration::from_millis(20));
+            stream.write_all(&[0x20, 0x02, 0x00, 0x00]).unwrap();
+            expect_probe_closed(&mut stream);
+            listener.set_nonblocking(true).unwrap();
+            let stop = Instant::now() + Duration::from_millis(100);
+            while Instant::now() < stop {
+                match listener.accept() {
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        std::thread::sleep(Duration::from_millis(5));
+                    }
+                    other => panic!("probe restarted its TCP attempt: {other:?}"),
+                }
+            }
+        });
+        let cancelled = AtomicBool::new(false);
+        let start = Instant::now();
+        let received_at = mqtt_probe_address_with_ready(
+            address,
+            "roomci-probe-delayed",
+            start + Duration::from_millis(600),
+            &cancelled,
+            // Hold back the connect completion notification, not listener.accept().
+            || start.elapsed() >= Duration::from_millis(60),
+        );
+        assert!(received_at.is_some_and(|at| at <= start + Duration::from_millis(600)));
+        assert!(start.elapsed() >= Duration::from_millis(60));
+        responder.join().unwrap();
+    }
+
+    #[test]
+    fn pending_tcp_connect_can_be_cancelled_without_leaving_a_socket() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let worker_cancelled = Arc::clone(&cancelled);
+        let start = Instant::now();
+        let worker = std::thread::spawn(move || {
+            connect_probe_socket(
+                address,
+                start + Duration::from_millis(600),
+                &worker_cancelled,
+                &|| false,
+            )
+            .unwrap()
+        });
+        let mut stream = accept_probe_with_deadline(&listener);
+        std::thread::sleep(Duration::from_millis(60));
+        cancelled.store(true, Ordering::Relaxed);
+        assert!(worker.join().unwrap().is_none());
+        assert!(start.elapsed() < Duration::from_millis(200));
+        expect_probe_closed(&mut stream);
+    }
+
+    #[test]
+    fn pending_tcp_connect_stops_at_the_shared_deadline() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let responder = std::thread::spawn(move || {
+            let mut stream = accept_probe_with_deadline(&listener);
+            expect_probe_closed(&mut stream);
+        });
+        let cancelled = AtomicBool::new(false);
+        let start = Instant::now();
+        assert!(mqtt_probe_address_with_ready(
+            address,
+            "roomci-probe-deadline",
+            start + Duration::from_millis(60),
+            &cancelled,
+            || false,
+        )
+        .is_none());
+        assert!(start.elapsed() >= Duration::from_millis(60));
+        assert!(start.elapsed() < Duration::from_millis(300));
+        responder.join().unwrap();
+    }
+
+    #[test]
     fn mqtt_probe_rejects_unavailable_candidates_and_late_connack() {
         let ipv4 = TcpListener::bind("127.0.0.1:0").unwrap();
         let ipv6 = TcpListener::bind("[::1]:0").unwrap();
@@ -1182,7 +1393,9 @@ mod tests {
         drop(ipv6);
         let start = Instant::now();
         assert!(
-            !mqtt_reachable_at(&addresses, "absent", start + Duration::from_millis(250)).unwrap()
+            mqtt_reachable_at(&addresses, "absent", start + Duration::from_millis(250))
+                .unwrap()
+                .is_none()
         );
         assert!(start.elapsed() < Duration::from_millis(500));
         let contract = test_contract(addresses[1].port());
@@ -1199,15 +1412,63 @@ mod tests {
         let responder = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
             assert_eq!(read_mqtt_packet(&mut stream)[0], 0x10);
+            expect_probe_closed(&mut stream);
             std::thread::sleep(Duration::from_millis(350));
             let _ = stream.write_all(&[0x20, 0x02, 0x00, 0x00]);
         });
         let start = Instant::now();
         assert!(
-            !mqtt_reachable_at(&[address], "late", start + Duration::from_millis(250)).unwrap()
+            mqtt_reachable_at(&[address], "late", start + Duration::from_millis(250))
+                .unwrap()
+                .is_none()
         );
         assert!(start.elapsed() < Duration::from_millis(500));
         responder.join().unwrap();
+    }
+
+    #[test]
+    fn mqtt_probe_retries_a_disconnected_candidate_while_another_refuses() {
+        let refused = TcpListener::bind("127.0.0.1:0").unwrap();
+        let refused_address = refused.local_addr().unwrap();
+        drop(refused);
+        let recovering = TcpListener::bind("127.0.0.1:0").unwrap();
+        let recovering_address = recovering.local_addr().unwrap();
+        recovering.set_nonblocking(true).unwrap();
+        let responder = std::thread::spawn(move || {
+            let stop = Instant::now() + Duration::from_secs(1);
+            let mut attempts = 0;
+            while Instant::now() < stop && attempts < 2 {
+                match recovering.accept() {
+                    Ok((mut stream, _)) => {
+                        stream
+                            .set_read_timeout(Some(Duration::from_secs(1)))
+                            .unwrap();
+                        assert_eq!(read_mqtt_packet(&mut stream)[0], 0x10);
+                        attempts += 1;
+                        if attempts == 2 {
+                            std::thread::sleep(Duration::from_millis(20));
+                            stream.write_all(&[0x20, 0x02, 0x00, 0x00]).unwrap();
+                        }
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        std::thread::sleep(Duration::from_millis(5));
+                    }
+                    Err(error) => panic!("accept failed: {error}"),
+                }
+            }
+            attempts
+        });
+        let reachable = mqtt_reachable_at(
+            &[refused_address, recovering_address],
+            "retry",
+            Instant::now() + Duration::from_millis(600),
+        )
+        .unwrap();
+        assert_eq!(responder.join().unwrap(), 2, "candidate was not retried");
+        assert!(
+            reachable.is_some(),
+            "a refusing candidate hid a recovered path"
+        );
     }
 
     #[test]
@@ -1306,6 +1567,7 @@ mod tests {
         assert!(
             mqtt_reachable_at(&addresses, "multi", Instant::now() + Duration::from_secs(2))
                 .unwrap()
+                .is_some()
         );
         first_thread.join().unwrap();
         second_thread.join().unwrap();
@@ -1554,12 +1816,13 @@ mod tests {
             "device_id":"device-1","initial_value":"old","latest_value":"new",
             "ready_timeout_ms":1000,"fault_timeout_ms":1000,"recovery_timeout_ms":1000,"stability_ms":100
         })).unwrap();
-        assert!(!proxy_mqtt_reachable(
+        assert!(proxy_mqtt_reachable(
             &contract,
             "probe",
             Instant::now() + Duration::from_millis(300)
         )
-        .unwrap());
+        .unwrap()
+        .is_none());
         responder.join().unwrap();
     }
 
@@ -1583,6 +1846,7 @@ mod tests {
         assert!(
             proxy_mqtt_reachable(&contract, "probe", Instant::now() + Duration::from_secs(5))
                 .unwrap()
+                .is_some()
         );
         responder.join().unwrap();
     }
