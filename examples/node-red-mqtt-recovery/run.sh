@@ -38,8 +38,17 @@ run_case() {
     "$RUN_ID" 'nodered/node-red@sha256:7aa04e1c7be16aec5b4b4d6e64ae863c4720b0ab18e2c1f46905f7b0c71e3a19' \
     "$OMIT_LATEST" > "$out/$active_case/conditions.txt"
   "${compose[@]}" up -d broker toxiproxy
-  "${compose[@]}" exec -T broker mosquitto_pub -h localhost -t \
-    "byos/$RUN_ID/thermostat-1/readiness" -q 1 -m ready
+  local broker_ready=false
+  for attempt in {1..10}; do
+    if "${compose[@]}" exec -T broker timeout 1 mosquitto_pub -h localhost -t \
+      "byos/$RUN_ID/thermostat-1/readiness" -q 1 -m ready >/dev/null 2>&1; then
+      broker_ready=true
+      printf 'broker_ready_attempt=%s\n' "$attempt" >> "$out/$active_case/conditions.txt"
+      break
+    fi
+    sleep 0.25
+  done
+  [[ "$broker_ready" == true ]] || { echo 'broker MQTT not ready after bounded retries' >&2; exit 1; }
   if [[ "$OMIT_LATEST" == true ]]; then
     : > "$out/$active_case/injection.log"
     "${compose[@]}" exec -T broker mosquitto_pub -h localhost -t \

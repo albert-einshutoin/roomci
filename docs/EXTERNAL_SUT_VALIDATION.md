@@ -70,8 +70,9 @@ claim to validate that case.
 ## Reproduction and evidence
 
 The script builds the existing roomci runner and a Python/Paho adapter, starts
-Mosquitto and Toxiproxy, waits for the adapter subscription, confirms the broker
-accepts MQTT, and checks Docker network membership: Node-RED and broker share
+Mosquitto and Toxiproxy, retries a broker MQTT publish within ten bounded
+attempts, waits for the adapter subscription, and checks Docker network membership:
+Node-RED and broker share
 no network, while the proxy shares one with each. The roomci fault check then
 requires the Node-RED offline will after the proxy TCP cut.
 
@@ -107,7 +108,7 @@ On this PoC: roomci core changed **0 lines**. The Node-RED application is one
 seven-line exported flow file with a three-statement Function body plus one
 negative-control guard. The external bridge is 99 lines of Python; the
 explicit mapping is 12 YAML lines. Compose, contract, and adapter Dockerfile
-are 45, 14, and 4 lines respectively; the 137-line shell harness supplies
+are 45, 14, and 4 lines respectively; the 146-line shell harness supplies
 repeatable setup, fault controls, assertions, and artifact collection. These
 counts describe the PoC files, not an estimated customer integration effort.
 
