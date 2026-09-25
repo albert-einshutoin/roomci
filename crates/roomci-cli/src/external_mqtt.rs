@@ -334,10 +334,10 @@ impl Observer {
         predicate: impl Fn(&Self) -> bool,
     ) -> Result<bool, String> {
         while Instant::now() < deadline {
-            self.poll(deadline)?;
-            if predicate(self) && Instant::now() <= deadline {
+            if predicate(self) {
                 return Ok(true);
             }
+            self.poll(deadline)?;
         }
         Ok(false)
     }
@@ -425,27 +425,6 @@ fn write_before(stream: &mut TcpStream, mut bytes: &[u8], deadline: Instant) -> 
         return Err("write completed after deadline".into());
     }
     Ok(())
-}
-
-fn read_exact_before(
-    stream: &mut TcpStream,
-    mut bytes: &mut [u8],
-    deadline: Instant,
-) -> Result<bool, String> {
-    while !bytes.is_empty() {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        if remaining.is_zero() {
-            return Ok(false);
-        }
-        stream
-            .set_read_timeout(Some(remaining))
-            .map_err(|e| e.to_string())?;
-        match stream.read(bytes) {
-            Ok(0) | Err(_) => return Ok(false),
-            Ok(count) => bytes = &mut bytes[count..],
-        }
-    }
-    Ok(Instant::now() <= deadline)
 }
 
 fn proxy_request(
@@ -536,7 +515,69 @@ fn mqtt_reachable_at(
     run_id: &str,
     deadline: Instant,
 ) -> Result<bool, String> {
-    let client_id = format!("roomci-probe-{run_id}");
+    if addresses.is_empty() {
+        return Ok(false);
+    }
+    let cancelled = AtomicBool::new(false);
+    let (sender, receiver) = mpsc::channel();
+    let reachable = std::thread::scope(|scope| {
+        for (index, address) in addresses.iter().copied().enumerate() {
+            let sender = sender.clone();
+            let cancelled = &cancelled;
+            scope.spawn(move || {
+                let _ = sender.send(mqtt_probe_address(
+                    address,
+                    &format!("roomci-probe-{run_id}-{index}"),
+                    deadline,
+                    cancelled,
+                ));
+            });
+        }
+        drop(sender);
+        let mut reachable = false;
+        for _ in addresses {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                break;
+            }
+            match receiver.recv_timeout(remaining) {
+                Ok(Some(received_at)) if received_at <= deadline => {
+                    reachable = true;
+                    break;
+                }
+                Ok(_) => {}
+                Err(_) => break,
+            }
+        }
+        cancelled.store(true, Ordering::Relaxed);
+        // Scoped workers own their sockets and exit after at most one short I/O wait.
+        reachable
+    });
+    Ok(reachable
+        || receiver
+            .try_iter()
+            .any(|received_at| received_at.is_some_and(|at| at <= deadline)))
+}
+
+fn mqtt_probe_address(
+    address: SocketAddr,
+    client_id: &str,
+    deadline: Instant,
+    cancelled: &AtomicBool,
+) -> Option<Instant> {
+    let mut stream = loop {
+        if cancelled.load(Ordering::Relaxed) {
+            return None;
+        }
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return None;
+        }
+        match TcpStream::connect_timeout(&address, remaining.min(Duration::from_millis(25))) {
+            Ok(stream) => break stream,
+            Err(_) => std::thread::sleep(remaining.min(Duration::from_millis(10))),
+        }
+    };
     let remaining = 10 + 2 + client_id.len();
     let mut connect = vec![
         0x10,
@@ -554,35 +595,35 @@ fn mqtt_reachable_at(
     ];
     connect.extend_from_slice(&(client_id.len() as u16).to_be_bytes());
     connect.extend_from_slice(client_id.as_bytes());
-    for (index, address) in addresses.iter().enumerate() {
-        let now = Instant::now();
-        let remaining = deadline.saturating_duration_since(now);
+    if write_before(&mut stream, &connect, deadline).is_err() {
+        return None;
+    }
+    let mut connack = [0; 4];
+    let mut received = 0;
+    while received < connack.len() && !cancelled.load(Ordering::Relaxed) {
+        let remaining = deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
-            return Ok(false);
+            return None;
         }
-        let attempt_deadline = now
-            + (remaining / (addresses.len() - index) as u32)
-                .max(Duration::from_millis(1))
-                .min(remaining);
-        let allowance = attempt_deadline.saturating_duration_since(Instant::now());
-        if allowance.is_zero() {
-            continue;
-        }
-        let Ok(mut stream) = TcpStream::connect_timeout(address, allowance) else {
-            continue;
-        };
-        if write_before(&mut stream, &connect, attempt_deadline).is_err() {
-            continue;
-        }
-        let mut connack = [0; 4];
-        if read_exact_before(&mut stream, &mut connack, attempt_deadline)?
-            && Instant::now() <= deadline
-            && connack == [0x20, 0x02, 0x00, 0x00]
+        if stream
+            .set_read_timeout(Some(remaining.min(Duration::from_millis(25))))
+            .is_err()
         {
-            return Ok(true);
+            return None;
+        }
+        match stream.read(&mut connack[received..]) {
+            Ok(0) => return None,
+            Ok(count) => received += count,
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+                ) => {}
+            Err(_) => return None,
         }
     }
-    Ok(false)
+    let received_at = Instant::now();
+    (connack == [0x20, 0x02, 0x00, 0x00] && received_at <= deadline).then_some(received_at)
 }
 
 fn proxy_is_blocked(contract: &Contract, deadline: Instant) -> Result<bool, String> {
@@ -1000,6 +1041,173 @@ mod tests {
         let mut payload = vec![0; remaining];
         stream.read_exact(&mut payload).unwrap();
         [vec![header[0]], payload].concat()
+    }
+
+    fn read_probe_client_id(stream: &mut TcpStream) -> String {
+        let packet = read_mqtt_packet(stream);
+        assert_eq!(packet[0], 0x10);
+        let length = u16::from_be_bytes([packet[11], packet[12]]) as usize;
+        String::from_utf8(packet[13..13 + length].to_vec()).unwrap()
+    }
+
+    #[test]
+    fn initial_report_wait_handles_early_late_and_absent_reports() {
+        for report_first in [Some(true), Some(false), None] {
+            let broker = TcpListener::bind("127.0.0.1:0").unwrap();
+            let port = broker.local_addr().unwrap().port();
+            let responder = std::thread::spawn(move || {
+                let (mut stream, _) = broker.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                assert_eq!(read_mqtt_packet(&mut stream)[0], 0x10);
+                stream.write_all(&[0x20, 0x02, 0x00, 0x00]).unwrap();
+                for _ in 0..2 {
+                    let packet = read_mqtt_packet(&mut stream);
+                    stream
+                        .write_all(&[0x90, 0x03, packet[1], packet[2], 0x01])
+                        .unwrap();
+                }
+                let desired = read_mqtt_packet(&mut stream);
+                assert_eq!(desired[0] & 0xf0, 0x30);
+                let topic_len = u16::from_be_bytes([desired[1], desired[2]]) as usize;
+                let puback = [0x40, 0x02, desired[3 + topic_len], desired[4 + topic_len]];
+                let topic = b"roomci/initial/device-1/reported";
+                let payload =
+                    br#"{"run_id":"initial","device_id":"device-1","revision":1,"value":"old"}"#;
+                let length = 2 + topic.len() + payload.len();
+                assert!(length < 128);
+                let mut report = vec![0x30, length as u8];
+                report.extend_from_slice(&(topic.len() as u16).to_be_bytes());
+                report.extend_from_slice(topic);
+                report.extend_from_slice(payload);
+                match report_first {
+                    Some(true) => {
+                        stream.write_all(&report).unwrap();
+                        std::thread::sleep(Duration::from_millis(20));
+                        stream.write_all(&puback).unwrap();
+                    }
+                    Some(false) => {
+                        stream.write_all(&puback).unwrap();
+                        std::thread::sleep(Duration::from_millis(20));
+                        stream.write_all(&report).unwrap();
+                    }
+                    None => stream.write_all(&puback).unwrap(),
+                }
+                std::thread::sleep(Duration::from_millis(200));
+            });
+            let mut contract = test_contract(1884);
+            contract.broker_host = "127.0.0.1".into();
+            contract.broker_port = port;
+            contract.ready_timeout_ms = 100;
+            let mut observer = Observer::new(&contract, "initial").unwrap();
+            assert!(observer
+                .wait_for(Instant::now() + Duration::from_secs(1), |s| s.ready)
+                .unwrap());
+            observer
+                .publish_desired(
+                    &contract,
+                    1,
+                    &contract.initial_value,
+                    Instant::now() + Duration::from_millis(contract.ready_timeout_ms),
+                )
+                .unwrap();
+            let deadline = Instant::now() + Duration::from_millis(contract.ready_timeout_ms);
+            assert_eq!(
+                observer
+                    .wait_for(deadline, |s| {
+                        s.last_report.as_ref().is_some_and(|(received_at, value)| {
+                            *received_at <= deadline
+                                && matches_report(value, 1, &contract.initial_value)
+                        })
+                    })
+                    .unwrap(),
+                report_first.is_some(),
+                "wrong initial report verdict when report_first={report_first:?}"
+            );
+            responder.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn mqtt_probe_accepts_400ms_connack_with_one_or_two_addresses_in_600ms() {
+        for two_addresses in [false, true] {
+            let ipv4 = TcpListener::bind("127.0.0.1:0").unwrap();
+            let ipv6 = TcpListener::bind("[::1]:0").unwrap();
+            let addresses = if two_addresses {
+                vec![ipv6.local_addr().unwrap(), ipv4.local_addr().unwrap()]
+            } else {
+                vec![ipv4.local_addr().unwrap()]
+            };
+            let (ids, received_ids) = mpsc::channel();
+            let ipv4_ids = ids.clone();
+            let ipv4_responder = std::thread::spawn(move || {
+                let (mut stream, _) = ipv4.accept().unwrap();
+                ipv4_ids.send(read_probe_client_id(&mut stream)).unwrap();
+                std::thread::sleep(Duration::from_millis(400));
+                let _ = stream.write_all(&[0x20, 0x02, 0x00, 0x00]);
+            });
+            let ipv6_responder = two_addresses.then(|| {
+                std::thread::spawn(move || {
+                    let (mut stream, _) = ipv6.accept().unwrap();
+                    ids.send(read_probe_client_id(&mut stream)).unwrap();
+                    std::thread::sleep(Duration::from_millis(400));
+                    let _ = stream.write_all(&[0x20, 0x02, 0x00, 0x00]);
+                })
+            });
+            assert!(mqtt_reachable_at(
+                &addresses,
+                "dual",
+                Instant::now() + Duration::from_millis(600)
+            )
+            .unwrap());
+            ipv4_responder.join().unwrap();
+            if let Some(responder) = ipv6_responder {
+                responder.join().unwrap();
+            }
+            let ids: Vec<_> = received_ids.try_iter().collect();
+            assert_eq!(ids.len(), if two_addresses { 2 } else { 1 });
+            if two_addresses {
+                assert_ne!(ids[0], ids[1], "probe candidates reused a client ID");
+            }
+        }
+    }
+
+    #[test]
+    fn mqtt_probe_rejects_unavailable_candidates_and_late_connack() {
+        let ipv4 = TcpListener::bind("127.0.0.1:0").unwrap();
+        let ipv6 = TcpListener::bind("[::1]:0").unwrap();
+        let addresses = [ipv6.local_addr().unwrap(), ipv4.local_addr().unwrap()];
+        drop(ipv4);
+        drop(ipv6);
+        let start = Instant::now();
+        assert!(
+            !mqtt_reachable_at(&addresses, "absent", start + Duration::from_millis(250)).unwrap()
+        );
+        assert!(start.elapsed() < Duration::from_millis(500));
+        let contract = test_contract(addresses[1].port());
+        assert!(wait_for_proxy_mqtt(
+            &contract,
+            "absent",
+            Instant::now() + Duration::from_millis(250)
+        )
+        .unwrap_err()
+        .contains("recovery deadline"));
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let responder = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            assert_eq!(read_mqtt_packet(&mut stream)[0], 0x10);
+            std::thread::sleep(Duration::from_millis(350));
+            let _ = stream.write_all(&[0x20, 0x02, 0x00, 0x00]);
+        });
+        let start = Instant::now();
+        assert!(
+            !mqtt_reachable_at(&[address], "late", start + Duration::from_millis(250)).unwrap()
+        );
+        assert!(start.elapsed() < Duration::from_millis(500));
+        responder.join().unwrap();
     }
 
     #[test]

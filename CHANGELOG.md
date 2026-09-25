@@ -66,8 +66,8 @@ not as separately published calendar releases.
   `faults[].duration` and step fault durations are now rejected before run
   because they had no recovery action (#29, #42, partial scope).
 
-- README quality measurements now match the current full workspace gate: 273
-  tests and 85.15% line coverage. Real-broker integration behavior runs in
+- README quality measurements now match the current full workspace gate: 276
+  tests and 85.40% line coverage. Real-broker integration behavior runs in
   Docker Compose and is not instrumented by tarpaulin.
 - Public release metadata and README badges are being aligned with verifiable local repository state.
 - `roomci-cli` is now a thin argument-parsing and scenario-runner binary; serve runtime ownership moved to `roomci-serve`.
