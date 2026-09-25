@@ -1,0 +1,42 @@
+services:
+  broker:
+    image: eclipse-mosquitto:2.0.22
+    networks: [broker_net]
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    networks: [broker_net, sut_net]
+    depends_on: [broker]
+  sut:
+    build:
+      context: .
+      dockerfile: Dockerfile.sut
+    environment:
+      RUN_ID: ${RUN_ID:?RUN_ID required}
+      DEVICE_ID: gateway-1
+      SUT_MODE: ${SUT_MODE:-fixed}
+      PROXY_HOST: toxiproxy
+      PROXY_PORT: "1884"
+    depends_on: [toxiproxy]
+    networks: [sut_net]
+  injector:
+    build:
+      context: .
+      dockerfile: Dockerfile.sut
+    environment:
+      RUN_ID: ${RUN_ID:?RUN_ID required}
+    networks: [broker_net]
+  runner:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    volumes:
+      - ./recovery.yaml:/contract/recovery.yaml:ro
+      - ../../reports/external-mqtt:/reports
+    depends_on: [toxiproxy]
+    networks: [broker_net]
+
+networks:
+  broker_net: {}
+  sut_net: {}

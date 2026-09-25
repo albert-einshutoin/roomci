@@ -112,8 +112,12 @@ faults:
   - at: T+10s
     target: mqtt.cloud
     type: offline
-    duration: 10m
 ```
+
+The internal-model runner rejects `faults[].duration` and step-level fault
+durations before execution: it has no timed recovery action. For the separate
+real MQTT broker and SUT-only TCP cut/release, use
+[External MQTT recovery](EXTERNAL_MQTT_RECOVERY.md).
 
 ## Target naming convention
 

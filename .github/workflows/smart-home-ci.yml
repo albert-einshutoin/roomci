@@ -10,6 +10,21 @@ permissions:
   contents: read
 
 jobs:
+  external-mqtt-recovery:
+    name: Real MQTT recovery regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run fixed and broken SUT against the same contract
+        run: bash examples/external-mqtt-recovery/run.sh
+      - name: Upload external MQTT reports and logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: external-mqtt-recovery
+          path: reports/external-mqtt
+          if-no-files-found: error
+
   action-self-test:
     name: GitHub Action self-test
     runs-on: ubuntu-latest

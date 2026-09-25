@@ -1,8 +1,14 @@
 # roomci
 
+別プロセスのMQTTゲートウェイを実broker経由で検証するには、Docker Composeで
+`bash examples/external-mqtt-recovery/run.sh` を実行します。不具合版と修正版を
+同じ契約で判定します。証拠と顧客SUTへの置換条件は
+[外部MQTT復旧試験](docs/EXTERNAL_MQTT_RECOVERY.md)を参照してください。
+公開済みの `v0.1.1` には含まれないため、この変更を含むビルドを使ってください。
+
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
-[![Coverage](https://img.shields.io/badge/coverage-88.63%25-green.svg)](#quality-gates)
+[![Coverage](https://img.shields.io/badge/coverage-85.32%25-green.svg)](#quality-gates)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 📖 **[日本語](README.ja.md)** | **[English](README.md)**
@@ -366,7 +372,7 @@ make compose-poc
 - `cargo tarpaulin --workspace --fail-under 80`
 - `bash ./scripts/check-readme-quality.sh`
 
-現在の測定値：**260 テスト** 合格、**88.63%** ライン カバレッジ。
+現在の測定値：**280 テスト** 合格、**85.32%** ライン カバレッジ。
 
 リリースまたは会社評価ビルドを提示する前に [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) を使用してください。動作モデル サポートとワイヤプロトコル サポートの真実の源として [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) を使用してください。
 

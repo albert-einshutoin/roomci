@@ -1,6 +1,6 @@
 //! `roomci` command-line entry point.
 //!
-//! Two subcommands:
+//! Commands include:
 //!
 //! - `roomci run <scenarios...>` — load, validate, and execute one or more
 //!   scenarios. Optionally emits JSON/Markdown/JUnit reports for the *last*
@@ -18,6 +18,8 @@
 //! - `roomci serve --config <scenario>` — start a localhost-bound HTTP control
 //!   and report API. With `--check`, only validates the service-mode config
 //!   without starting a long-running process.
+//! - `roomci external-mqtt <contract>` — evaluate a separate SUT using a real
+//!   broker, a SUT-only TCP proxy, and broker-observed reported state.
 
 use std::{
     collections::BTreeMap,
@@ -44,6 +46,7 @@ use roomci_serve::{run_serve, ServeOptions};
 use serde::Serialize;
 use thiserror::Error;
 
+mod external_mqtt;
 mod init;
 
 #[derive(Debug, Parser)]
@@ -59,6 +62,23 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Evaluate a separate SUT through a real MQTT broker and a SUT-only TCP proxy.
+    ExternalMqtt {
+        /// Strict external recovery contract YAML.
+        contract: PathBuf,
+        #[arg(long)]
+        run_id: String,
+        /// Evidence label only; never used to choose the verdict.
+        #[arg(long)]
+        sut_version: String,
+        #[arg(long)]
+        json: PathBuf,
+        #[arg(long)]
+        junit: PathBuf,
+        /// Validate the contract without network operations.
+        #[arg(long)]
+        check: bool,
+    },
     /// Create a runnable starter scenario and optional GitHub Actions workflow.
     Init {
         /// Directory where roomci files are created. Defaults to the current directory.
@@ -174,6 +194,8 @@ enum AdapterCommand {
 
 #[derive(Debug, Error)]
 enum CliError {
+    #[error("external MQTT error: {0}")]
+    External(String),
     #[error(transparent)]
     Init(#[from] init::InitError),
     #[error(transparent)]
@@ -205,6 +227,22 @@ fn main() -> ExitCode {
 
 fn run_cli(cli: Cli) -> Result<ExitCode, CliError> {
     match cli.command {
+        Command::ExternalMqtt {
+            contract,
+            run_id,
+            sut_version,
+            json,
+            junit,
+            check,
+        } => {
+            let result =
+                external_mqtt::execute(&contract, &run_id, &sut_version, &json, &junit, check)?;
+            Ok(if result == RunResult::Passed {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::from(1)
+            })
+        }
         Command::Init { path, ci, force } => {
             let root = path.unwrap_or_else(|| PathBuf::from("."));
             let created = init::scaffold(&root, ci.as_deref() == Some("github"), force)?;

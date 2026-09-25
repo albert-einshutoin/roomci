@@ -16,6 +16,8 @@ path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
+chrono.workspace = true
+mio = { version = "1.2.3", features = ["net", "os-poll"] }
 roomci-core = { path = "../roomci-core" }
 roomci-report = { path = "../roomci-report" }
 roomci-scenario = { path = "../roomci-scenario" }
@@ -23,7 +25,9 @@ roomci-serve = { path = "../roomci-serve" }
 same-file.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+serde_yaml.workspace = true
 thiserror.workspace = true
+rumqttc = { version = "0.25.1", default-features = false }
 
 [dev-dependencies]
 tempfile.workspace = true

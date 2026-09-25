@@ -1,8 +1,15 @@
 # roomci
 
+For a real-broker regression against a separate MQTT gateway process, run
+`bash examples/external-mqtt-recovery/run.sh` with Docker Compose. It checks a
+broken reconnect implementation and a fixed one against the same contract;
+see [External MQTT recovery](docs/EXTERNAL_MQTT_RECOVERY.md) for the evidence
+and customer-SUT boundary. The published `v0.1.1` does not include this command;
+use a build containing this change.
+
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
-[![Coverage](https://img.shields.io/badge/coverage-88.63%25-green.svg)](#quality-gates)
+[![Coverage](https://img.shields.io/badge/coverage-85.32%25-green.svg)](#quality-gates)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 📖 **[日本語はこちら](README.ja.md)** | **[English](README.md)**
@@ -389,7 +396,7 @@ That command starts `roomci serve` in Docker Compose, runs `examples/controllers
 - `cargo tarpaulin --workspace --fail-under 80`
 - `bash ./scripts/check-readme-quality.sh`
 
-Current measurements: **260 tests** pass, **88.63%** line coverage.
+Current measurements: **280 tests** pass, **85.32%** line coverage.
 
 Use [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) before presenting a release or company evaluation build. Use [`docs/PROTOCOL_SUPPORT_MATRIX.md`](docs/PROTOCOL_SUPPORT_MATRIX.md) as the source of truth for behavior-model support versus wire-protocol support.
 

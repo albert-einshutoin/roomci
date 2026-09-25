@@ -233,6 +233,23 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
         lighting.assert_scene_targets_exist()?;
         ops.validate_sources(|contact_id| contacts.has_contact(contact_id))?;
         validate_mqtt_contract_topics(scenario)?;
+        if scenario.mqtt.local.enabled == Some(false) {
+            return Err(ScenarioError::ScenarioContract {
+                field: "mqtt.local.enabled".into(),
+                reason: "false is unsupported; the local model starts online".into(),
+            });
+        }
+        for (name, broker) in [
+            ("mqtt.local", &scenario.mqtt.local),
+            ("mqtt.cloud", &scenario.mqtt.cloud),
+        ] {
+            if broker.retained == Some(false) {
+                return Err(ScenarioError::ScenarioContract {
+                    field: format!("{name}.retained"),
+                    reason: "false is unsupported; retained storage is always enabled".into(),
+                });
+            }
+        }
 
         let devices = scenario
             .devices
@@ -261,8 +278,11 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
                 .map(resolve_time_offset)
                 .transpose()?
                 .unwrap_or_else(Duration::zero);
-            if let Some(duration) = &fault.duration {
-                parse_duration(duration)?;
+            if fault.duration.is_some() {
+                return Err(ScenarioError::ScenarioContract {
+                    field: "faults[].duration".into(),
+                    reason: "timed recovery is unsupported by the internal model".into(),
+                });
             }
             let kind = ValidatedFaultKind::try_from_fault(fault)?;
             validate_fault_reference(fault, &lighting)?;
@@ -293,7 +313,7 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
             scheduled_events,
             domain_config: DomainRuntimeConfig::try_from_scenario(scenario)?,
             runtime_inputs: ValidatedRuntimeInputs {
-                broker_cloud_enabled: scenario.mqtt.cloud.enabled,
+                broker_cloud_enabled: scenario.mqtt.cloud.enabled.unwrap_or(false),
                 edge,
                 modbus,
                 lighting,
@@ -419,8 +439,11 @@ impl ValidatedStepKind {
                 ValidatedMqttPublishStep::try_from(mqtt_publish)?,
             )),
             TypedStepKind::Fault(fault) => {
-                if let Some(duration) = &fault.duration {
-                    parse_duration(duration)?;
+                if fault.duration.is_some() {
+                    return Err(ScenarioError::ScenarioContract {
+                        field: "steps[].fault.duration".into(),
+                        reason: "timed recovery is unsupported by the internal model".into(),
+                    });
                 }
                 let kind = ValidatedFaultKind::try_from_fault(fault)?;
                 validate_fault_reference(fault, lighting)?;
