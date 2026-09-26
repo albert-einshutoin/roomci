@@ -1,6 +1,11 @@
 # Integration Onboarding
 
 This path is for a platform, IoT, smart-home, or building-automation engineer evaluating `roomci` in their own repository.
+Its `roomci run`, `roomci serve`, and released Action examples evaluate the
+internal model. For a verdict on a separate process through a real broker, use
+the source-based [reference MQTT recovery](EXTERNAL_MQTT_RECOVERY.md) or
+[Node-RED PoC](EXTERNAL_SUT_VALIDATION.md). The published `v0.1.1` binary/Action
+does not include those external examples or `external-mqtt`.
 
 Before replacing public example values, complete the
 [Evaluator Intake Kit](EVALUATOR_INTAKE_KIT.md). Missing customer-owned facts

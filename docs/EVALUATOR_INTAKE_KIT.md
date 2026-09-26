@@ -21,7 +21,26 @@ register, alert, authentication, TLS, timing, safety, or vendor compatibility.
 Passing a public fixture proves the documented roomci subset, not compatibility
 with a private deployment.
 
-## Required Intake
+## External MQTT recovery: first contact
+
+Use these six questions before adapting the [reference recovery test](EXTERNAL_MQTT_RECOVERY.md)
+or the [Node-RED PoC](EXTERNAL_SUT_VALIDATION.md). Record unanswered customer
+facts as **not obtained**; example values are not customer answers.
+
+1. Which past recovery bug should be reproduced, and what was its impact?
+2. What should recovery do, and what deadline is acceptable?
+3. How is that bug reproduced and its fix verified today?
+4. How is a non-production SUT started, and which fault and publish operations may the test perform?
+5. Can topics change per run? Provide redacted desired/reported payload examples, the publisher identity, and a way to correlate a response to this run.
+6. Who accepts the result and its evidence?
+
+After a target and acceptance owner are identified, collect only the relevant
+authentication, ACL, TLS, session, retention, and safety details below using
+non-production references. Do not request production credentials or private keys.
+The `adapter validate` contract below describes the internal model; it is not
+the runtime configuration for the Node-RED Python bridge or `external-mqtt`.
+
+## Detailed intake after target selection
 
 Use one row per protocol surface. Mark unavailable inputs as `blocked`; do not
 guess private values.
@@ -132,6 +151,14 @@ The intake is ready only when:
   than inferred; and
 - the final report states that evidence applies only to the supplied
   non-production specification.
+
+For the next real-use evaluation, record the steps and hands-on time to the
+first valid test; changed configuration, adapter, and harness code; decisions
+the documentation could not support; work removed and added versus the
+existing test method; and whether the evaluator could add a next test without
+the roomci team. Mark a team-run reproduction separately from a first-time
+user evaluation. These measurements have **not been obtained** from a customer;
+the public demos do not establish ease of adoption or demand.
 
 See [Adapter Contract Kit](ADAPTER_CONTRACT_KIT.md) for field syntax,
 [Integration Onboarding](INTEGRATION_ONBOARDING.md) for the evaluator path,
