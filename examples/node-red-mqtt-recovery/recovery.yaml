@@ -1,0 +1,14 @@
+scenario: node_red_external_mqtt_recovery
+broker_host: broker
+broker_port: 1883
+proxy_host: toxiproxy
+proxy_api_port: 8474
+proxy_port: 1884
+proxy_name: sut
+device_id: thermostat-1
+initial_value: "21"
+latest_value: "24"
+ready_timeout_ms: 15000
+fault_timeout_ms: 10000
+recovery_timeout_ms: 30000
+stability_ms: 1000
