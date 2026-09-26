@@ -25,6 +25,8 @@ services:
       NR_REPORTED_TOPIC: byos/${RUN_ID:?RUN_ID required}/thermostat-1/reported
       NR_STATUS_TOPIC: byos/${RUN_ID:?RUN_ID required}/thermostat-1/status
       NR_OMIT_LATEST: ${OMIT_LATEST:-false}
+      NR_DEVIATION_VALUE: ${DEVIATION_VALUE:-}
+      NR_DEVIATION_DELAY_MS: ${DEVIATION_DELAY_MS:-0}
       FLOWS: flows.json
     volumes:
       - ./flows.json:/data/flows.json:ro

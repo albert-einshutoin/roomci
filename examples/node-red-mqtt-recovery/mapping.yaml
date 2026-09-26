@@ -6,7 +6,7 @@ reported_payload: {temperature: 21}
 desired_value: targetTemperature
 observed_value: temperature
 status: {birth: online, will: offline, retained: false}
-correlation: fresh_run_topic_and_desired_value_after_online_birth
+correlation: fresh_run_topic_and_online_birth; bridge_assigns_revision_from_desired_phase_or_prior_requested_value
 readiness: adapter_subscribed_and_node_red_mqtt_birth
 recovery_timeout_ms: 30000
 stability_ms: 1000

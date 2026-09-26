@@ -16,6 +16,7 @@ APP = f"byos/{RUN_ID}/{DEVICE_ID}"
 class Bridge:
     def __init__(self):
         self.desired = {}
+        self.current_revision = None
         self.pending_desired = {}
         self.online = False
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"roomci-byos-{RUN_ID}")
@@ -54,6 +55,7 @@ class Bridge:
                     raise ValueError("desired revision or value mismatch")
                 self.desired[value] = revision
                 mid = self.publish(f"{APP}/desired", {"targetTemperature": int(value)}, retain=True)
+                self.current_revision = revision
                 self.pending_desired[mid] = revision
                 print(f"desired queued revision={revision} value={value}", flush=True)
             elif message.topic == f"{APP}/status":
@@ -75,10 +77,10 @@ class Bridge:
                 if not isinstance(data, dict) or type(data.get("temperature")) is not int:
                     raise ValueError("report temperature must be an integer")
                 value = str(data["temperature"])
-                revision = self.desired.get(value)
+                # The SUT supplies only temperature; revision is bridge-owned correlation.
+                revision = self.desired.get(value, self.current_revision)
                 if revision is None:
-                    print(f"ignored unmatched report value={value}", flush=True)
-                    return
+                    raise RuntimeError(f"cannot correlate report before desired: value={value}")
                 self.publish(f"{ROOT}/reported", {"run_id": RUN_ID, "device_id": DEVICE_ID,
                                                   "revision": revision, "value": value})
                 print(f"reported revision={revision} value={value}", flush=True)
