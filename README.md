@@ -1,11 +1,19 @@
 # roomci
 
-For a real-broker regression against a separate MQTT gateway process, run
-`bash examples/external-mqtt-recovery/run.sh` with Docker Compose. It checks a
-broken reconnect implementation and a fixed one against the same contract;
-see [External MQTT recovery](docs/EXTERNAL_MQTT_RECOVERY.md) for the evidence
-and customer-SUT boundary. The published `v0.1.1` does not include this command;
-use a build containing this change.
+## Choose an evaluation path
+
+| Path | Start and observe | Verdict and limit |
+|---|---|---|
+| A. [Internal model](docs/INTEGRATION_ONBOARDING.md) | Run `roomci run` on a scenario; inspect its modeled timeline and assertions. | Pass/fail applies to the virtual-time model, not a separate SUT or real broker. |
+| B. [Reference external MQTT recovery](docs/EXTERNAL_MQTT_RECOVERY.md) | Start Docker Compose with `bash examples/external-mqtt-recovery/run.sh`; inspect broker-observed reports and the SUT-only cut. | Ten cases distinguish fixed/broken reference SUT behavior; success does not prove customer SUT compatibility. |
+| C. [Node-RED external SUT PoC](docs/EXTERNAL_SUT_VALIDATION.md) | Start Docker Compose with `bash examples/node-red-mqtt-recovery/run.sh`; inspect the external adapter, Node-RED logs, and broker-observed reports. | Five cases check this run-specific topic and trusted-publisher setup; success does not prove fixed-topic or customer integration. |
+
+Run B and C from the repository root at source commit
+`954b316e175ffb76f9f73155c0f89d5a2235fd3c` or a reviewed descendant;
+each linked guide gives prerequisites, expected negative results, and artifacts.
+The published `v0.1.1` binary and Action support path A, but do not contain
+these external MQTT examples or the `external-mqtt` command. No external-SUT
+verdict follows from the released quick start below.
 
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
@@ -37,7 +45,7 @@ Hospitality smart home is the strongest included domain pack because failures af
 
 `roomci` turns those failure modes into repeatable scenarios that can run locally, in Docker, or in CI.
 
-## Try the strongest demo
+## Try the strongest internal-model demo
 
 Run the local-first outage scenario with a verbose timeline:
 
@@ -71,7 +79,7 @@ For real hardware capture replay in Docker CI, see [`docs/HARDWARE_TO_DOCKER_CI_
 For dependency updates, RustSec exceptions, and the `serde_yaml` compatibility
 hold, see [`docs/DEPENDENCY_POLICY.md`](docs/DEPENDENCY_POLICY.md).
 
-## Quick start (no clone required)
+## Internal-model quick start (no clone required)
 
 Install a released `roomci` binary, then create and run a first retained-state
 scenario in your own repository:

@@ -1,6 +1,11 @@
 # 統合オンボーディング
 
 このパスは、自分のリポジトリで `roomci` を評価する platform、IoT、smart-home、building-automation エンジニア向けです。
+ここでの `roomci run`、`roomci serve`、公開済みActionの例は内部モデルを評価します。
+実brokerを通した別プロセスSUTの判定には、ソースから実行する
+[参照MQTT復旧試験](EXTERNAL_MQTT_RECOVERY.md)または
+[Node-RED PoC](EXTERNAL_SUT_VALIDATION.md)を使います。公開済み `v0.1.1`
+のバイナリ・Actionに、これらの外部試験や `external-mqtt` は含まれません。
 
 公開例の値を置き換える前に、[評価者向けインテークキット](EVALUATOR_INTAKE_KIT.ja.md)
 を完了してください。不足している顧客所有情報は `blocked` のままとし、公開 fixture

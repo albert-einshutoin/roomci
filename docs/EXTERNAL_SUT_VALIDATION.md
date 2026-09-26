@@ -8,6 +8,10 @@ with Docker Compose. The separate `node-red-external-sut` CI job saves five
 cases under `reports/node-red-external-sut/`; the reference SUT's ten cases
 remain in `external-mqtt-recovery`.
 
+Use source commit `954b316e175ffb76f9f73155c0f89d5a2235fd3c` or a
+reviewed descendant. Published `v0.1.1` binaries and the versioned Action do
+not contain this external example or the `external-mqtt` command.
+
 ## Mapping and boundaries
 
 | Surface | PoC mapping |
@@ -31,6 +35,20 @@ to Node-RED or roomci. It verifies the roomci desired identity and the two
 contract values, forwards retained desired state, and converts observed state
 and birth/will messages. Its MQTT connection remains on `broker_net`; Node-RED
 has only `sut_net` and reaches the broker through `toxiproxy:1884`.
+
+### What the example actually reads
+
+| File | Role and change boundary |
+|---|---|
+| `recovery.yaml` | Runtime contract mounted into the roomci runner. Deadlines and stability window are YAML values; initial/latest values, device, broker, and proxy must remain consistent with the other runtime files. Editing this YAML alone does not remap an application. |
+| `compose.yaml` and `flows.json` | Runtime service wiring and Node-RED flow. Compose supplies run-specific topic variables; the flow fixes `targetTemperature` → `temperature`, MQTT endpoint, clean session, and `online` birth/`offline` will. A different topic scheme, payload, or connection signal needs corresponding flow/Compose changes. |
+| `adapter.py` | Executed Python bridge. It fixes the two desired pairs `(1, "21")`/`(2, "24")`, topic prefixes, payload extraction, status conversion, and bridge-owned revision assignment. Customer mappings require code changes here, with matching flow/contract/harness changes where applicable. |
+| `run.sh` | Executed case harness. It controls the fault, negative injections, expected verdicts, and artifact checks for this PoC; changing the application or assertions may require a harness edit. |
+| `mapping.yaml` | Explanation copied into the artifact only. The CLI, adapter, and Node-RED never load it; editing it alone changes no test behavior. It is separate from the internal-model `adapter validate` contract. |
+
+Leaving roomci core unchanged does not mean a customer can integrate by
+editing configuration alone. This example assumes changeable run topics and
+a trustworthy publisher on its reported/status topics.
 
 ## Correlation decision
 
@@ -83,6 +101,18 @@ claim to validate that case.
 
 ## Reproduction and evidence
 
+Install Git, Bash, Python 3, and a running Docker Engine with the
+`docker compose` CLI (v2 or later). From a new checkout, run the following at
+the repository root:
+
+```bash
+git clone https://github.com/albert-einshutoin/roomci.git
+cd roomci
+git checkout 954b316e175ffb76f9f73155c0f89d5a2235fd3c
+docker compose version
+bash examples/node-red-mqtt-recovery/run.sh
+```
+
 The script builds the existing roomci runner and a Python/Paho adapter, starts
 Mosquitto and Toxiproxy, retries a broker MQTT publish within ten bounded
 attempts, waits for the adapter subscription, and checks Docker network membership:
@@ -93,6 +123,12 @@ requires the Node-RED offline will after the proxy TCP cut.
 For each case it records the run ID, image digest, contract, mapping, flow,
 roomci JSON and JUnit, assertion evidence, and timestamped separate Node-RED,
 broker, proxy, and adapter logs.
+Inspect `reports/node-red-external-sut/<case>/recovery.json` for `verdict`,
+`reason`, and timestamped `timeline` events; `recovery.xml` for JUnit;
+`assertions.log` and `conditions.txt` for the case checks and inputs; and
+`node-red.log`, `adapter.log`, `broker.log`, and `toxiproxy.log` for the
+observed path. The script itself succeeds only when all five case-specific
+results below hold; a negative case's `failed` verdict is expected evidence.
 
 1. `recovery`: Node-RED reports `21`, receives an actual proxy cut, and the
    broker accepts desired `24` while it is offline. Node-RED's normal MQTT
@@ -161,3 +197,6 @@ framework: its fixed two-value mapping and timing belong to this example.
 See [Evaluator Intake Kit](EVALUATOR_INTAKE_KIT.md) for customer-owned topic,
 schema, device, authentication, TLS, timing, safety, and report requirements.
 No customer specification has been obtained for those fields.
+The steps and file counts above describe a team-run reproduction, not a
+first-time user's measured setup effort. Record that effort and any work
+saved or added in the Intake Kit before claiming ease of adoption.

@@ -24,7 +24,41 @@ The JSON report contains the roomci version, SUT version label, run ID, strict c
 
 ## Run and replace the reference SUT
 
-From the repository root, run `bash examples/external-mqtt-recovery/run.sh`. Docker Compose builds the runner and SUT, starts Mosquitto and Toxiproxy, runs fixed and broken SUTs plus negative controls, validates exact JSON verdicts and reasons, writes JSON/JUnit/logs under `reports/external-mqtt`, then tears the stack down. The GitHub Actions `external-mqtt-recovery` job uses the same command and uploads those artifacts. The `broken` case must fail specifically with `missing_latest_report` after `initial_ready`, `fault_applied`, `fault_affected_sut`, and `fault_released`; an arbitrary nonzero exit does not satisfy the job. The retained negative control also requires an `ignored_retained_report` event containing the injected payload and no equivalent accepted `sut_reported` event.
+For the verified source baseline, install Git, Bash, Python 3, and a running
+Docker Engine with the `docker compose` CLI (v2 or later). The script builds
+the runner and SUT images; no released `v0.1.1` binary or Action provides
+`external-mqtt`. From a new checkout:
+
+```bash
+git clone https://github.com/albert-einshutoin/roomci.git
+cd roomci
+git checkout 954b316e175ffb76f9f73155c0f89d5a2235fd3c
+docker compose version
+bash examples/external-mqtt-recovery/run.sh
+```
+
+The last command runs from the repository root. Docker Compose starts
+Mosquitto and Toxiproxy, runs the fixed/broken SUTs and negative controls,
+asserts exact JSON verdicts and reasons, and tears down the stack. The whole
+script exits successfully only when all ten expected outcomes hold:
+
+| Cases | Required verdict/reason |
+|---|---|
+| `fixed`, `fixed-again` | `passed/latest_report_stable` |
+| `broken`, `stopped`, `old-only`, `foreign`, `retained` | `failed/missing_latest_report` |
+| `rollback` | `failed/rollback_observed` |
+| `no-sut` | `inconclusive/initial_report_missing` |
+| `unapplied` | `inconclusive/fault_not_applied` (reason includes proxy detail) |
+
+Inspect `reports/external-mqtt/<case>.json` for `verdict`, `reason`, and the
+`timeline` events, `<case>.xml` for JUnit, and `<case>.log` for broker, proxy,
+and SUT logs; `isolation.log` records the route checks. The GitHub Actions
+`external-mqtt-recovery` job runs the same script and uploads that directory.
+The `broken` case must fail specifically with `missing_latest_report` after
+`initial_ready`, `fault_applied`, `fault_affected_sut`, and `fault_released`;
+an arbitrary nonzero exit does not satisfy the job. The retained negative
+control also requires an `ignored_retained_report` event containing the
+injected payload and no equivalent accepted `sut_reported` event.
 
 To substitute a customer SUT in this Compose setup, start it on `sut_net` and configure its MQTT connection endpoint as `toxiproxy:1884`. The Toxiproxy **proxy name** used by its control API is `sut`; it is not the DNS hostname. Make the SUT use the run-specific topic prefix. Configure its normal desired and reported topic/payload mapping, initial and latest values, ready/fault/recovery/stability deadlines, and a reliable disconnect evidence source. The reference JSON `run_id`, `device_id`, `revision`, and `value` mapping is an adapter boundary: a customer with different correlation fields or a different report format needs a mapping adapter before this verdict can claim to test that SUT. A customer without an offline will needs another verifiable connection-loss signal. The minimal example has no MQTT authentication; customer use needs broker credentials/ACLs so an unrelated publisher cannot impersonate the SUT on its reported topic.
 

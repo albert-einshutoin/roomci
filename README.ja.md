@@ -1,10 +1,19 @@
 # roomci
 
-別プロセスのMQTTゲートウェイを実broker経由で検証するには、Docker Composeで
-`bash examples/external-mqtt-recovery/run.sh` を実行します。不具合版と修正版を
-同じ契約で判定します。証拠と顧客SUTへの置換条件は
-[外部MQTT復旧試験](docs/EXTERNAL_MQTT_RECOVERY.md)を参照してください。
-公開済みの `v0.1.1` には含まれないため、この変更を含むビルドを使ってください。
+## 評価経路を選ぶ
+
+| 経路 | 起動と観測 | 合否と証明できないこと |
+|---|---|---|
+| A. [内部モデル](docs/INTEGRATION_ONBOARDING.ja.md) | シナリオを `roomci run` で実行し、モデルの timeline と assertion を見る。 | 仮想時間の内部モデルの合否であり、別プロセスSUTや実brokerの動作は証明しない。 |
+| B. [参照SUTの外部MQTT復旧](docs/EXTERNAL_MQTT_RECOVERY.md) | Docker Composeで `bash examples/external-mqtt-recovery/run.sh` を実行し、broker経由の報告とSUT専用切断を見る。 | 参照SUTのfixed/brokenを含む10ケースの合否であり、顧客SUT互換性は証明しない。 |
+| C. [Node-RED外部SUT PoC](docs/EXTERNAL_SUT_VALIDATION.md) | Docker Composeで `bash examples/node-red-mqtt-recovery/run.sh` を実行し、外部adapter・Node-REDログ・broker経由の報告を見る。 | run別topicと信頼できる発行元を前提とした5ケースの合否であり、固定topicや顧客環境への導入は証明しない。 |
+
+B・Cは、ソースのcommit `954b316e175ffb76f9f73155c0f89d5a2235fd3c`
+または確認済みの後続commitをcheckoutし、リポジトリ直下で実行します。
+前提条件、負例の期待結果、成果物は各ガイドを参照してください。
+公開済み `v0.1.1` のバイナリとActionで利用できるのはAの経路で、
+外部MQTTの例や `external-mqtt` コマンドは含まれません。
+以下の公開版quick startの成功は外部SUTの合否ではありません。
 
 [![CI](https://img.shields.io/badge/ci-make%20verify-blue.svg)](#quality-gates)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
@@ -36,7 +45,7 @@ MQTT およびエッジデバイスの品質は、単一のコマンドが機能
 
 `roomci` はこれらの障害モードを、ローカル環境、Docker、または CI で実行できる再現可能なシナリオに変換します。
 
-## 最強のデモを試す
+## 内部モデルのデモを試す
 
 ローカルファースト停止シナリオを詳細なタイムラインで実行：
 
@@ -65,12 +74,12 @@ Guest impact: Lighting scene did not match intended guest ambience.
 完全なインタビューウォークスルーについては、[`docs/INTERVIEW_DEMO.md`](docs/INTERVIEW_DEMO.md) を参照してください。プロダクト ポジショニングについては、[`docs/PRODUCT_POSITIONING.md`](docs/PRODUCT_POSITIONING.md)、[`docs/DOMAIN_PACKS.md`](docs/DOMAIN_PACKS.md)、[`docs/GENERIC_MQTT_CONTRACTS.md`](docs/GENERIC_MQTT_CONTRACTS.md) を参照してください。
 プロダクト境界については、[`docs/HOSPITALITY_STACK_COVERAGE.md`](docs/HOSPITALITY_STACK_COVERAGE.md) および [`docs/CORE_QA_JOURNEY.md`](docs/CORE_QA_JOURNEY.md) を参照してください。プロトコル サブセット主張については、[`docs/PROTOCOL_CONFORMANCE_REGISTRY.md`](docs/PROTOCOL_CONFORMANCE_REGISTRY.md) を参照してください。
 
-評価者オンボーディングの場合は、[`docs/INTEGRATION_ONBOARDING.md`](docs/INTEGRATION_ONBOARDING.md)、[`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md)、[`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md) を使用してください。
+評価者オンボーディングの場合は、[`docs/EVALUATOR_INTAKE_KIT.ja.md`](docs/EVALUATOR_INTAKE_KIT.ja.md)、[`docs/INTEGRATION_ONBOARDING.ja.md`](docs/INTEGRATION_ONBOARDING.ja.md)、[`docs/EVALUATION_EVIDENCE_PACK.md`](docs/EVALUATION_EVIDENCE_PACK.md)、[`docs/CATEGORY_READINESS.md`](docs/CATEGORY_READINESS.md) を使用してください。
 実機 capture を Docker CI で replay するユースケースは、[`docs/HARDWARE_TO_DOCKER_CI_USECASES.ja.md`](docs/HARDWARE_TO_DOCKER_CI_USECASES.ja.md) を参照してください。
 依存関係の更新、RustSec 例外、`serde_yaml` の互換性維持方針は
 [`docs/DEPENDENCY_POLICY.md`](docs/DEPENDENCY_POLICY.md) を参照してください。
 
-## クイックスタート（clone 不要）
+## 内部モデルのクイックスタート（clone 不要）
 
 リリース済みの `roomci` バイナリをインストールしたら、自分のリポジトリで最初の
 retained-state シナリオを作成して実行できます。

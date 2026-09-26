@@ -19,7 +19,25 @@
 timing、安全性、ベンダー互換性を主張できません。公開 fixture の成功が証明するのは
 文書化された roomci subset であり、非公開環境との互換性ではありません。
 
-## 必須インテーク
+## 外部MQTT復旧試験：初回確認
+
+[参照SUTの復旧試験](EXTERNAL_MQTT_RECOVERY.md)または
+[Node-RED PoC](EXTERNAL_SUT_VALIDATION.md)を実SUTに合わせる前に、次の6点だけ確認します。
+回答のない顧客仕様は **未取得** と記録し、公開例の値で埋めません。
+
+1. 再現したい過去の復旧不具合と、その影響は何か。
+2. 期待する復旧動作と、許容する期限は何か。
+3. 現在はどのように再現し、修正を確認しているか。
+4. 非本番SUTをどう起動し、どの障害操作・publishまで許可されるか。
+5. runごとにtopicを変えられるか。マスキング済みdesired/reported payload例、発行元の識別方法、このrunの応答との対応付け方法は何か。
+6. 結果と証跡を受け入れる担当者は誰か。
+
+対象と受入担当者が決まった後、必要な認証・ACL・TLS・session・保存条件・
+安全条件を下記から確認します。本番資格情報や秘密鍵は求めません。
+下記の `adapter validate` contract は内部モデル用であり、Node-REDのPython
+bridgeや `external-mqtt` の実行時設定ではありません。
+
+## 対象決定後の詳細インテーク
 
 protocol surface ごとに1行ずつ確認します。入手できない入力は `blocked` とし、
 非公開値を推測しません。
@@ -122,6 +140,12 @@ protocol surface ごとに1行ずつ確認します。入手できない入力�
 - 全ての主張が named assertion または宣言済み artifact に対応している。
 - 未対応 TLS、protocol、timing、安全挙動を推測せず明示している。
 - 最終 report が、証跡は提供された非本番仕様だけに適用されると明記している。
+
+次の実利用評価では、最初の有効な試験までの手順と実作業時間、変更した設定・
+adapter・harnessの範囲、文書だけでは判断できなかった点、従来の試験方法より
+減った作業と増えた作業、利用者自身が次のテストを追加できたかを記録します。
+自分たちによる再現と初見の利用者による評価を区別します。これらの顧客計測値は
+**未取得** であり、公開デモやこの文書整理は導入容易性・需要の証拠ではありません。
 
 field 構文は [Adapter Contract Kit](ADAPTER_CONTRACT_KIT.ja.md)、評価手順は
 [Integration Onboarding](INTEGRATION_ONBOARDING.ja.md)、実装 subset と non-goal は
