@@ -27,6 +27,36 @@ fn version_matches_the_workspace_release_version() {
 }
 
 #[test]
+fn fault_duration_is_rejected_by_validate_and_run_with_a_specific_diagnostic() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let path = tempdir.path().join("duration.yaml");
+    let base = "version: '0.1'\nscenario: { name: duration_contract }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n";
+    for (addition, field) in [
+        (
+            "faults:\n  - { target: mqtt.local, type: offline, duration: 1s }\n",
+            "faults[0].duration",
+        ),
+        (
+            "steps:\n  - { at: T, fault: { target: mqtt.local, type: offline, duration: 1s } }\n",
+            "steps[0].fault.duration",
+        ),
+    ] {
+        std::fs::write(&path, format!("{base}{addition}")).unwrap();
+        for command in ["validate", "run"] {
+            let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+                .arg(command)
+                .arg(&path)
+                .output()
+                .unwrap();
+            assert_eq!(output.status.code(), Some(2), "{command}");
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(stderr.contains(field), "{stderr}");
+            assert!(stderr.contains("timed recovery is unsupported"), "{stderr}");
+        }
+    }
+}
+
+#[test]
 fn validate_and_run_reject_ignored_scenario_settings_before_execution() {
     let tempdir = tempfile::tempdir().unwrap();
     let scenario = tempdir.path().join("unsupported.yaml");
@@ -1063,6 +1093,55 @@ fn serve_starts_http_runtime_and_exposes_reports() {
 
     child.kill().unwrap();
     child.wait().unwrap();
+}
+
+#[test]
+fn serve_scenario_json_with_persistent_fault_can_be_validated_again() {
+    let source = fixture("examples/local_first_cloud_outage.yaml");
+    let original = roomci_scenario::load_scenario(&source).unwrap();
+    roomci_scenario::validate_scenario(&original).unwrap();
+    assert!(original.faults.iter().any(|fault| fault.duration.is_none()));
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("serve")
+        .arg("--config")
+        .arg(&source)
+        .arg("--port")
+        .arg("0")
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    let mut line = String::new();
+    stdout.read_line(&mut line).unwrap();
+    let address = line
+        .trim()
+        .strip_prefix("roomci serve listening on http://")
+        .expect("serve should print listening address");
+    let response = http_request(address, "GET", "/scenario", "");
+    child.kill().unwrap();
+    child.wait().unwrap();
+    assert!(response.contains("HTTP/1.1 200 OK"), "{response}");
+    let json = response.split_once("\r\n\r\n").unwrap().1;
+    let value: serde_json::Value = serde_json::from_str(json).unwrap();
+    assert!(value["faults"][0].get("duration").is_none(), "{json}");
+
+    let tempdir = tempfile::tempdir().unwrap();
+    let path = tempdir.path().join("served.json");
+    std::fs::write(&path, json).unwrap();
+    let reread = roomci_scenario::load_scenario(&path).unwrap();
+    assert_eq!(reread, original);
+    roomci_scenario::validate_scenario(&reread).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+        .arg("validate")
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[test]

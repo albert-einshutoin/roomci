@@ -130,7 +130,10 @@
           "at": { "$ref": "#/$defs/timeOffset" },
           "target": { "type": "string" },
           "type": { "type": "string" },
-          "duration": { "$ref": "#/$defs/duration" },
+          "duration": {
+            "description": "Unsupported for internal faults, including syntactically valid ms, s, m, and h values: timed recovery is not implemented. Omit this key for a persistent fault; explicit null is invalid.",
+            "not": {}
+          },
           "topic": { "type": "string" },
           "count": {
             "type": "integer",

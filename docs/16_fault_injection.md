@@ -114,8 +114,12 @@ faults:
     type: offline
 ```
 
-The internal-model runner rejects `faults[].duration` and step-level fault
-durations before execution: it has no timed recovery action. For the separate
+The internal-model runner reports `UnsupportedFaultDuration` with the indexed
+global or step fault path for `ms`, `s`, `m`, and `h` values before execution:
+it has no timed recovery action. Malformed strings produce `InvalidDuration`,
+and explicit `null` or other non-string values fail parsing. Omitted durations
+keep faults active and are omitted from serialized scenarios and `GET /scenario`.
+For the separate
 real MQTT broker and SUT-only TCP cut/release, use
 [External MQTT recovery](EXTERNAL_MQTT_RECOVERY.md).
 

@@ -271,27 +271,23 @@ impl TryFrom<&ScenarioFile> for ValidatedScenario {
         validate_scene_and_alert_ids(scenario)?;
 
         let mut scheduled_events = Vec::new();
-        for fault in &scenario.faults {
+        for (index, fault) in scenario.faults.iter().enumerate() {
+            reject_fault_duration(fault, format!("faults[{index}].duration"))?;
             let at = fault
                 .at
                 .as_deref()
                 .map(resolve_time_offset)
                 .transpose()?
                 .unwrap_or_else(Duration::zero);
-            if fault.duration.is_some() {
-                return Err(ScenarioError::ScenarioContract {
-                    field: "faults[].duration".into(),
-                    reason: "timed recovery is unsupported by the internal model".into(),
-                });
-            }
             let kind = ValidatedFaultKind::try_from_fault(fault)?;
             validate_fault_reference(fault, &lighting)?;
             scheduled_events.push(ValidatedScheduledEvent::global_fault(at, kind));
         }
 
-        for step in &scenario.steps {
+        for (index, step) in scenario.steps.iter().enumerate() {
             let at = resolve_time_offset(&step.at)?;
-            let kind = ValidatedStepKind::try_from_step(step, &modbus, &lighting, &contacts)?;
+            let kind =
+                ValidatedStepKind::try_from_step(step, index, &modbus, &lighting, &contacts)?;
             scheduled_events.push(ValidatedScheduledEvent::step(at, kind));
         }
 
@@ -417,6 +413,7 @@ pub enum ValidatedStepKind {
 impl ValidatedStepKind {
     fn try_from_step(
         step: &crate::ScenarioStep,
+        index: usize,
         modbus: &ModbusModel,
         lighting: &LightingModel,
         contacts: &ContactModel,
@@ -439,12 +436,7 @@ impl ValidatedStepKind {
                 ValidatedMqttPublishStep::try_from(mqtt_publish)?,
             )),
             TypedStepKind::Fault(fault) => {
-                if fault.duration.is_some() {
-                    return Err(ScenarioError::ScenarioContract {
-                        field: "steps[].fault.duration".into(),
-                        reason: "timed recovery is unsupported by the internal model".into(),
-                    });
-                }
+                reject_fault_duration(fault, format!("steps[{index}].fault.duration"))?;
                 let kind = ValidatedFaultKind::try_from_fault(fault)?;
                 validate_fault_reference(fault, lighting)?;
                 Ok(Self::Fault(kind))
@@ -471,6 +463,23 @@ impl ValidatedStepKind {
             )),
         }
     }
+}
+
+fn reject_fault_duration(fault: &FaultStep, field: String) -> Result<(), ScenarioError> {
+    if let Some(duration) = &fault.duration {
+        let valid_syntax = ["ms", "s", "m", "h"]
+            .iter()
+            .find_map(|unit| duration.strip_suffix(unit))
+            .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()));
+        if !valid_syntax {
+            return Err(ScenarioError::InvalidDuration(format!(
+                "{field}: {}",
+                crate::sanitize_diagnostic_value(duration)
+            )));
+        }
+        return Err(ScenarioError::UnsupportedFaultDuration { field });
+    }
+    Ok(())
 }
 
 // `Eq` is intentionally omitted: `serde_json::Value` is not `Eq`.

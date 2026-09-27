@@ -220,12 +220,26 @@ pub struct FaultStep {
     pub target: String,
     #[serde(rename = "type")]
     pub fault_type: String,
-    #[serde(default)]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_fault_duration",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub duration: Option<String>,
     #[serde(default)]
     pub topic: Option<String>,
     #[serde(default)]
     pub count: Option<u32>,
+}
+
+fn deserialize_fault_duration<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match serde_yaml::Value::deserialize(deserializer)? {
+        serde_yaml::Value::String(duration) => Ok(Some(duration)),
+        _ => Err(serde::de::Error::custom("fault duration must be a string")),
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]

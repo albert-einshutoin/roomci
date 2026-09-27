@@ -131,18 +131,24 @@ assert:
   user_override_count: 0
 ```
 
-## Humidity spike scenario
+## Humidity spike replay
 
 ```yaml
-faults:
+steps:
   - at: T+20m
-    target: living_area.humidity
-    type: spike
-    value: 75
-    duration: 10m
+    sensor_reading:
+      target: living_area
+      temperature: 25.0
+      humidity: 75.0
+  - at: T+30m
+    sensor_reading:
+      target: living_area
+      temperature: 25.0
+      humidity: 49.4
 ```
 
-The system should test whether the control algorithm reacts smoothly instead of oscillating.
+Use explicit readings and assertions to test the control response. Internal
+faults do not recover automatically after a duration.
 
 ## Report example
 

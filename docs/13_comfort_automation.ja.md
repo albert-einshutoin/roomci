@@ -127,18 +127,24 @@ assert:
   user_override_count: 0
 ```
 
-## 湿度スパイクシナリオ
+## 湿度スパイクの再生
 
 ```yaml
-faults:
+steps:
   - at: T+20m
-    target: living_area.humidity
-    type: spike
-    value: 75
-    duration: 10m
+    sensor_reading:
+      target: living_area
+      temperature: 25.0
+      humidity: 75.0
+  - at: T+30m
+    sensor_reading:
+      target: living_area
+      temperature: 25.0
+      humidity: 49.4
 ```
 
-システムは、制御アルゴリズムが振動せずに滑らかに反応するかどうかをテストする必要があります。
+明示的な測定値とアサーションで制御の反応をテストします。内部 fault は
+duration の経過で自動回復しません。
 
 ## レポート例
 

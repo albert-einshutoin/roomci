@@ -72,6 +72,10 @@ fn tracks_scenario_schema_drift_with_runtime_contract() {
     .into_iter()
     .collect();
     assert_eq!(schema_properties(&roomci_schema), expected_properties);
+    assert_eq!(
+        roomci_schema["properties"]["faults"]["items"]["properties"]["duration"]["not"],
+        serde_json::json!({})
+    );
     assert_eq!(roomci_schema["additionalProperties"], false);
     assert_eq!(
         roomci_schema["properties"]["scenario"]["additionalProperties"],
@@ -2755,11 +2759,11 @@ fn unsupported_broker_options_and_fault_duration_fail_before_run() {
         ),
         (
             "faults:\n  - { at: T, target: mqtt.local, type: offline, duration: 1s }\n",
-            "faults[].duration",
+            "faults[0].duration",
         ),
         (
             "steps:\n  - { at: T, fault: { target: mqtt.local, type: offline, duration: 1s } }\n",
-            "steps[].fault.duration",
+            "steps[0].fault.duration",
         ),
     ] {
         let scenario =
@@ -2776,6 +2780,92 @@ fn unsupported_broker_options_and_fault_duration_fail_before_run() {
     ))
     .unwrap();
     crate::validate_scenario(&valid).unwrap();
+}
+
+#[test]
+fn fault_duration_errors_identify_unsupported_feature_and_exact_location() {
+    let base = "version: '0.1'\nscenario: { name: duration_contract }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n";
+    for (kind, field) in [
+        ("faults", "faults[1].duration"),
+        ("steps", "steps[1].fault.duration"),
+    ] {
+        for duration in ["1ms", "1s", "1m", "1h"] {
+            let addition = if kind == "faults" {
+                format!("faults:\n  - {{ target: mqtt.local, type: offline }}\n  - {{ target: mqtt.local, type: offline, duration: {duration} }}\n")
+            } else {
+                format!("steps:\n  - {{ at: T, event: start }}\n  - {{ at: T, fault: {{ target: mqtt.local, type: offline, duration: {duration} }} }}\n")
+            };
+            let scenario: ScenarioFile =
+                serde_yaml::from_str(&format!("{base}{addition}")).unwrap();
+            let error = validate_scenario(&scenario).unwrap_err();
+            assert!(
+                matches!(&error, ScenarioError::UnsupportedFaultDuration { field: path } if path == field),
+                "{duration}: {error}"
+            );
+            assert!(
+                error.to_string().contains("timed recovery is unsupported"),
+                "{error}"
+            );
+        }
+    }
+}
+
+#[test]
+fn fault_duration_type_and_syntax_errors_are_not_unsupported_feature_errors() {
+    let base = "version: '0.1'\nscenario: { name: duration_contract }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n";
+    for (addition, field) in [
+        ("faults:\n  - { target: mqtt.local, type: offline, duration: VALUE }\n", "faults[0].duration"),
+        ("steps:\n  - { at: T, fault: { target: mqtt.local, type: offline, duration: VALUE } }\n", "steps[0].fault.duration"),
+    ] {
+        for value in ["null", "42", "[1s]"] {
+            let yaml = format!("{base}{}", addition.replace("VALUE", value));
+            let result = serde_yaml::from_str::<ScenarioFile>(&yaml);
+            assert!(result.is_err(), "{value}: {result:?}");
+            let json: serde_json::Value = serde_yaml::from_str(&yaml).unwrap();
+            assert!(serde_json::from_value::<ScenarioFile>(json).is_err());
+        }
+        let scenario: ScenarioFile = serde_yaml::from_str(&format!(
+            "{base}{}", addition.replace("VALUE", "never")
+        ))
+        .unwrap();
+        let error = validate_scenario(&scenario).unwrap_err();
+        assert!(matches!(&error, ScenarioError::InvalidDuration(value) if value.contains(field)), "{error}");
+    }
+
+    let scenario: ScenarioFile = serde_yaml::from_str(&format!(
+        "{base}faults:\n  - {{ target: mqtt.local, type: offline }}\n"
+    ))
+    .unwrap();
+    validate_scenario(&scenario).unwrap();
+}
+
+#[test]
+fn omitted_fault_duration_round_trips_in_json_and_yaml() {
+    let base = "version: '0.1'\nscenario: { name: persistent_fault }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n";
+    for addition in [
+        "faults:\n  - { target: mqtt.local, type: offline }\n",
+        "steps:\n  - { at: T, fault: { target: mqtt.local, type: offline } }\n",
+    ] {
+        let original: ScenarioFile = serde_yaml::from_str(&format!("{base}{addition}")).unwrap();
+        validate_scenario(&original).unwrap();
+        let json = serde_json::to_string(&original).unwrap();
+        let json_value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let fault = if original.faults.is_empty() {
+            &json_value["steps"][0]["fault"]
+        } else {
+            &json_value["faults"][0]
+        };
+        assert!(fault.get("duration").is_none(), "{json}");
+        let from_json: ScenarioFile = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json, original);
+        validate_scenario(&from_json).unwrap();
+
+        let yaml = serde_yaml::to_string(&original).unwrap();
+        assert!(!yaml.contains("duration:"), "{yaml}");
+        let from_yaml: ScenarioFile = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(from_yaml, original);
+        validate_scenario(&from_yaml).unwrap();
+    }
 }
 
 #[test]

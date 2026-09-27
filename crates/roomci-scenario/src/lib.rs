@@ -66,6 +66,8 @@ pub enum ScenarioError {
     InvalidRelativeTime(String),
     #[error("invalid duration {0}")]
     InvalidDuration(String),
+    #[error("unsupported fault duration at {field}: timed recovery is unsupported by the internal model")]
+    UnsupportedFaultDuration { field: String },
     #[error("unknown device target {0}")]
     UnknownDevice(String),
     #[error("step must contain a supported action")]

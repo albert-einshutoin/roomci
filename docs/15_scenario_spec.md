@@ -62,8 +62,13 @@ The scenario runner converts this into virtual time.
 
 ## Fault declaration
 
-Timed recovery through `faults[].duration` is unsupported in the internal
-model and rejected before running. `mqtt.local.enabled: false` and
+Timed recovery through global or step fault `duration` is unsupported in the
+internal model. Integer values with `ms`, `s`, `m`, or `h` units produce
+`UnsupportedFaultDuration` with their indexed location before running; malformed
+strings produce `InvalidDuration`, and explicit `null` or other non-string values
+are parse errors. Omit `duration` to keep the existing persistent fault behavior.
+Serialization and `GET /scenario` also omit that key, so their output can be
+validated again. `mqtt.local.enabled: false` and
 `mqtt.*.retained: false` are also rejected; unknown structured `mqtt` fields
 are parse errors. The real-broker recovery command has a separate strict
 contract: [External MQTT recovery](EXTERNAL_MQTT_RECOVERY.md).
