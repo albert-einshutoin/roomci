@@ -115,8 +115,11 @@ faults:
 ```
 
 内部モデルの global と step 内の fault duration は、時間経過による解除処理が
-ないため、場所付きの `UnsupportedFaultDuration` で実行前に拒否します。
-形式不正の値は入力エラーと区別し、省略した fault は従来どおり持続します。
+ないため、`ms`、`s`、`m`、`h` の値を場所付きの
+`UnsupportedFaultDuration` で実行前に拒否します。書式不正の文字列は
+`InvalidDuration`、明示的な `null` や文字列以外はパースエラーです。
+省略した fault は従来どおり持続し、シリアライズと `GET /scenario` でも
+`duration` キーを省略します。
 実brokerと別プロセスSUTのTCP経路を
 切断・再開する試験は[外部MQTT復旧試験](EXTERNAL_MQTT_RECOVERY.md)を参照してください。
 
@@ -137,13 +140,9 @@ control_panel.CP-01.power.dc24v.psu_01
 
 ## 障害の重大度
 
-障害には期待される重大度を含めることができます。
-
-```yaml
-severity: high
-```
-
-ただし、実際のゲストへの影響は可能な限りアサーションで算出する必要があります。
+fault の `severity` は実行に影響しておらず、現在は未知の障害設定として
+拒否します。実行用シナリオから削除し、ゲストへの影響はアサーションで
+評価してください。
 
 ## ゲスト影響モデル
 

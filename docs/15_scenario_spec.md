@@ -6,9 +6,8 @@ A scenario describes a reproducible smart-home field situation.
 
 A scenario should define:
 
-- environment
 - devices
-- network
+- WAN and edge model settings
 - MQTT brokers
 - external inputs
 - commissioning metadata
@@ -16,11 +15,11 @@ A scenario should define:
 - timeline steps
 - faults
 - assertions
-- reporting metadata
+- descriptive metadata (`scenario.description`, `scenario.tags`)
 
 ## Top-level structure
 
-Supported `scenario.version` values are validated as semver and currently limited to `0.1`.
+The top-level `version` is validated and currently limited to the `0.1` series.
 
 ```yaml
 version: "0.1"
@@ -29,8 +28,6 @@ scenario:
   description: Verify local controls survive cloud outage.
   tags: [mqtt, local-first, outage]
 
-environment: {}
-network: {}
 mqtt: {}
 devices: []
 inputs: {}
@@ -39,8 +36,16 @@ alerts: []
 faults: []
 steps: []
 assertions: []
-report: {}
 ```
+
+Unknown top-level, `scenario`, and fault keys fail during parsing. The former
+`environment`, `network`, `future_milestone`, and `report` sections,
+`scenario.clock`, and fault `severity` never controlled execution and are no
+longer accepted. Remove them from runnable scenarios. Use `scenario.description`
+and `scenario.tags` for descriptive metadata, and CLI output flags for reports.
+Keys inside free-form MQTT payloads and device state maps remain data, even if
+they have the same spelling as a removed setting. Omitting optional sections
+continues to use the existing defaults.
 
 ## Time model
 
@@ -58,9 +63,12 @@ The scenario runner converts this into virtual time.
 ## Fault declaration
 
 Timed recovery through global or step fault `duration` is unsupported in the
-internal model. A valid duration value produces `UnsupportedFaultDuration` with
-its indexed location before running; malformed values fail as input errors.
-Omit `duration` to keep the existing persistent fault behavior. `mqtt.local.enabled: false` and
+internal model. Integer values with `ms`, `s`, `m`, or `h` units produce
+`UnsupportedFaultDuration` with their indexed location before running; malformed
+strings produce `InvalidDuration`, and explicit `null` or other non-string values
+are parse errors. Omit `duration` to keep the existing persistent fault behavior.
+Serialization and `GET /scenario` also omit that key, so their output can be
+validated again. `mqtt.local.enabled: false` and
 `mqtt.*.retained: false` are also rejected; unknown structured `mqtt` fields
 are parse errors. The real-broker recovery command has a separate strict
 contract: [External MQTT recovery](EXTERNAL_MQTT_RECOVERY.md).
@@ -209,15 +217,8 @@ intercom
 access-control
 ```
 
-## Reporting fields
+## Report output
 
-```yaml
-report:
-  title: Local-first cloud outage test
-  owner: smart-home
-  severity_on_failure: high
-  output:
-    markdown: true
-    json: true
-    junit: true
-```
+Select report formats with the `roomci run` CLI flags (`--markdown`, `--json`,
+`--junit`, or `--report-dir`). Report configuration in scenario YAML is not
+supported.

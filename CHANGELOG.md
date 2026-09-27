@@ -61,11 +61,19 @@ not as separately published calendar releases.
 ### Changed
 
 - Internal global and step fault `duration` values now report the dedicated
-  `UnsupportedFaultDuration` error with an indexed path. Malformed or non-string
-  values are input errors rather than unsupported-feature errors, and explicit
-  `null` is no longer treated as omission. Remove `duration` to retain a
-  persistent internal fault; use the separate explicit external MQTT recovery
-  test when real-broker cut and release are required (#42).
+  `UnsupportedFaultDuration` error with an indexed path for `ms`, `s`, `m`, and
+  `h` values. Malformed values are `InvalidDuration`; non-string values and
+  explicit `null` are parse errors. Omitted `duration` remains a persistent
+  fault and is now omitted, rather than emitted as `null`, in serialized
+  scenarios and `GET /scenario`. Use the separate external MQTT recovery test
+  when real-broker cut and release are required (#42).
+- Scenario YAML now rejects previously ignored `environment`, `network`,
+  `future_milestone`, `report`, `scenario.clock`, and fault `severity` keys,
+  plus unknown top-level, scenario metadata, and fault keys. This changes
+  input compatibility even though those settings never affected execution.
+  Remove unsupported keys or correct misspellings; keep descriptive text in
+  `scenario.description` or `scenario.tags`, and select report formats through
+  CLI flags (#29).
 - Explicit `mqtt.local.enabled: false` and `mqtt.*.retained: false` now fail
   validation; unknown structured MQTT keys are parse errors. Those options
   previously could be accepted without taking effect. Internal scenario

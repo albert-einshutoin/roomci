@@ -467,12 +467,16 @@ impl ValidatedStepKind {
 
 fn reject_fault_duration(fault: &FaultStep, field: String) -> Result<(), ScenarioError> {
     if let Some(duration) = &fault.duration {
-        parse_duration(duration).map_err(|_| {
-            ScenarioError::InvalidDuration(format!(
+        let valid_syntax = ["ms", "s", "m", "h"]
+            .iter()
+            .find_map(|unit| duration.strip_suffix(unit))
+            .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()));
+        if !valid_syntax {
+            return Err(ScenarioError::InvalidDuration(format!(
                 "{field}: {}",
                 crate::sanitize_diagnostic_value(duration)
-            ))
-        })?;
+            )));
+        }
         return Err(ScenarioError::UnsupportedFaultDuration { field });
     }
     Ok(())

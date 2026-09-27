@@ -9,39 +9,12 @@ A local-first smart home depends on the local network. Internet failures should 
 1. local network health for smart-home control
 2. internet/WAN health for operations and cloud integration
 
-## Network model
+## Network model boundary
 
-```yaml
-network:
-  segments:
-    guest:
-      vlan: 10
-    owner:
-      vlan: 20
-    staff:
-      vlan: 30
-    device_control:
-      vlan: 40
-    camera:
-      vlan: 50
-  policies:
-    - from: guest
-      to: device_control
-      allow: false
-    - from: staff
-      to: device_control
-      allow: true
-```
-
-## VLAN isolation assertion
-
-```yaml
-assert:
-  network:
-    from: guest
-    to: device_control
-    reachable: false
-```
+Top-level `network` settings and VLAN policy assertions are unsupported by
+the scenario runner. They previously had no effect and now fail parsing as
+unknown settings. Remove them from executable scenarios. The supported network
+fault profiles below use `steps[].fault`; `wan` is a separate model setting.
 
 ## WAN model
 

@@ -37,16 +37,15 @@
         }
       }
     },
-    "environment": { "type": "object" },
     "mqtt": {
       "type": "object",
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "local": { "$ref": "#/$defs/mqttBroker" },
-        "cloud": { "$ref": "#/$defs/mqttBroker" }
+        "cloud": { "$ref": "#/$defs/mqttBroker" },
+        "contracts": { "type": "array" }
       }
     },
-    "network": { "type": "object" },
     "wan": {
       "type": "object",
       "properties": {
@@ -74,15 +73,14 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id"],
+        "required": ["id", "type"],
         "properties": {
           "id": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9_]*$"
           },
-          "kind": { "type": "string" },
+          "type": { "type": "string" },
           "protocol": { "type": "string" },
-          "topic": { "type": "string" },
           "state": { "type": "object" }
         },
         "additionalProperties": true
@@ -102,7 +100,6 @@
       "type": "object",
       "description": "Site, room, and device declarations used to generate commissioning checks."
     },
-    "future_milestone": { "type": "object" },
     "alerts": {
       "type": "array",
       "items": {
@@ -134,12 +131,8 @@
           "target": { "type": "string" },
           "type": { "type": "string" },
           "duration": {
-            "description": "Unsupported for internal faults: timed recovery is not implemented.",
+            "description": "Unsupported for internal faults, including syntactically valid ms, s, m, and h values: timed recovery is not implemented. Omit this key for a persistent fault; explicit null is invalid.",
             "not": {}
-          },
-          "severity": {
-            "type": "string",
-            "enum": ["info", "warning", "critical"]
           },
           "topic": { "type": "string" },
           "count": {
@@ -147,7 +140,7 @@
             "minimum": 1
           }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "steps": {
@@ -157,11 +150,16 @@
         "required": ["at"],
         "properties": {
           "at": { "$ref": "#/$defs/timeOffset" },
-          "event": { "type": "object" },
+          "event": { "type": "string" },
+          "command": { "type": "object" },
           "fault": { "$ref": "#/properties/faults/items" },
           "modbus_write": { "type": "object" },
-          "lighting": { "type": "object" },
-          "mqtt_publish": { "type": "object" }
+          "mqtt_publish": { "type": "object" },
+          "contact": { "type": "object" },
+          "intercom": { "type": "object" },
+          "sensor_reading": { "type": "object" },
+          "ops": { "type": "object" },
+          "automation": { "type": "object" }
         },
         "additionalProperties": true
       }
@@ -179,18 +177,19 @@
             "maxLength": 128,
             "pattern": "^[a-z0-9][a-z0-9_-]*$"
           },
-          "impact_level": {
-            "type": "string",
-            "enum": ["none", "low", "moderate", "high", "critical"]
-          },
-          "impact_message": { "type": "string" }
+          "target": { "type": "string" },
+          "condition": {},
+          "mqtt": { "type": "object" },
+          "modbus": { "type": "object" },
+          "guest_experience": { "type": "string" },
+          "ops": { "type": "object" },
+          "assert": { "type": "object" }
         },
         "additionalProperties": true
       }
-    },
-    "report": { "type": "object" }
+    }
   },
-  "additionalProperties": true,
+  "additionalProperties": false,
   "$defs": {
     "duration": {
       "type": "string",
@@ -205,21 +204,10 @@
     "mqttBroker": {
       "type": "object",
       "properties": {
-        "host": { "type": "string" },
-        "port": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 65535
-        },
         "enabled": { "type": "boolean" },
-        "qos": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 2
-        },
         "retained": { "type": "boolean" }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "edgeServer": {
       "type": "object",

@@ -6,9 +6,8 @@
 
 シナリオは次を定義する必要があります。
 
-- 環境（environment）
 - デバイス
-- ネットワーク
+- WAN・edge モデル設定
 - MQTT ブローカー
 - 外部入力
 - コミッショニングメタデータ
@@ -16,11 +15,11 @@
 - タイムラインステップ
 - 障害（faults）
 - アサーション
-- レポートメタデータ
+- 説明用メタデータ（`scenario.description`、`scenario.tags`）
 
 ## トップレベル構造
 
-`scenario.version` の値は SemVer として検証され、現在は `0.1` のみ受け付けます。
+トップレベルの `version` を検証し、現在は `0.1` 系のみ受け付けます。
 
 ```yaml
 version: "0.1"
@@ -29,8 +28,6 @@ scenario:
   description: Verify local controls survive cloud outage.
   tags: [mqtt, local-first, outage]
 
-environment: {}
-network: {}
 mqtt: {}
 devices: []
 inputs: {}
@@ -39,8 +36,15 @@ alerts: []
 faults: []
 steps: []
 assertions: []
-report: {}
 ```
+
+トップレベル、`scenario`、fault の未知キーはパース時に拒否します。従来の
+`environment`、`network`、`future_milestone`、`report`、`scenario.clock`、
+fault の `severity` は実行を制御しておらず、現在は受け付けません。実行用
+シナリオから削除してください。説明には `scenario.description` と
+`scenario.tags`、レポート形式の指定には CLI フラグを使います。自由形式の
+MQTT payload やデバイス状態マップ内の同名キーはデータとして引き続き受理します。
+任意セクションの省略時の動作は従来どおりです。
 
 ## 時間モデル
 
@@ -58,9 +62,11 @@ T-30m
 ## 障害宣言
 
 内部モデルでは global と step 内の fault `duration` による時間回復は未対応です。
-正しい形式の値は場所付きの `UnsupportedFaultDuration` で実行前に拒否し、
-形式不正の値は入力エラーとして区別します。`duration` を省略した fault は
-従来どおり持続します。
+整数に `ms`、`s`、`m`、`h` を付けた値は場所付きの
+`UnsupportedFaultDuration` で実行前に拒否します。書式不正の文字列は
+`InvalidDuration`、明示的な `null` や文字列以外はパースエラーです。
+`duration` を省略した fault は従来どおり持続し、シリアライズと
+`GET /scenario` の出力でもキーを省略するため、再読込・検証できます。
 `mqtt.local.enabled: false`、`mqtt.*.retained: false`、未知の構造化された
 `mqtt` キーも拒否します。実broker試験の契約は
 [外部MQTT復旧試験](EXTERNAL_MQTT_RECOVERY.md)を参照してください。
@@ -206,15 +212,7 @@ intercom
 access-control
 ```
 
-## レポートフィールド
+## レポート出力
 
-```yaml
-report:
-  title: Local-first cloud outage test
-  owner: smart-home
-  severity_on_failure: high
-  output:
-    markdown: true
-    json: true
-    junit: true
-```
+形式は `roomci run` の CLI フラグ（`--markdown`、`--json`、`--junit`、
+`--report-dir`）で指定します。シナリオ YAML 内のレポート設定は未対応です。

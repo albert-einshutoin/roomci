@@ -381,9 +381,16 @@ pub fn load_scenario(path: impl AsRef<Path>) -> Result<ScenarioFile, ScenarioErr
     let path_ref = path.as_ref();
     let path_display = sanitize_diagnostic_value(&path_ref.display().to_string());
     let contents = read_bounded_yaml(path_ref, &path_display)?;
-    serde_yaml::from_str(&contents).map_err(|source| ScenarioError::Parse {
-        path: path_display,
-        reason: sanitize_diagnostic_value(&source.to_string()),
+    serde_yaml::from_str(&contents).map_err(|source| {
+        let mut reason = sanitize_diagnostic_value(&source.to_string());
+        if reason.contains("unknown field") {
+            reason
+                .push_str("; unsupported or misspelled structured setting has no runtime behavior");
+        }
+        ScenarioError::Parse {
+            path: path_display,
+            reason,
+        }
     })
 }
 

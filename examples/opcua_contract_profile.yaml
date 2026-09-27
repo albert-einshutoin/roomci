@@ -4,23 +4,7 @@ scenario:
   description: Dry-run profile fixture for OPC UA node/attribute contract mapping.
   tags: [opcua, contract-profile, dry-run]
 
-future_milestone:
-  protocol_profile: opcua
-  contract: adapter-contracts/examples/opcua_contract_profile.yaml
-  supported_fields:
-    - endpoint
-    - namespace
-    - node_id
-    - browse_name
-    - attribute
-    - expected_value
-    - event_type
-  non_goals:
-    - OPC UA server
-    - subscriptions
-    - security policies
-    - certificates
-    - address-space compliance
+# Profile-only adapter contract: adapter-contracts/examples/opcua_contract_profile.yaml
 
 steps:
   - at: T

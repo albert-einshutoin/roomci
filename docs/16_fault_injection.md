@@ -115,9 +115,11 @@ faults:
 ```
 
 The internal-model runner reports `UnsupportedFaultDuration` with the indexed
-global or step fault path before execution: it has no timed recovery action.
-Malformed duration values are input errors, and omitted durations keep faults
-active as before. For the separate
+global or step fault path for `ms`, `s`, `m`, and `h` values before execution:
+it has no timed recovery action. Malformed strings produce `InvalidDuration`,
+and explicit `null` or other non-string values fail parsing. Omitted durations
+keep faults active and are omitted from serialized scenarios and `GET /scenario`.
+For the separate
 real MQTT broker and SUT-only TCP cut/release, use
 [External MQTT recovery](EXTERNAL_MQTT_RECOVERY.md).
 
@@ -138,13 +140,9 @@ control_panel.CP-01.power.dc24v.psu_01
 
 ## Fault severity
 
-Faults may include expected severity:
-
-```yaml
-severity: high
-```
-
-But actual guest impact should be computed by assertions whenever possible.
+Fault `severity` never affected execution and is now rejected as an unknown
+fault setting. Remove it from runnable scenarios. Evaluate guest impact with
+assertions instead.
 
 ## Guest impact model
 
