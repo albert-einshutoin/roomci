@@ -27,6 +27,36 @@ fn version_matches_the_workspace_release_version() {
 }
 
 #[test]
+fn fault_duration_is_rejected_by_validate_and_run_with_a_specific_diagnostic() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let path = tempdir.path().join("duration.yaml");
+    let base = "version: '0.1'\nscenario: { name: duration_contract }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n";
+    for (addition, field) in [
+        (
+            "faults:\n  - { target: mqtt.local, type: offline, duration: 1s }\n",
+            "faults[0].duration",
+        ),
+        (
+            "steps:\n  - { at: T, fault: { target: mqtt.local, type: offline, duration: 1s } }\n",
+            "steps[0].fault.duration",
+        ),
+    ] {
+        std::fs::write(&path, format!("{base}{addition}")).unwrap();
+        for command in ["validate", "run"] {
+            let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+                .arg(command)
+                .arg(&path)
+                .output()
+                .unwrap();
+            assert_eq!(output.status.code(), Some(2), "{command}");
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(stderr.contains(field), "{stderr}");
+            assert!(stderr.contains("timed recovery is unsupported"), "{stderr}");
+        }
+    }
+}
+
+#[test]
 fn init_scaffolds_a_runnable_scenario() {
     let tempdir = tempfile::tempdir().unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))

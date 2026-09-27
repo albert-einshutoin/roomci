@@ -57,7 +57,10 @@ T-30m
 
 ## 障害宣言
 
-内部モデルでは `faults[].duration` とstep内のfault durationを実行前に拒否します。
+内部モデルでは global と step 内の fault `duration` による時間回復は未対応です。
+正しい形式の値は場所付きの `UnsupportedFaultDuration` で実行前に拒否し、
+形式不正の値は入力エラーとして区別します。`duration` を省略した fault は
+従来どおり持続します。
 `mqtt.local.enabled: false`、`mqtt.*.retained: false`、未知の構造化された
 `mqtt` キーも拒否します。実broker試験の契約は
 [外部MQTT復旧試験](EXTERNAL_MQTT_RECOVERY.md)を参照してください。

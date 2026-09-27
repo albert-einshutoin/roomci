@@ -133,7 +133,10 @@
           "at": { "$ref": "#/$defs/timeOffset" },
           "target": { "type": "string" },
           "type": { "type": "string" },
-          "duration": { "$ref": "#/$defs/duration" },
+          "duration": {
+            "description": "Unsupported for internal faults: timed recovery is not implemented.",
+            "not": {}
+          },
           "severity": {
             "type": "string",
             "enum": ["info", "warning", "critical"]
@@ -155,7 +158,7 @@
         "properties": {
           "at": { "$ref": "#/$defs/timeOffset" },
           "event": { "type": "object" },
-          "fault": { "type": "object" },
+          "fault": { "$ref": "#/properties/faults/items" },
           "modbus_write": { "type": "object" },
           "lighting": { "type": "object" },
           "mqtt_publish": { "type": "object" }

@@ -76,6 +76,14 @@ fn tracks_scenario_schema_drift_with_runtime_contract() {
     .into_iter()
     .collect();
     assert_eq!(schema_properties(&roomci_schema), expected_properties);
+    assert_eq!(
+        roomci_schema["properties"]["faults"]["items"]["properties"]["duration"]["not"],
+        serde_json::json!({})
+    );
+    assert_eq!(
+        roomci_schema["properties"]["steps"]["items"]["properties"]["fault"]["$ref"],
+        "#/properties/faults/items"
+    );
 
     assert_eq!(
         roomci_schema["properties"]["assertions"]["minItems"],
@@ -2745,11 +2753,11 @@ fn unsupported_broker_options_and_fault_duration_fail_before_run() {
         ),
         (
             "faults:\n  - { at: T, target: mqtt.local, type: offline, duration: 1s }\n",
-            "faults[].duration",
+            "faults[0].duration",
         ),
         (
             "steps:\n  - { at: T, fault: { target: mqtt.local, type: offline, duration: 1s } }\n",
-            "steps[].fault.duration",
+            "steps[0].fault.duration",
         ),
     ] {
         let scenario =
@@ -2766,4 +2774,46 @@ fn unsupported_broker_options_and_fault_duration_fail_before_run() {
     ))
     .unwrap();
     crate::validate_scenario(&valid).unwrap();
+}
+
+#[test]
+fn fault_duration_errors_identify_unsupported_feature_and_exact_location() {
+    let base = "version: '0.1'\nscenario: { name: duration_contract }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n";
+    for (addition, field) in [
+        ("faults:\n  - { target: mqtt.local, type: offline }\n  - { target: mqtt.local, type: offline, duration: 1s }\n", "faults[1].duration"),
+        ("steps:\n  - { at: T, event: start }\n  - { at: T, fault: { target: mqtt.local, type: offline, duration: 1s } }\n", "steps[1].fault.duration"),
+    ] {
+        let scenario: ScenarioFile = serde_yaml::from_str(&format!("{base}{addition}")).unwrap();
+        let error = validate_scenario(&scenario).unwrap_err();
+        assert!(matches!(&error, ScenarioError::UnsupportedFaultDuration { field: path } if path == field));
+        assert!(error.to_string().contains(field), "{error}");
+        assert!(error.to_string().contains("timed recovery is unsupported"), "{error}");
+    }
+}
+
+#[test]
+fn fault_duration_type_and_syntax_errors_are_not_unsupported_feature_errors() {
+    let base = "version: '0.1'\nscenario: { name: duration_contract }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n";
+    for value in ["null", "42", "[1s]"] {
+        let yaml = format!(
+            "{base}faults:\n  - {{ target: mqtt.local, type: offline, duration: {value} }}\n"
+        );
+        let result = serde_yaml::from_str::<ScenarioFile>(&yaml);
+        assert!(result.is_err(), "{value}: {result:?}");
+    }
+    let scenario: ScenarioFile = serde_yaml::from_str(&format!(
+        "{base}faults:\n  - {{ target: mqtt.local, type: offline, duration: never }}\n"
+    ))
+    .unwrap();
+    let error = validate_scenario(&scenario).unwrap_err();
+    assert!(
+        matches!(&error, ScenarioError::InvalidDuration(value) if value.contains("faults[0].duration")),
+        "{error}"
+    );
+
+    let scenario: ScenarioFile = serde_yaml::from_str(&format!(
+        "{base}faults:\n  - {{ target: mqtt.local, type: offline }}\n"
+    ))
+    .unwrap();
+    validate_scenario(&scenario).unwrap();
 }

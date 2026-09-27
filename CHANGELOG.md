@@ -60,6 +60,12 @@ not as separately published calendar releases.
 
 ### Changed
 
+- Internal global and step fault `duration` values now report the dedicated
+  `UnsupportedFaultDuration` error with an indexed path. Malformed or non-string
+  values are input errors rather than unsupported-feature errors, and explicit
+  `null` is no longer treated as omission. Remove `duration` to retain a
+  persistent internal fault; use the separate explicit external MQTT recovery
+  test when real-broker cut and release are required (#42).
 - Explicit `mqtt.local.enabled: false` and `mqtt.*.retained: false` now fail
   validation; unknown structured MQTT keys are parse errors. Those options
   previously could be accepted without taking effect. Internal scenario

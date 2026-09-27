@@ -114,8 +114,10 @@ faults:
     type: offline
 ```
 
-内部モデルの `faults[].duration` とstep内のfault durationは、時間経過による
-解除処理がないため実行前に拒否します。実brokerと別プロセスSUTのTCP経路を
+内部モデルの global と step 内の fault duration は、時間経過による解除処理が
+ないため、場所付きの `UnsupportedFaultDuration` で実行前に拒否します。
+形式不正の値は入力エラーと区別し、省略した fault は従来どおり持続します。
+実brokerと別プロセスSUTのTCP経路を
 切断・再開する試験は[外部MQTT復旧試験](EXTERNAL_MQTT_RECOVERY.md)を参照してください。
 
 ## ターゲット命名規則
