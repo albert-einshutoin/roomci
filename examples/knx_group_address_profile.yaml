@@ -4,21 +4,7 @@ scenario:
   description: Dry-run profile fixture for KNX group-address contract mapping.
   tags: [knx, contract-profile, dry-run]
 
-future_milestone:
-  protocol_profile: knx
-  contract: adapter-contracts/examples/knx_group_address_profile.yaml
-  supported_fields:
-    - gateway
-    - group_address
-    - datapoint_type
-    - direction
-    - expected_value
-    - function
-  non_goals:
-    - ETS import
-    - KNX/IP tunneling
-    - routing
-    - certification
+# Profile-only adapter contract: adapter-contracts/examples/knx_group_address_profile.yaml
 
 assertions:
   - at: T+1s

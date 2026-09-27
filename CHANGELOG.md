@@ -60,6 +60,13 @@ not as separately published calendar releases.
 
 ### Changed
 
+- Scenario YAML now rejects previously ignored `environment`, `network`,
+  `future_milestone`, `report`, `scenario.clock`, and fault `severity` keys,
+  plus unknown top-level, scenario metadata, and fault keys. This changes
+  input compatibility even though those settings never affected execution.
+  Remove unsupported keys or correct misspellings; keep descriptive text in
+  `scenario.description` or `scenario.tags`, and select report formats through
+  CLI flags (#29).
 - Explicit `mqtt.local.enabled: false` and `mqtt.*.retained: false` now fail
   validation; unknown structured MQTT keys are parse errors. Those options
   previously could be accepted without taking effect. Internal scenario

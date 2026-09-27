@@ -4,21 +4,7 @@ scenario:
   description: Dry-run profile fixture for a Matter gateway contract mapping.
   tags: [matter, contract-profile, dry-run]
 
-future_milestone:
-  protocol_profile: matter
-  contract: adapter-contracts/examples/matter_gateway_profile.yaml
-  supported_fields:
-    - endpoint_id
-    - cluster
-    - attribute
-    - command
-    - expected_state
-  non_goals:
-    - Matter fabric
-    - commissioning
-    - CASE/PASE
-    - Thread/Wi-Fi transport
-    - certification
+# Profile-only adapter contract: adapter-contracts/examples/matter_gateway_profile.yaml
 
 assertions:
   - at: T+1s

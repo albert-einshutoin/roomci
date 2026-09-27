@@ -9,39 +9,12 @@
 1. スマートホーム制御用のローカルネットワーク健全性
 2. 運用およびクラウド連携用のインターネット／WAN 健全性
 
-## ネットワークモデル
+## ネットワークモデルの境界
 
-```yaml
-network:
-  segments:
-    guest:
-      vlan: 10
-    owner:
-      vlan: 20
-    staff:
-      vlan: 30
-    device_control:
-      vlan: 40
-    camera:
-      vlan: 50
-  policies:
-    - from: guest
-      to: device_control
-      allow: false
-    - from: staff
-      to: device_control
-      allow: true
-```
-
-## VLAN 分離アサーション
-
-```yaml
-assert:
-  network:
-    from: guest
-    to: device_control
-    reachable: false
-```
+トップレベルの `network` 設定と VLAN ポリシーのアサーションは、シナリオ
+ランナーでは未対応です。以前は効果がなく、現在は未知の設定としてパース時に
+拒否します。実行用シナリオから削除してください。以下のネットワーク障害
+プロファイルは `steps[].fault` を使い、`wan` は別のモデル設定です。
 
 ## WAN モデル
 

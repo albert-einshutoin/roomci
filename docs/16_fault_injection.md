@@ -136,13 +136,9 @@ control_panel.CP-01.power.dc24v.psu_01
 
 ## Fault severity
 
-Faults may include expected severity:
-
-```yaml
-severity: high
-```
-
-But actual guest impact should be computed by assertions whenever possible.
+Fault `severity` never affected execution and is now rejected as an unknown
+fault setting. Remove it from runnable scenarios. Evaluate guest impact with
+assertions instead.
 
 ## Guest impact model
 

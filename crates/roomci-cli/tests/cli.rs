@@ -27,6 +27,30 @@ fn version_matches_the_workspace_release_version() {
 }
 
 #[test]
+fn validate_and_run_reject_ignored_scenario_settings_before_execution() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let scenario = tempdir.path().join("unsupported.yaml");
+    std::fs::write(
+        &scenario,
+        "version: '0.1'\nscenario: { name: unsupported }\nreport: { json: true }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n",
+    )
+    .unwrap();
+
+    for command in ["validate", "run"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_roomci"))
+            .arg(command)
+            .arg(&scenario)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(2), "{command}");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(stderr.contains("report"), "{stderr}");
+        assert!(stderr.contains("unknown field"), "{stderr}");
+        assert!(stderr.contains("no runtime behavior"), "{stderr}");
+    }
+}
+
+#[test]
 fn init_scaffolds_a_runnable_scenario() {
     let tempdir = tempfile::tempdir().unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_roomci"))

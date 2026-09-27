@@ -8,13 +8,10 @@ use serde::{Deserialize, Serialize};
 /// sections fall back to empty maps/lists so a minimal scenario only needs
 /// to declare what it actually exercises.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ScenarioFile {
     pub version: String,
     pub scenario: ScenarioMetadata,
-    #[serde(default)]
-    pub environment: BTreeMap<String, serde_yaml::Value>,
-    #[serde(default)]
-    pub network: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
     pub wan: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
@@ -25,8 +22,6 @@ pub struct ScenarioFile {
     pub inputs: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
     pub commissioning: BTreeMap<String, serde_yaml::Value>,
-    #[serde(default)]
-    pub future_milestone: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
     pub edge: BTreeMap<String, serde_yaml::Value>,
     #[serde(default)]
@@ -49,29 +44,16 @@ pub struct ScenarioFile {
     pub steps: Vec<ScenarioStep>,
     #[serde(default)]
     pub assertions: Vec<AssertionDefinition>,
-    #[serde(default)]
-    pub report: BTreeMap<String, serde_yaml::Value>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ScenarioMetadata {
     pub name: String,
     #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
-    #[serde(default)]
-    pub clock: Option<ScenarioClock>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ScenarioClock {
-    #[serde(default)]
-    pub start: Option<String>,
-    #[serde(default)]
-    pub guest_arrival: Option<String>,
-    #[serde(default)]
-    pub mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
@@ -240,8 +222,6 @@ pub struct FaultStep {
     pub fault_type: String,
     #[serde(default)]
     pub duration: Option<String>,
-    #[serde(default)]
-    pub severity: Option<String>,
     #[serde(default)]
     pub topic: Option<String>,
     #[serde(default)]
