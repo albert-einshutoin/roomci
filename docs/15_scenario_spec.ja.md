@@ -6,9 +6,8 @@
 
 シナリオは次を定義する必要があります。
 
-- 環境（environment）
 - デバイス
-- ネットワーク
+- WAN・edge モデル設定
 - MQTT ブローカー
 - 外部入力
 - コミッショニングメタデータ
@@ -16,11 +15,11 @@
 - タイムラインステップ
 - 障害（faults）
 - アサーション
-- レポートメタデータ
+- 説明用メタデータ（`scenario.description`、`scenario.tags`）
 
 ## トップレベル構造
 
-`scenario.version` の値は SemVer として検証され、現在は `0.1` のみ受け付けます。
+トップレベルの `version` を検証し、現在は `0.1` 系のみ受け付けます。
 
 ```yaml
 version: "0.1"
@@ -29,8 +28,6 @@ scenario:
   description: Verify local controls survive cloud outage.
   tags: [mqtt, local-first, outage]
 
-environment: {}
-network: {}
 mqtt: {}
 devices: []
 inputs: {}
@@ -39,8 +36,15 @@ alerts: []
 faults: []
 steps: []
 assertions: []
-report: {}
 ```
+
+トップレベル、`scenario`、fault の未知キーはパース時に拒否します。従来の
+`environment`、`network`、`future_milestone`、`report`、`scenario.clock`、
+fault の `severity` は実行を制御しておらず、現在は受け付けません。実行用
+シナリオから削除してください。説明には `scenario.description` と
+`scenario.tags`、レポート形式の指定には CLI フラグを使います。自由形式の
+MQTT payload やデバイス状態マップ内の同名キーはデータとして引き続き受理します。
+任意セクションの省略時の動作は従来どおりです。
 
 ## 時間モデル
 
@@ -203,15 +207,7 @@ intercom
 access-control
 ```
 
-## レポートフィールド
+## レポート出力
 
-```yaml
-report:
-  title: Local-first cloud outage test
-  owner: smart-home
-  severity_on_failure: high
-  output:
-    markdown: true
-    json: true
-    junit: true
-```
+形式は `roomci run` の CLI フラグ（`--markdown`、`--json`、`--junit`、
+`--report-dir`）で指定します。シナリオ YAML 内のレポート設定は未対応です。

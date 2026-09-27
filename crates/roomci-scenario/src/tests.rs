@@ -52,14 +52,11 @@ fn tracks_scenario_schema_drift_with_runtime_contract() {
     let expected_properties = BTreeSet::from([
         "version".to_string(),
         "scenario".to_string(),
-        "environment".to_string(),
-        "network".to_string(),
         "wan".to_string(),
         "sensors".to_string(),
         "comfort".to_string(),
         "inputs".to_string(),
         "commissioning".to_string(),
-        "future_milestone".to_string(),
         "edge".to_string(),
         "mqtt".to_string(),
         "devices".to_string(),
@@ -71,11 +68,24 @@ fn tracks_scenario_schema_drift_with_runtime_contract() {
         "faults".to_string(),
         "steps".to_string(),
         "assertions".to_string(),
-        "report".to_string(),
     ])
     .into_iter()
     .collect();
     assert_eq!(schema_properties(&roomci_schema), expected_properties);
+    assert_eq!(roomci_schema["additionalProperties"], false);
+    assert_eq!(
+        roomci_schema["properties"]["scenario"]["additionalProperties"],
+        false
+    );
+    assert_eq!(
+        roomci_schema["properties"]["faults"]["items"]["additionalProperties"],
+        false
+    );
+    assert!(roomci_schema["properties"]["faults"]["items"]["properties"]["severity"].is_null());
+    assert_eq!(
+        roomci_schema["properties"]["steps"]["items"]["properties"]["fault"]["$ref"],
+        "#/properties/faults/items"
+    );
 
     assert_eq!(
         roomci_schema["properties"]["assertions"]["minItems"],
@@ -2766,4 +2776,33 @@ fn unsupported_broker_options_and_fault_duration_fail_before_run() {
     ))
     .unwrap();
     crate::validate_scenario(&valid).unwrap();
+}
+
+#[test]
+fn unsupported_legacy_settings_and_structured_typos_fail_at_parse_boundary() {
+    let base = "version: '0.1'\nscenario: { name: strict_legacy }\nassertions:\n  - { at: T, target: mqtt.local, condition: available }\n";
+    for (addition, field) in [
+        ("environment: { site: test }\n", "environment"),
+        ("network: { profile: test }\n", "network"),
+        ("future_milestone: { name: later }\n", "future_milestone"),
+        ("report: { output: {} }\n", "report"),
+        ("scenario: { name: strict_legacy, clock: { start: T } }\n", "clock"),
+        ("faults:\n  - { target: mqtt.local, type: offline, severity: critical }\n", "severity"),
+        ("steps:\n  - { at: T, fault: { target: mqtt.local, type: offline, severity: critical } }\n", "severity"),
+        ("scneario: { name: typo }\n", "scneario"),
+        ("scenario: { name: strict_legacy, tagz: [] }\n", "tagz"),
+        ("faults:\n  - { target: mqtt.local, type: offline, severty: critical }\n", "severty"),
+    ] {
+        let yaml = if field == "clock" || field == "tagz" {
+            format!("version: '0.1'\nassertions:\n  - {{ at: T, target: mqtt.local, condition: available }}\n{addition}")
+        } else {
+            format!("{base}{addition}")
+        };
+        let error = serde_yaml::from_str::<ScenarioFile>(&yaml).unwrap_err();
+        assert!(error.to_string().contains(field), "{error}");
+    }
+
+    let valid = format!("{base}mqtt: {{ local: {{ enabled: true, retained: true }} }}\ndevices:\n  - {{ id: light, type: light, state: {{ report: ready, network: local }} }}\nsteps:\n  - at: T\n    mqtt_publish:\n      client: test\n      topic: test/command\n      payload: {{ environment: active, severity: critical }}\n");
+    let scenario: ScenarioFile = serde_yaml::from_str(&valid).unwrap();
+    validate_scenario(&scenario).unwrap();
 }

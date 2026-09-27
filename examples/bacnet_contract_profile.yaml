@@ -4,22 +4,7 @@ scenario:
   description: Dry-run profile fixture for BACnet object/property contract mapping.
   tags: [bacnet, contract-profile, dry-run]
 
-future_milestone:
-  protocol_profile: bacnet
-  contract: adapter-contracts/examples/bacnet_contract_profile.yaml
-  supported_fields:
-    - device_id
-    - object_type
-    - object_instance
-    - property
-    - expected_value
-    - event_class
-  non_goals:
-    - BACnet/IP endpoint
-    - COV
-    - BBMD
-    - routing
-    - certification
+# Profile-only adapter contract: adapter-contracts/examples/bacnet_contract_profile.yaml
 
 assertions:
   - at: T+1s
