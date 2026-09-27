@@ -1,5 +1,7 @@
 # roomci
 
+For contributions, choose a [bug report, feature request, or evaluator PoC consultation](https://github.com/albert-einshutoin/roomci/issues/new/choose), then read [CONTRIBUTING.md](CONTRIBUTING.md). For suspected vulnerabilities, read [SECURITY.md](SECURITY.md) before sharing any details.
+
 ## Choose an evaluation path
 
 | Path | Start and observe | Verdict and limit |
