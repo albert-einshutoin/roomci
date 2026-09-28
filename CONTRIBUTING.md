@@ -1,232 +1,107 @@
 # Contributing to roomci
 
-Thank you for your interest in contributing to roomci! This document provides guidelines and instructions for contributing.
+Thanks for contributing. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+The [Japanese developer workflow](docs/DEVELOPER_WORKFLOW.ja.md) and
+[Evaluator Intake Kit](docs/EVALUATOR_INTAKE_KIT.md) provide additional context.
 
-## Code of Conduct
+## Reports and proposals
 
-We are committed to providing a welcoming and inspiring community for all. Please read and adhere to our Code of Conduct:
+Check [existing issues](https://github.com/albert-einshutoin/roomci/issues)
+before opening a [bug report, feature request, or evaluator PoC consultation](https://github.com/albert-einshutoin/roomci/issues/new/choose).
+For a PoC, start with the six first-contact questions in the
+[Evaluator Intake Kit](docs/EVALUATOR_INTAKE_KIT.md); collect detailed customer
+specifications only after the target and acceptance owner are identified.
 
-- Be respectful and constructive in all interactions
-- Welcome people of all backgrounds and perspectives
-- Focus on criticism of ideas, not individuals
-- Report unacceptable behavior to maintainers
+Public issues and pull requests must not contain credentials, private keys,
+personal information, unpublished customer configurations, or confidential
+logs. Redact examples; mark unavailable facts `Not verified / 未確認` rather than
+guessing. You can ask about a PoC without providing sensitive material.
+For suspected vulnerabilities, follow [Security](SECURITY.md) and do not post
+details or secrets in a public issue. GitHub Discussions is not enabled; use
+issues for public, non-sensitive questions.
 
-## How to Contribute
+## Development
 
-### Reporting Issues
+`main` is the only long-lived integration and release branch. Start a short-lived
+branch from the latest `main` and open a pull request against `main`.
 
-Before creating a bug report, check the issue list as you might find out that you don't need to create one. When creating a bug report, include as many details as possible:
+Use the current stable Rust toolchain with `rustfmt` and `clippy`. The repository
+does not declare or verify a minimum supported Rust version; do not infer one
+from the edition. Docker Compose is needed for real-broker and third-party SUT
+integration tests. `make verify` also needs Make, Docker, and `cargo-tarpaulin`.
+See [Dependency Security Policy](docs/DEPENDENCY_POLICY.md) for the lockfile,
+RustSec gate, and `serde_yaml` compatibility hold.
 
-- **Use a clear, descriptive title**
-- **Describe the exact steps to reproduce the problem**
-- **Provide specific examples to demonstrate the steps**
-- **Describe the observed behavior and what you expected instead**
-- **Include screenshots or error messages if applicable**
-- **Mention your environment** (OS, Rust version, etc.)
+The Cargo workspace contains:
 
-### Suggesting Enhancements
+| Crate | Role |
+|---|---|
+| `roomci-cli` | CLI and executable entry point |
+| `roomci-scenario` | Scenario schema and validation |
+| `roomci-core` | Deterministic scenario execution |
+| `roomci-device-model` | Device state model |
+| `roomci-edge` | Edge behavior model |
+| `roomci-mqtt` | MQTT behavior model |
+| `roomci-ops` | Operations behavior model |
+| `roomci-report` | Reports and evidence output |
+| `roomci-serve` | HTTP/MQTT service mode |
 
-Enhancement suggestions are tracked as GitHub Issues. When creating an enhancement suggestion:
+The `examples/`, `adapter-contracts/`, `schemas/`, `compose/`, `docs/`, and
+`tools/` directories contain sample scenarios, contracts, schemas, Docker
+integration assets, documentation, and editor assets respectively.
 
-- **Use a clear, descriptive title**
-- **Provide a detailed description of the suggested enhancement**
-- **Explain why this enhancement would be useful**
-- **List some examples of where the enhancement would be used**
-
-### Branching Model
-
-roomci uses GitHub Flow:
-
-- `main` is the only long-lived integration and release branch
-- Create short-lived feature or fix branches from the latest `main`
-- Open pull requests back into `main`
-- Do not create or target a long-lived `develop` branch
-
-### Pull Requests
-
-1. **Fork the repository** and create your feature branch
-   ```bash
-   git clone https://github.com/yourusername/roomci.git
-   cd roomci
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **Set up your development environment**
-   ```bash
-   cargo build
-   cargo test
-   make verify
-   ```
-
-3. **Make your changes**
-   - Keep commits focused and atomic
-   - Write clear commit messages (see Commit Message Format below)
-   - Add tests for new functionality
-   - Update documentation as needed
-
-4. **Verify your changes**
-   ```bash
-   cargo test              # Run all tests
-   cargo clippy           # Check for common mistakes
-   cargo fmt --check      # Check formatting
-   make verify            # Run full verification suite
-   ```
-
-5. **Submit your Pull Request**
-   - Push your feature branch to your fork
-   - Open a PR against `main` branch
-   - Fill in the PR template with:
-     - Description of changes
-     - Link to relevant issues
-     - Test plan
-     - Screenshots (if applicable)
-
-## Commit Message Format
-
-Follow conventional commits format for clarity:
-
-```
-<type>: <subject>
-
-<optional body>
-
-<optional footer>
-```
-
-### Types
-
-- **feat**: A new feature
-- **fix**: A bug fix
-- **docs**: Documentation only changes
-- **test**: Adding or updating tests
-- **refactor**: Code change that neither fixes a bug nor adds a feature
-- **perf**: Code change that improves performance
-- **ci**: Changes to CI/CD configuration
-- **chore**: Build process, dependency updates, etc.
-
-### Examples
-
-```
-feat: add support for Zigbee protocol profiles
-
-- Implement ZigbeeContractProfile
-- Add example zigbee_gateway_profile.yaml
-- Include integration tests
-
-Fixes #123
-```
-
-```
-fix: handle concurrent BMS alert subscriptions
-
-Previously, concurrent alerts would overwrite pending state.
-Now uses atomic CAS operation for safe concurrent updates.
-
-Closes #456
-```
-
-## Development Setup
-
-### Prerequisites
-
-- Rust 1.70+ (latest stable recommended)
-- Docker (for running compose tests)
-- Make
-
-### Quick Start
+For a small change, run the relevant crate tests and formatter first. For
+example:
 
 ```bash
-# Clone and setup
-git clone https://github.com/yourusername/roomci.git
-cd roomci
-
-# Build
-cargo build
-
-# Run tests
-cargo test
-
-# Run full verification
-make verify
-
-# Try a scenario
-cargo run -p roomci-cli -- run examples/local_first_cloud_outage.yaml --verbose
+cargo fmt --all --check
+cargo test -p roomci-scenario
 ```
 
-### Project Structure
-
-```
-roomci/
-├── crates/
-│   ├── roomci-cli/           # Command-line interface
-│   ├── roomci-scenario/      # Scenario execution engine
-│   └── roomci-sdk/           # Reference SDK
-├── adapter-contracts/        # Protocol profile definitions
-├── examples/                 # Scenario examples and adapters
-├── docs/                     # Documentation
-├── tests/                    # Integration tests
-└── compose/                  # Docker Compose setup
-```
-
-## Testing Guidelines
-
-- **Unit tests**: Test individual functions and components
-- **Integration tests**: Test end-to-end scenarios
-- **Contract tests**: Validate adapter contracts
-
-Target coverage: 80%+
+Select tests for the changed behavior and its consumers. The full local Rust
+gate is:
 
 ```bash
-# Run with coverage
-cargo tarpaulin --out Html
-
-# Check coverage
-open tarpaulin-report.html
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --all-targets
+RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps
 ```
 
-### Golden report tests (refactoring safety net)
+CI's
+`smart-home-ci.yml` additionally runs dependency audit, coverage, Docker and
+Compose scenarios, external MQTT recovery, Node-RED, release evidence, and the
+Action self-test. `make verify` is a broader local gate with coverage, examples,
+Docker, and Compose; it is not a prerequisite for every report or small change.
 
-`run_scenario` is deterministic (virtual time + ordered maps), so its output is
-pinned by golden snapshots:
+Choose the relevant evaluation path from the
+[README's three paths](README.md#choose-an-evaluation-path):
+internal model, reference external MQTT SUT, or Node-RED third-party SUT. The
+linked guides provide prerequisites and evidence boundaries. Public baseline
+results do not establish compatibility with a customer SUT.
 
-- `crates/roomci-core/tests/golden/` — one `<scenario>.json` per
-  `examples/*.yaml`, pinning the full `RunReport` JSON contract.
-- `crates/roomci-report/tests/golden/` — Markdown / JUnit XML / timeline NDJSON /
-  observability JSON renders for representative scenarios.
+## Golden reports
 
-These guard the output contract (schema fields, timeline `event_type` / `message`
-strings, assertion names / impact levels) while refactoring. Rules:
+`crates/roomci-core/tests/golden/` pins scenario `RunReport` JSON;
+`crates/roomci-report/tests/golden/` pins representative renderers. Do not
+regenerate goldens for a behavior-preserving refactor. If a contract change is
+intentional, explain it and review the diff separately, then regenerate only
+the affected goldens:
 
-1. **Behavior-preserving PRs (most refactors): do not update golden files.** If a
-   refactor changes a golden, the behavior changed — split that into its own PR.
-2. **Intentional behavior changes: regenerate and review the diff.**
-   ```bash
-   UPDATE_GOLDEN=1 cargo test -p roomci-core --test golden_reports
-   UPDATE_GOLDEN=1 cargo test -p roomci-report --test golden_renders
-   ```
-   Commit the regenerated files and paste the golden diff into the PR description
-   so reviewers can see exactly what changed.
-3. A new `examples/*.yaml` requires a new golden — generate it the same way.
+```bash
+UPDATE_GOLDEN=1 cargo test -p roomci-core --test golden_reports
+UPDATE_GOLDEN=1 cargo test -p roomci-report --test golden_renders
+```
 
-## Documentation
+A new `examples/*.yaml` scenario needs its corresponding golden. Include the
+golden diff in the PR evidence.
 
-- Update README.md for user-facing changes
-- Update API docs for code changes
-- Include examples in documentation
-- Keep comments clear and concise
+## Pull requests
 
-## Security
+Keep commits focused, describe the problem and scope, and complete the PR
+template. Report executed checks with results and evidence. Mark checks that
+do not apply separately from checks not run, with a reason. State which of the
+three evaluation paths supplied evidence; do not extend protocol or customer
+compatibility claims beyond that evidence.
 
-If you discover a security vulnerability, please email security@[yourdomain] instead of using the issue tracker.
-
-## License
-
-By contributing to roomci, you agree that your contributions will be licensed under its Apache License 2.0.
-
-## Questions?
-
-- Check existing issues and discussions
-- Review the documentation in `/docs`
-- Open a discussion for questions
-
-Thank you for contributing! 🎉
+Contributions are licensed under the repository's [Apache License 2.0](LICENSE).

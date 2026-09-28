@@ -1,5 +1,7 @@
 # roomci
 
+開発参加や不具合・機能提案・評価 PoC の相談は [Issue の入口](https://github.com/albert-einshutoin/roomci/issues/new/choose) と [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。脆弱性が疑われる場合は、詳細を共有する前に [SECURITY.md](SECURITY.md) を確認してください。
+
 ## 評価経路を選ぶ
 
 | 経路 | 起動と観測 | 合否と証明できないこと |
